@@ -9,6 +9,19 @@ import { z } from 'zod'
  * and are NOT included here.
  */
 export const sessionLogFormSchema = z.object({
+  // ── Core ──────────────────────────────────────────────────────────────────
+  session_type: z.enum([
+    'bouldering',
+    'kilterboard',
+    'lead',
+    'fingerboard',
+    'strength',
+    'aerobic',
+    'rest',
+    'mobility',
+  ]),
+  planned_session_id: z.string().uuid().optional(),
+
   // ── Common ────────────────────────────────────────────────────────────────
   date: z.string().min(1, 'Date is required'),
   duration_mins: z.number().int().positive().max(480).optional(),

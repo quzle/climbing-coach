@@ -4,11 +4,12 @@ import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { useForm, type UseFormReturn } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
-import { z } from 'zod'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Form } from '@/components/ui/form'
 import { WarningBanner } from '@/components/ui/WarningBanner'
+import { useDraftSession } from '@/hooks/useDraftSession'
+import { DraftRestoreBanner } from '@/components/forms/DraftRestoreBanner'
 import { SessionTypeSelector } from '@/components/forms/SessionTypeSelector'
 import { CommonFields } from '@/components/forms/session-fields/CommonFields'
 import { ClimbingFields } from '@/components/forms/session-fields/ClimbingFields'
@@ -21,43 +22,12 @@ import type {
   FingerboardSet,
   StrengthExercise,
 } from '@/types'
+import {
+  sessionLogFormSchema,
+  type SessionLogFormData,
+} from '@/components/forms/session-log-schema'
 
-// =============================================================================
-// SCHEMA
-// =============================================================================
-
-const sessionLogSchema = z.object({
-  date: z
-    .string()
-    .regex(/^\d{4}-\d{2}-\d{2}$/, 'Date must be YYYY-MM-DD'),
-  session_type: z.enum([
-    'bouldering',
-    'kilterboard',
-    'lead',
-    'fingerboard',
-    'strength',
-    'aerobic',
-    'rest',
-    'mobility',
-  ]),
-  location: z.string().max(100).optional(),
-  duration_mins: z.number().int().positive().max(480).optional(),
-  quality_rating: z.number().int().min(1).max(5).optional(),
-  rpe: z.number().int().min(1).max(10).optional(),
-  shoulder_flag: z.boolean().default(false),
-  notes: z
-    .string()
-    .max(1000)
-    .optional()
-    .transform((val) => val ?? null),
-  planned_session_id: z
-    .string()
-    .uuid()
-    .optional()
-    .transform((val) => val ?? null),
-})
-
-export type SessionLogFormData = z.infer<typeof sessionLogSchema>
+export type { SessionLogFormData }
 
 // =============================================================================
 // CONSTANTS
@@ -188,6 +158,9 @@ export function SessionLogForm({
 }: SessionLogFormProps): React.ReactElement {
   const router = useRouter()
 
+  // ── Draft persistence ────────────────────────────────────────────────────
+  const { draft, hasDraft, saveDraft, clearDraft } = useDraftSession()
+
   // ── Stage + type state ──────────────────────────────────────────────────
   const [stage, setStage] = useState<1 | 2>(defaultSessionType ? 2 : 1)
   const [selectedType, setSelectedType] = useState<SessionType | null>(
@@ -200,6 +173,10 @@ export function SessionLogForm({
   const [exercises, setExercises] = useState<StrengthExercise[]>([])
   const [fingerboardProtocol, setFingerboardProtocol] = useState<Protocol>('max_hangs')
 
+  // ── Draft UI state ───────────────────────────────────────────────────────
+  const [draftRestored, setDraftRestored] = useState(false)
+  const [showDraftBanner, setShowDraftBanner] = useState(hasDraft)
+
   // ── Async state ──────────────────────────────────────────────────────────
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [submitError, setSubmitError] = useState<string | null>(null)
@@ -208,7 +185,7 @@ export function SessionLogForm({
 
   // ── Form ─────────────────────────────────────────────────────────────────
   const form = useForm<SessionLogFormData>({
-    resolver: zodResolver(sessionLogSchema),
+    resolver: zodResolver(sessionLogFormSchema),
     defaultValues: {
       date: new Date().toISOString().split('T')[0],
       session_type: defaultSessionType,
@@ -221,6 +198,28 @@ export function SessionLogForm({
     onFormReady?.(form)
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
+
+  // ── Auto-save draft on state changes ────────────────────────────────────
+  const watchedValues = form.watch()
+  useEffect(() => {
+    if (stage === 1) return
+    const values = form.getValues()
+    saveDraft({
+      sessionType: selectedType,
+      stage,
+      date: values.date,
+      location: values.location ?? null,
+      duration_mins: values.duration_mins ?? null,
+      quality_rating: values.quality_rating ?? null,
+      rpe: values.rpe ?? null,
+      shoulder_flag: values.shoulder_flag,
+      notes: values.notes ?? null,
+      attempts,
+      fingerboardSets,
+      exercises,
+    })
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [stage, attempts, fingerboardSets, exercises, watchedValues])
 
   // ── Helpers ───────────────────────────────────────────────────────────────
 
@@ -259,6 +258,25 @@ export function SessionLogForm({
     return null
   }
 
+  function handleRestoreDraft(): void {
+    if (!draft) return
+    setSelectedType(draft.sessionType)
+    if (draft.sessionType) form.setValue('session_type', draft.sessionType)
+    form.setValue('date', draft.date)
+    if (draft.location) form.setValue('location', draft.location)
+    if (draft.duration_mins) form.setValue('duration_mins', draft.duration_mins)
+    if (draft.quality_rating) form.setValue('quality_rating', draft.quality_rating)
+    if (draft.rpe) form.setValue('rpe', draft.rpe)
+    form.setValue('shoulder_flag', draft.shoulder_flag)
+    if (draft.notes) form.setValue('notes', draft.notes)
+    setAttempts(draft.attempts)
+    setFingerboardSets(draft.fingerboardSets)
+    setExercises(draft.exercises)
+    setStage(draft.stage)
+    setShowDraftBanner(false)
+    setDraftRestored(true)
+  }
+
   function resetFlow(): void {
     setIsComplete(false)
     setStage(1)
@@ -294,6 +312,7 @@ export function SessionLogForm({
       const message = buildChatMessage(data, attempts, fingerboardSets, exercises)
       setCoachMessage(message)
       setIsComplete(true)
+      clearDraft()
       onSuccess?.()
     } catch {
       setSubmitError('Network error. Please try again.')
@@ -359,7 +378,18 @@ export function SessionLogForm({
 
   if (stage === 1) {
     return (
-      <SessionTypeSelector
+      <div>
+        {showDraftBanner && draft && (
+          <DraftRestoreBanner
+            draft={draft}
+            onRestore={handleRestoreDraft}
+            onDiscard={() => {
+              clearDraft()
+              setShowDraftBanner(false)
+            }}
+          />
+        )}
+        <SessionTypeSelector
         defaultType={selectedType ?? undefined}
         onSelect={(type) => {
           setSelectedType(type)
@@ -367,6 +397,7 @@ export function SessionLogForm({
           setStage(2)
         }}
       />
+      </div>
     )
   }
 
@@ -390,6 +421,9 @@ export function SessionLogForm({
         <CardTitle>
           Log {SESSION_TYPE_LABELS[selectedType as SessionType] ?? selectedType} Session
         </CardTitle>
+        {draftRestored && (
+          <p className="text-xs text-amber-600">📋 Restored from draft</p>
+        )}
       </CardHeader>
 
       <CardContent>
