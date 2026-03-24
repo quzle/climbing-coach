@@ -54,6 +54,7 @@ export type SessionLogFormProps = {
   defaultSessionType?: SessionType
   plannedSessionId?: string
   onSuccess?: () => void
+  mockMode?: boolean
   /**
    * Exposes the RHF form instance for testing — lets tests set values
    * programmatically without navigating through the UI.
@@ -154,6 +155,7 @@ export function SessionLogForm({
   defaultSessionType,
   plannedSessionId,
   onSuccess,
+  mockMode = false,
   onFormReady,
 }: SessionLogFormProps): React.ReactElement {
   const router = useRouter()
@@ -296,6 +298,15 @@ export function SessionLogForm({
     setSubmitError(null)
 
     try {
+      if (mockMode) {
+        const message = buildChatMessage(data, attempts, fingerboardSets, exercises)
+        setCoachMessage(message)
+        setIsComplete(true)
+        clearDraft()
+        onSuccess?.()
+        return
+      }
+
       const response = await fetch('/api/sessions', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -390,13 +401,13 @@ export function SessionLogForm({
           />
         )}
         <SessionTypeSelector
-        defaultType={selectedType ?? undefined}
-        onSelect={(type) => {
-          setSelectedType(type)
-          form.setValue('session_type', type)
-          setStage(2)
-        }}
-      />
+          defaultType={selectedType ?? undefined}
+          onSelect={(type) => {
+            setSelectedType(type)
+            form.setValue('session_type', type)
+            setStage(2)
+          }}
+        />
       </div>
     )
   }

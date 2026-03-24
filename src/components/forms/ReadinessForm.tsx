@@ -128,6 +128,8 @@ type ReadinessFormProps = {
   onSuccess?: (warnings: string[]) => void
   onFormReady?: (form: UseFormReturn<ReadinessFormData>) => void
   initialStep?: number
+  mockMode?: boolean
+  mockWarnings?: string[]
 }
 
 // =============================================================================
@@ -147,7 +149,13 @@ type ReadinessFormProps = {
  * @example
  * <ReadinessForm onSuccess={(warnings) => console.log(warnings)} />
  */
-export function ReadinessForm({ onSuccess, onFormReady, initialStep }: ReadinessFormProps) {
+export function ReadinessForm({
+  onSuccess,
+  onFormReady,
+  initialStep,
+  mockMode = false,
+  mockWarnings = [],
+}: ReadinessFormProps) {
   const router = useRouter()
   const [step, setStep] = useState(initialStep ?? 1)
   const [isSubmitting, setIsSubmitting] = useState(false)
@@ -198,6 +206,13 @@ export function ReadinessForm({ onSuccess, onFormReady, initialStep }: Readiness
     setSubmitError(null)
 
     try {
+      if (mockMode) {
+        setWarnings(mockWarnings)
+        setIsComplete(true)
+        onSuccess?.(mockWarnings)
+        return
+      }
+
       const response = await fetch('/api/readiness', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
