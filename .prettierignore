@@ -1,0 +1,7 @@
+node_modules
+.next
+out
+public
+*.generated.ts
+# shadcn/ui components — auto-generated, do not reformat
+src/components/ui/**
