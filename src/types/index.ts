@@ -289,6 +289,19 @@ export type SessionLogData =
  *
  * @see src/services/ai/contextBuilder.ts
  */
+
+  // TODO Phase 2: Add programme field to AthleteContext
+  // when programme builder is implemented.
+  // See docs/architecture/decisions/003-prompt-evolution-strategy.md
+  // 
+  // Will add:
+  //   programme: ProgrammeContext | null
+  //
+  // ProgrammeContext will include:
+  //   currentPhase, currentMesocycleName, weekNumber,
+  //   completedPhases, upcomingPhases, activeProtocols,
+  //   weeklyTemplateForCurrentPhase
+  
 export type AthleteContext = {
   /** Today's readiness check-in, or null if not yet submitted */
   todaysReadiness: ReadinessCheckin | null
