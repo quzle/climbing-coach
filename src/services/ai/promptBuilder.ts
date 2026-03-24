@@ -21,6 +21,9 @@ import { formatContextForPrompt } from '@/services/ai/contextBuilder'
  *   instruction
  */
 export function buildSystemPrompt(context: AthleteContext): string {
+  // TODO Phase 2: Replace hard-coded shoulder coaching
+  // instructions with dynamically generated injury
+  // section from athlete injury profile. See ADR 004.
   return `You are an expert climbing coach and periodisation specialist. You work exclusively with one athlete. You are available 24/7 via this chat interface.
 
 You follow evidence-based training principles drawn from:

@@ -80,6 +80,10 @@ const STEPS: StepConfig[] = [
     labels: ['Painful', 'Sore', 'OK', 'Good', 'Perfect'],
     type: 'rating',
   },
+  // TODO Phase 2: Replace fixed shoulder_health step
+  // with dynamic injury area tracking step that shows
+  // only the athlete's currently tracked injury areas.
+  // See ADR 004.
   {
     step: 4,
     field: 'shoulder_health',

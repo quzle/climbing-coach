@@ -18,6 +18,8 @@ export type WeeklyTemplate = Database['public']['Tables']['weekly_templates']['R
 /** An AI-generated or manually created session plan for a specific date. */
 export type PlannedSession = Database['public']['Tables']['planned_sessions']['Row']
 
+// TODO Phase 2: Add InjuryArea union type and
+// InjuryAreaHealth type. See ADR 004.
 /** A daily subjective readiness check-in (fatigue, sleep, finger health, etc). */
 export type ReadinessCheckin = Database['public']['Tables']['readiness_checkins']['Row']
 
@@ -301,7 +303,10 @@ export type SessionLogData =
   //   currentPhase, currentMesocycleName, weekNumber,
   //   completedPhases, upcomingPhases, activeProtocols,
   //   weeklyTemplateForCurrentPhase
-  
+
+// TODO Phase 2: Replace currentShoulderHealth with
+// injuryAreas: InjuryAreaHealth[] for flexible
+// injury tracking. See ADR 004.
 export type AthleteContext = {
   /** Today's readiness check-in, or null if not yet submitted */
   todaysReadiness: ReadinessCheckin | null

@@ -118,6 +118,9 @@ export function CommonFields({ control }: CommonFieldsProps): React.ReactElement
         )}
       />
 
+      {/* TODO Phase 2: Replace shoulder_flag boolean with
+          multi-select injury_flags array covering all
+          tracked injury areas. See ADR 004. */}
       {/* Shoulder flag */}
       <FormField
         control={control}

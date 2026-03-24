@@ -70,6 +70,10 @@ function computeWarnings(
     )
   }
 
+  // TODO Phase 2: Replace hard-coded shoulder rules
+  // with dynamic rules generated from injuryAreas array.
+  // Each tracked area will have its own health score
+  // and training restriction rules. See ADR 004.
   // --- SHOULDER HEALTH ---
   const shoulder = todaysReadiness?.shoulder_health ?? null
   if (shoulder !== null && (shoulder === 1 || shoulder === 2)) {
