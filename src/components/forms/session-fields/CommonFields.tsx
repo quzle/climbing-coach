@@ -4,6 +4,7 @@ import { Input } from '@/components/ui/input'
 import { Textarea } from '@/components/ui/textarea'
 import { Slider } from '@/components/ui/slider'
 import { RatingSelector } from '@/components/forms/RatingSelector'
+import { formatAreaName } from '@/components/forms/InjuryAreaSelector'
 import {
   FormControl,
   FormField,
@@ -16,6 +17,8 @@ import type { SessionLogFormData } from '@/components/forms/session-log-schema'
 export type CommonFieldsProps = {
   control: Control<SessionLogFormData>
   errors: FieldErrors<SessionLogFormData>
+  /** Tracked injury area names to show as checkboxes. Pass from parent. */
+  trackedAreas?: string[]
 }
 
 /**
@@ -26,7 +29,7 @@ export type CommonFieldsProps = {
  * @param control RHF control from the parent useForm instance
  * @param errors RHF fieldErrors from the parent form state
  */
-export function CommonFields({ control }: CommonFieldsProps): React.ReactElement {
+export function CommonFields({ control, trackedAreas = [] }: CommonFieldsProps): React.ReactElement {
   return (
     <div className="space-y-4">
       {/* Date */}
@@ -118,52 +121,59 @@ export function CommonFields({ control }: CommonFieldsProps): React.ReactElement
         )}
       />
 
-      {/* TODO Phase 2: Replace shoulder_flag boolean with
-          multi-select injury_flags array covering all
-          tracked injury areas. See ADR 004. */}
-      {/* Shoulder flag */}
+      {/* Injury flags */}
       <FormField
         control={control}
-        name="shoulder_flag"
-        render={({ field }) => (
-          <FormItem>
-            <FormLabel>Any shoulder concern this session?</FormLabel>
-            <div>
-              <div className="flex gap-2">
-                <button
-                  type="button"
-                  onClick={() => field.onChange(false)}
-                  className={cn(
-                    'min-h-[44px] px-4 rounded-lg border text-sm transition-colors',
-                    !field.value
-                      ? 'bg-slate-800 text-white border-slate-800'
-                      : 'bg-white text-slate-700 border-slate-200 hover:border-slate-400',
-                  )}
-                >
-                  No
-                </button>
-                <button
-                  type="button"
-                  onClick={() => field.onChange(true)}
-                  className={cn(
-                    'min-h-[44px] px-4 rounded-lg border text-sm transition-colors',
-                    field.value
-                      ? 'bg-amber-500 text-white border-amber-500'
-                      : 'bg-white text-slate-700 border-slate-200 hover:border-slate-400',
-                  )}
-                >
-                  Yes ⚠
-                </button>
-              </div>
-              {field.value && (
-                <p className="mt-1 text-sm text-amber-700">
-                  Flagged — your coach will be notified
+        name="injury_flags"
+        render={({ field }) => {
+          const currentFlags: string[] = field.value ?? []
+
+          function toggleArea(area: string) {
+            const next = currentFlags.includes(area)
+              ? currentFlags.filter((a) => a !== area)
+              : [...currentFlags, area]
+            field.onChange(next)
+          }
+
+          return (
+            <FormItem>
+              <FormLabel>Any injury areas affected this session?</FormLabel>
+              {trackedAreas.length === 0 ? (
+                <p className="text-sm text-slate-500">
+                  No areas tracked. Add injury areas via your profile page.
+                </p>
+              ) : (
+                <div className="flex flex-wrap gap-2">
+                  {trackedAreas.map((area) => {
+                    const flagged = currentFlags.includes(area)
+                    return (
+                      <button
+                        key={area}
+                        type="button"
+                        onClick={() => toggleArea(area)}
+                        aria-pressed={flagged}
+                        className={cn(
+                          'min-h-[44px] px-3 rounded-lg border text-sm transition-colors',
+                          flagged
+                            ? 'bg-amber-500 text-white border-amber-500'
+                            : 'bg-white text-slate-700 border-slate-200 hover:border-slate-400',
+                        )}
+                      >
+                        {formatAreaName(area)}
+                      </button>
+                    )
+                  })}
+                </div>
+              )}
+              {currentFlags.length > 0 && (
+                <p className="text-sm text-amber-700">
+                  {currentFlags.length} area{currentFlags.length > 1 ? 's' : ''} flagged — your coach will be notified
                 </p>
               )}
-            </div>
-            <FormMessage />
-          </FormItem>
-        )}
+              <FormMessage />
+            </FormItem>
+          )
+        }}
       />
 
       {/* Notes */}

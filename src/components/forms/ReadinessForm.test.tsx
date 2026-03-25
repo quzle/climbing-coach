@@ -43,22 +43,30 @@ async function selectRating(user: ReturnType<typeof userEvent.setup>, rating = '
 
 /**
  * Advances through all steps up to (but not including) the notes step (7).
- * Ratings 1-5 each receive a "4", illness step receives "No symptoms".
+ * Ratings 1-3 each receive a "4", injury areas step clicks "Next",
+ * rating step 5 receives a "4", illness step receives "No symptoms".
  * Each step waits for its question heading before clicking.
  */
 async function advanceToStep7(user: ReturnType<typeof userEvent.setup>) {
-  const ratingQuestions = [
+  const preInjuryQuestions = [
     'How did you sleep?',
     'How is your body feeling?',
     'How are your fingers and tendons?',
-    'How is your shoulder?',
-    'How is life stress today?',
   ]
-
-  for (const question of ratingQuestions) {
+  for (const question of preInjuryQuestions) {
     await waitFor(() => expect(screen.getByText(question)).toBeInTheDocument())
     await selectRating(user)
   }
+
+  // Step 4: injury areas — click Next to advance
+  await waitFor(() =>
+    expect(screen.getByText('How are your injury areas today?')).toBeInTheDocument(),
+  )
+  await user.click(screen.getByRole('button', { name: /^Next$/i }))
+
+  // Step 5: life stress
+  await waitFor(() => expect(screen.getByText('How is life stress today?')).toBeInTheDocument())
+  await selectRating(user)
 
   // Step 6: illness toggle
   await waitFor(() => expect(screen.getByText('Any illness symptoms?')).toBeInTheDocument())
@@ -179,7 +187,7 @@ describe('ReadinessForm — submission', () => {
       capturedForm!.setValue('sleep_quality', 4, { shouldValidate: true })
       capturedForm!.setValue('fatigue', 2, { shouldValidate: true })
       capturedForm!.setValue('finger_health', 5, { shouldValidate: true })
-      capturedForm!.setValue('shoulder_health', 5, { shouldValidate: true })
+      capturedForm!.setValue('injury_area_health', [], { shouldValidate: true })
       capturedForm!.setValue('illness_flag', false, { shouldValidate: true })
       capturedForm!.setValue('life_stress', 2, { shouldValidate: true })
     })
@@ -277,18 +285,22 @@ describe('ReadinessForm — illness flag', () => {
     const user = userEvent.setup()
     renderReadinessForm()
 
-    // Advance through rating steps 1–5
-    const ratingQuestions = [
+    // Advance through steps 1-3 (ratings), step 4 (injury areas), step 5 (rating)
+    const preInjuryQuestions = [
       'How did you sleep?',
       'How is your body feeling?',
       'How are your fingers and tendons?',
-      'How is your shoulder?',
-      'How is life stress today?',
     ]
-    for (const question of ratingQuestions) {
+    for (const question of preInjuryQuestions) {
       await waitFor(() => expect(screen.getByText(question)).toBeInTheDocument())
       await selectRating(user)
     }
+    await waitFor(() =>
+      expect(screen.getByText('How are your injury areas today?')).toBeInTheDocument(),
+    )
+    await user.click(screen.getByRole('button', { name: /^Next$/i }))
+    await waitFor(() => expect(screen.getByText('How is life stress today?')).toBeInTheDocument())
+    await selectRating(user)
 
     await waitFor(() =>
       expect(screen.getByText('Any illness symptoms?')).toBeInTheDocument(),
@@ -301,18 +313,21 @@ describe('ReadinessForm — illness flag', () => {
     const user = userEvent.setup()
     renderReadinessForm()
 
-    // Advance through rating steps 1–5
-    const ratingQuestions = [
+    const preInjuryQuestions = [
       'How did you sleep?',
       'How is your body feeling?',
       'How are your fingers and tendons?',
-      'How is your shoulder?',
-      'How is life stress today?',
     ]
-    for (const question of ratingQuestions) {
+    for (const question of preInjuryQuestions) {
       await waitFor(() => expect(screen.getByText(question)).toBeInTheDocument())
       await selectRating(user)
     }
+    await waitFor(() =>
+      expect(screen.getByText('How are your injury areas today?')).toBeInTheDocument(),
+    )
+    await user.click(screen.getByRole('button', { name: /^Next$/i }))
+    await waitFor(() => expect(screen.getByText('How is life stress today?')).toBeInTheDocument())
+    await selectRating(user)
 
     await waitFor(() =>
       expect(screen.getByText('Any illness symptoms?')).toBeInTheDocument(),

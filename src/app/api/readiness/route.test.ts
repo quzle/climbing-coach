@@ -47,7 +47,7 @@ const validBody = {
   sleep_quality: 4,
   fatigue: 2,
   finger_health: 5,
-  shoulder_health: 5,
+  injury_area_health: [],
   illness_flag: false,
   life_stress: 2,
   notes: null,
@@ -123,7 +123,7 @@ describe('POST /api/readiness', () => {
       sleep_quality: validBody.sleep_quality,
       fatigue: validBody.fatigue,
       finger_health: validBody.finger_health,
-      shoulder_health: validBody.shoulder_health,
+      injury_area_health: validBody.injury_area_health,
       life_stress: validBody.life_stress,
       notes: validBody.notes,
     }
@@ -150,6 +150,20 @@ describe('POST /api/readiness', () => {
     const response = await POST(makePostRequest(validBody))
 
     expect(response.status).toBe(500)
+  })
+
+  it('passes injury_area_health array to createCheckin', async () => {
+    const bodyWithInjury = {
+      ...validBody,
+      injury_area_health: [{ area: 'shoulder_left', health: 3, notes: null }],
+    }
+
+    await POST(makePostRequest(bodyWithInjury))
+
+    expect(mockCreateCheckin).toHaveBeenCalledWith(
+      expect.not.objectContaining({ injury_area_health: expect.anything() }),
+      [{ area: 'shoulder_left', health: 3, notes: null }],
+    )
   })
 })
 

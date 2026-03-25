@@ -17,7 +17,7 @@ export type SessionDraft = {
   duration_mins: number | null
   quality_rating: number | null
   rpe: number | null
-  shoulder_flag: boolean
+  injury_flags: string[]
   notes: string | null
   attempts: ClimbingAttempt[]
   fingerboardSets: FingerboardSet[]
@@ -125,7 +125,7 @@ function getEmptyDraft(): Omit<SessionDraft, 'lastSaved'> {
     duration_mins: null,
     quality_rating: null,
     rpe: null,
-    shoulder_flag: false,
+    injury_flags: [],
     notes: null,
     attempts: [],
     fingerboardSets: [],

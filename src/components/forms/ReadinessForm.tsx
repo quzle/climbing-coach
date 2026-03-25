@@ -10,17 +10,25 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Textarea } from '@/components/ui/textarea'
 import { RatingSelector } from '@/components/forms/RatingSelector'
 import { IllnessToggle } from '@/components/forms/IllnessToggle'
+import { InjuryAreaSelector } from '@/components/forms/InjuryAreaSelector'
 import { WarningBanner } from '@/components/ui/WarningBanner'
+import type { InjuryAreaRow } from '@/types'
 
 // =============================================================================
 // SCHEMA
 // =============================================================================
 
+const injuryAreaHealthItemSchema = z.object({
+  area: z.string(),
+  health: z.number().min(1).max(5),
+  notes: z.string().nullable(),
+})
+
 const readinessFormSchema = z.object({
   sleep_quality: z.number().min(1).max(5),
   fatigue: z.number().min(1).max(5),
   finger_health: z.number().min(1).max(5),
-  shoulder_health: z.number().min(1).max(5),
+  injury_area_health: z.array(injuryAreaHealthItemSchema),
   illness_flag: z.boolean(),
   life_stress: z.number().min(1).max(5),
   notes: z.string().max(500).optional(),
@@ -32,7 +40,7 @@ export type ReadinessFormData = z.infer<typeof readinessFormSchema>
 // STEP CONFIGURATION
 // =============================================================================
 
-type RatingField = 'sleep_quality' | 'fatigue' | 'finger_health' | 'shoulder_health' | 'life_stress'
+type RatingField = 'sleep_quality' | 'fatigue' | 'finger_health' | 'life_stress'
 
 type RatingStep = {
   step: number
@@ -56,7 +64,14 @@ type NotesStep = {
   type: 'notes'
 }
 
-type StepConfig = RatingStep | IllnessStep | NotesStep
+type InjuryAreasStep = {
+  step: number
+  field: 'injury_area_health'
+  question: string
+  type: 'injury_areas'
+}
+
+type StepConfig = RatingStep | IllnessStep | NotesStep | InjuryAreasStep
 
 const STEPS: StepConfig[] = [
   {
@@ -80,16 +95,11 @@ const STEPS: StepConfig[] = [
     labels: ['Painful', 'Sore', 'OK', 'Good', 'Perfect'],
     type: 'rating',
   },
-  // TODO Phase 2: Replace fixed shoulder_health step
-  // with dynamic injury area tracking step that shows
-  // only the athlete's currently tracked injury areas.
-  // See ADR 004.
   {
     step: 4,
-    field: 'shoulder_health',
-    question: 'How is your shoulder?',
-    labels: ['Painful', 'Uncomfortable', 'OK', 'Good', 'Perfect'],
-    type: 'rating',
+    field: 'injury_area_health',
+    question: 'How are your injury areas today?',
+    type: 'injury_areas',
   },
   {
     step: 5,
@@ -121,8 +131,11 @@ const TOTAL_STEPS = STEPS.length
 /**
  * Props for the ReadinessForm component.
  *
- * @property onSuccess Optional callback invoked after a successful submission,
- *                     receiving the array of warnings returned by the API.
+ * @property onSuccess          Optional callback invoked after a successful submission,
+ *                              receiving the array of warnings returned by the API.
+ * @property initialInjuryAreas Active tracked injury areas to pre-populate the
+ *                              injury area step. Pass from a server component via
+ *                              getActiveInjuryAreas(). Defaults to empty array.
  */
 type ReadinessFormProps = {
   onSuccess?: (warnings: string[]) => void
@@ -130,6 +143,7 @@ type ReadinessFormProps = {
   initialStep?: number
   mockMode?: boolean
   mockWarnings?: string[]
+  initialInjuryAreas?: InjuryAreaRow[]
 }
 
 // =============================================================================
@@ -155,6 +169,7 @@ export function ReadinessForm({
   initialStep,
   mockMode = false,
   mockWarnings = [],
+  initialInjuryAreas = [],
 }: ReadinessFormProps) {
   const router = useRouter()
   const [step, setStep] = useState(initialStep ?? 1)
@@ -162,6 +177,7 @@ export function ReadinessForm({
   const [warnings, setWarnings] = useState<string[]>([])
   const [submitError, setSubmitError] = useState<string | null>(null)
   const [isComplete, setIsComplete] = useState(false)
+  const [activeInjuryAreas, setActiveInjuryAreas] = useState<InjuryAreaRow[]>(initialInjuryAreas)
 
   const form = useForm<ReadinessFormData>({
     resolver: zodResolver(readinessFormSchema),
@@ -169,7 +185,7 @@ export function ReadinessForm({
       sleep_quality: 0 as unknown as number,
       fatigue: 0 as unknown as number,
       finger_health: 0 as unknown as number,
-      shoulder_health: 0 as unknown as number,
+      injury_area_health: [],
       illness_flag: false,
       life_stress: 0 as unknown as number,
       notes: '',
@@ -195,6 +211,28 @@ export function ReadinessForm({
   function handleIllnessChange(value: boolean, rhfOnChange: (v: boolean) => void) {
     rhfOnChange(value)
     setTimeout(() => setStep((prev) => prev + 1), 300)
+  }
+
+  // ---------------------------------------------------------------------------
+  // INJURY AREA MANAGEMENT
+  // ---------------------------------------------------------------------------
+
+  async function handleAddArea(area: string) {
+    try {
+      const response = await fetch('/api/injury-areas', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ area }),
+      })
+      if (response.ok) {
+        const result = (await response.json()) as { data: InjuryAreaRow | null; error: string | null }
+        if (result.data) {
+          setActiveInjuryAreas((prev) => [...prev, result.data as InjuryAreaRow])
+        }
+      }
+    } catch {
+      // Non-critical — UI still usable without persisting the new area
+    }
   }
 
   // ---------------------------------------------------------------------------
@@ -381,6 +419,22 @@ export function ReadinessForm({
             />
           )}
 
+          {currentStepConfig.type === 'injury_areas' && (
+            <Controller
+              control={form.control}
+              name="injury_area_health"
+              render={({ field }) => (
+                <InjuryAreaSelector
+                  areas={activeInjuryAreas}
+                  value={field.value}
+                  disabled={isSubmitting}
+                  onChange={field.onChange}
+                  onAddArea={handleAddArea}
+                />
+              )}
+            />
+          )}
+
           {/* Error message */}
           {submitError && (
             <p className="mt-4 text-sm text-red-600">{submitError}</p>
@@ -403,6 +457,17 @@ export function ReadinessForm({
                   Skip notes
                 </Button>
               </>
+            )}
+
+            {currentStepConfig.type === 'injury_areas' && (
+              <Button
+                type="button"
+                className="w-full"
+                disabled={isSubmitting}
+                onClick={() => setStep((prev) => prev + 1)}
+              >
+                Next
+              </Button>
             )}
 
             {step > 1 && (

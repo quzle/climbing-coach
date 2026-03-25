@@ -27,7 +27,7 @@ export const sessionLogFormSchema = z.object({
   duration_mins: z.number().int().positive().max(480).optional(),
   rpe: z.number().int().min(1).max(10).optional(),
   quality_rating: z.number().int().min(1).max(5).optional(),
-  shoulder_flag: z.boolean(),
+  injury_flags: z.array(z.string()),
   notes: z.string().max(1000).optional(),
 
   // ── Climbing (bouldering / kilterboard / lead) ────────────────────────────

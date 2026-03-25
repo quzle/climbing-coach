@@ -161,7 +161,7 @@ describe('SessionLogForm — submission', () => {
   async function setRequiredFields() {
     await act(async () => {
       capturedForm!.setValue('date', '2025-03-24', { shouldValidate: true })
-      capturedForm!.setValue('shoulder_flag', false, { shouldValidate: true })
+      capturedForm!.setValue('injury_flags', [], { shouldValidate: true })
     })
   }
 
@@ -256,7 +256,7 @@ describe('SessionLogForm — success state', () => {
   async function setRequiredFields() {
     await act(async () => {
       capturedForm!.setValue('date', '2025-03-24', { shouldValidate: true })
-      capturedForm!.setValue('shoulder_flag', false, { shouldValidate: true })
+      capturedForm!.setValue('injury_flags', [], { shouldValidate: true })
     })
   }
 

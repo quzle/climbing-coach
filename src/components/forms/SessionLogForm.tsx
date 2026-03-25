@@ -60,6 +60,8 @@ export type SessionLogFormProps = {
    * programmatically without navigating through the UI.
    */
   onFormReady?: (form: UseFormReturn<SessionLogFormData>) => void
+  /** Active tracked injury area names for the injury flags section. */
+  initialInjuryAreas?: string[]
 }
 
 // =============================================================================
@@ -157,6 +159,7 @@ export function SessionLogForm({
   onSuccess,
   mockMode = false,
   onFormReady,
+  initialInjuryAreas = [],
 }: SessionLogFormProps): React.ReactElement {
   const router = useRouter()
 
@@ -191,7 +194,7 @@ export function SessionLogForm({
     defaultValues: {
       date: new Date().toISOString().split('T')[0],
       session_type: defaultSessionType,
-      shoulder_flag: false,
+      injury_flags: [],
       planned_session_id: plannedSessionId,
     },
   })
@@ -216,7 +219,7 @@ export function SessionLogForm({
       duration_mins: values.duration_mins ?? null,
       quality_rating: values.quality_rating ?? null,
       rpe: values.rpe ?? null,
-      shoulder_flag: values.shoulder_flag,
+      injury_flags: values.injury_flags ?? [],
       notes: values.notes ?? null,
       attempts,
       fingerboardSets,
@@ -271,7 +274,7 @@ export function SessionLogForm({
     if (draft.duration_mins) form.setValue('duration_mins', draft.duration_mins)
     if (draft.quality_rating) form.setValue('quality_rating', draft.quality_rating)
     if (draft.rpe) form.setValue('rpe', draft.rpe)
-    form.setValue('shoulder_flag', draft.shoulder_flag)
+    form.setValue('injury_flags', draft.injury_flags)
     if (draft.notes) form.setValue('notes', draft.notes)
     setAttempts(draft.attempts)
     setFingerboardSets(draft.fingerboardSets)
@@ -445,6 +448,7 @@ export function SessionLogForm({
             <CommonFields
               control={form.control}
               errors={form.formState.errors}
+              trackedAreas={initialInjuryAreas}
             />
 
             <hr className="border-slate-100 my-4" />

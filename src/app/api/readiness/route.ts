@@ -8,13 +8,19 @@ import {
   hasCheckedInToday,
 } from '@/services/data/readinessRepository'
 import { buildAthleteContext } from '@/services/ai/contextBuilder'
-import type { ApiResponse, ReadinessCheckin } from '@/types'
+import type { ApiResponse, InjuryAreaHealth, ReadinessCheckin } from '@/types'
+
+const injuryAreaHealthItemSchema = z.object({
+  area: z.string(),
+  health: z.number().int().min(1).max(5),
+  notes: z.string().nullable().optional().transform((v) => v ?? null),
+})
 
 const readinessSchema = z.object({
   sleep_quality: z.number().int().min(1).max(5),
   fatigue: z.number().int().min(1).max(5),
   finger_health: z.number().int().min(1).max(5),
-  shoulder_health: z.number().int().min(1).max(5),
+  injury_area_health: z.array(injuryAreaHealthItemSchema).default([]),
   illness_flag: z.boolean(),
   life_stress: z.number().int().min(1).max(5),
   notes: z
@@ -51,6 +57,7 @@ export async function POST(
     }
 
     const validated = parsed.data
+    const { injury_area_health, ...checkinInput } = validated
 
     const alreadyCheckedIn = await hasCheckedInToday()
     if (alreadyCheckedIn.data === true) {
@@ -64,7 +71,10 @@ export async function POST(
     }
 
     const today = new Date().toISOString().split('T')[0] as string
-    const result = await createCheckin({ ...validated, date: today })
+    const result = await createCheckin(
+      { ...checkinInput, date: today },
+      injury_area_health as InjuryAreaHealth[],
+    )
     if (result.error) {
       console.error('[POST /api/readiness]', result.error)
       return NextResponse.json(
