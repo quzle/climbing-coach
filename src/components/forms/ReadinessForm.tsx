@@ -419,11 +419,17 @@ export function ReadinessForm({
             />
           )}
 
-          {currentStepConfig.type === 'injury_areas' && (
-            <Controller
-              control={form.control}
-              name="injury_area_health"
-              render={({ field }) => (
+            {currentStepConfig.type === 'injury_areas' && (
+            <>
+              {activeInjuryAreas.length === 0 ? (
+              <p className="text-center text-slate-600">
+                No injury areas being tracked. You can add one below or skip to the next step.
+              </p>
+              ) : (
+              <Controller
+                control={form.control}
+                name="injury_area_health"
+                render={({ field }) => (
                 <InjuryAreaSelector
                   areas={activeInjuryAreas}
                   value={field.value}
@@ -431,9 +437,11 @@ export function ReadinessForm({
                   onChange={field.onChange}
                   onAddArea={handleAddArea}
                 />
+                )}
+              />
               )}
-            />
-          )}
+            </>
+            )}
 
           {/* Error message */}
           {submitError && (
