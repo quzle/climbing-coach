@@ -6,6 +6,7 @@ import type {
 } from '@/types'
 import {
   createPlannedSession,
+  deletePlannedSession,
   getPlannedSessionById,
   getPlannedSessionsInRange,
   getUpcomingPlannedSessions,
@@ -22,6 +23,7 @@ function makeSupabaseMock() {
     select: jest.fn().mockReturnThis(),
     insert: jest.fn().mockReturnThis(),
     update: jest.fn().mockReturnThis(),
+    delete: jest.fn().mockReturnThis(),
     eq: jest.fn().mockReturnThis(),
     gte: jest.fn().mockReturnThis(),
     lte: jest.fn().mockReturnThis(),
@@ -113,5 +115,16 @@ describe('plannedSessionRepository', () => {
 
     expect(mockChain.update).toHaveBeenCalledWith(updates)
     expect(result.data?.status).toBe('completed')
+  })
+
+  it('deletePlannedSession deletes and returns the row', async () => {
+    const session = makePlannedSession()
+    mockChain.single.mockResolvedValue({ data: session, error: null })
+
+    const result = await deletePlannedSession('planned-session-1')
+
+    expect(mockChain.delete).toHaveBeenCalledTimes(1)
+    expect(mockChain.eq).toHaveBeenCalledWith('id', 'planned-session-1')
+    expect(result.data?.id).toBe('planned-session-1')
   })
 })

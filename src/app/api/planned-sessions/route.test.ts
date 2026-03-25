@@ -1,0 +1,79 @@
+/**
+ * @jest-environment node
+ */
+import { NextRequest } from 'next/server'
+import {
+  createPlannedSession,
+  getPlannedSessionsInRange,
+  getUpcomingPlannedSessions,
+} from '@/services/data/plannedSessionRepository'
+import { GET, POST } from './route'
+
+jest.mock('@/services/data/plannedSessionRepository', () => ({
+  getPlannedSessionsInRange: jest.fn(),
+  getUpcomingPlannedSessions: jest.fn(),
+  createPlannedSession: jest.fn(),
+}))
+
+const mockGetPlannedSessionsInRange = getPlannedSessionsInRange as jest.Mock
+const mockGetUpcomingPlannedSessions = getUpcomingPlannedSessions as jest.Mock
+const mockCreatePlannedSession = createPlannedSession as jest.Mock
+
+const plannedSession = {
+  id: '559f2dc4-e2a2-463a-8aef-acdb94fe74ec',
+  created_at: '2026-03-25T10:00:00Z',
+  generated_plan: null,
+  generation_notes: null,
+  mesocycle_id: null,
+  planned_date: '2026-03-30',
+  session_type: 'bouldering',
+  status: 'planned',
+  template_id: null,
+}
+
+beforeEach(() => {
+  jest.clearAllMocks()
+  mockGetPlannedSessionsInRange.mockResolvedValue({ data: [plannedSession], error: null })
+  mockGetUpcomingPlannedSessions.mockResolvedValue({ data: [plannedSession], error: null })
+  mockCreatePlannedSession.mockResolvedValue({ data: plannedSession, error: null })
+})
+
+describe('GET /api/planned-sessions', () => {
+  it('returns by date range when start/end provided', async () => {
+    const response = await GET(
+      new NextRequest(
+        'http://localhost/api/planned-sessions?start_date=2026-03-30&end_date=2026-04-05',
+      ),
+    )
+
+    expect(response.status).toBe(200)
+    expect(mockGetPlannedSessionsInRange).toHaveBeenCalledWith(
+      '2026-03-30',
+      '2026-04-05',
+    )
+  })
+
+  it('returns 400 for malformed range query', async () => {
+    const response = await GET(
+      new NextRequest('http://localhost/api/planned-sessions?start_date=2026-03-30'),
+    )
+    expect(response.status).toBe(400)
+  })
+})
+
+describe('POST /api/planned-sessions', () => {
+  it('creates planned session with valid body', async () => {
+    const request = new NextRequest('http://localhost/api/planned-sessions', {
+      method: 'POST',
+      body: JSON.stringify({
+        planned_date: '2026-03-30',
+        session_type: 'bouldering',
+      }),
+      headers: { 'Content-Type': 'application/json' },
+    })
+
+    const response = await POST(request)
+    expect(response.status).toBe(201)
+    expect(mockCreatePlannedSession).toHaveBeenCalled()
+  })
+})

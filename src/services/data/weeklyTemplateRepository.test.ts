@@ -6,6 +6,7 @@ import type {
 } from '@/types'
 import {
   createWeeklyTemplate,
+  getWeeklyTemplateById,
   getWeeklyTemplateByMesocycle,
   updateWeeklyTemplate,
 } from './weeklyTemplateRepository'
@@ -78,6 +79,16 @@ describe('weeklyTemplateRepository', () => {
     const result = await createWeeklyTemplate(input)
 
     expect(mockChain.insert).toHaveBeenCalledWith(input)
+    expect(result.data).toEqual(template)
+  })
+
+  it('getWeeklyTemplateById returns a single template row', async () => {
+    const template = makeWeeklyTemplate()
+    mockChain.single.mockResolvedValue({ data: template, error: null })
+
+    const result = await getWeeklyTemplateById('template-1')
+
+    expect(mockChain.eq).toHaveBeenCalledWith('id', 'template-1')
     expect(result.data).toEqual(template)
   })
 

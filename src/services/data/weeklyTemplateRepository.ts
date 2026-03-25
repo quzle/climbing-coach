@@ -38,6 +38,34 @@ export async function getWeeklyTemplateByMesocycle(
 }
 
 /**
+ * @description Fetches a single weekly template row by UUID.
+ * @param id Weekly template UUID
+ * @returns Matching weekly template row
+ */
+export async function getWeeklyTemplateById(
+  id: string,
+): Promise<ApiResponse<WeeklyTemplate>> {
+  try {
+    const supabase = await createClient()
+    const { data, error } = await supabase
+      .from('weekly_templates')
+      .select('*')
+      .eq('id', id)
+      .single()
+
+    if (error) {
+      console.error('[weeklyTemplateRepository.getWeeklyTemplateById]', error)
+      return { data: null, error: 'Failed to fetch weekly template' }
+    }
+
+    return { data, error: null }
+  } catch (err) {
+    console.error('[weeklyTemplateRepository.getWeeklyTemplateById] unexpected error', err)
+    return { data: null, error: 'An unexpected error occurred' }
+  }
+}
+
+/**
  * @description Creates a new weekly template row.
  * @param input Weekly template insert payload
  * @returns Newly created weekly template row

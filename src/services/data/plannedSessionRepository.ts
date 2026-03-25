@@ -149,3 +149,32 @@ export async function updatePlannedSession(
     return { data: null, error: 'An unexpected error occurred' }
   }
 }
+
+/**
+ * @description Deletes a planned session row by UUID.
+ * @param id Planned session UUID
+ * @returns The deleted planned session row
+ */
+export async function deletePlannedSession(
+  id: string,
+): Promise<ApiResponse<PlannedSession>> {
+  try {
+    const supabase = await createClient()
+    const { data, error } = await supabase
+      .from('planned_sessions')
+      .delete()
+      .eq('id', id)
+      .select()
+      .single()
+
+    if (error) {
+      console.error('[plannedSessionRepository.deletePlannedSession]', error)
+      return { data: null, error: 'Failed to delete planned session' }
+    }
+
+    return { data, error: null }
+  } catch (err) {
+    console.error('[plannedSessionRepository.deletePlannedSession] unexpected error', err)
+    return { data: null, error: 'An unexpected error occurred' }
+  }
+}

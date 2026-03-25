@@ -8,6 +8,7 @@ import {
   getSessionsByType,
   updateSessionDeviation,
 } from '@/services/data/sessionRepository'
+import { updatePlannedSession } from '@/services/data/plannedSessionRepository'
 import { POST, GET } from './route'
 
 // =============================================================================
@@ -21,23 +22,9 @@ jest.mock('@/services/data/sessionRepository', () => ({
   updateSessionDeviation: jest.fn(),
 }))
 
-// The Supabase mock supports the chain used when planned_session_id is set:
-// supabase.from().update().eq().select().single()
-// clearAllMocks() preserves mockReturnThis/mockResolvedValue so this factory
-// only needs to run once.
-jest.mock('@/lib/supabase/server', () => {
-  const mockChain = {
-    update: jest.fn().mockReturnThis(),
-    eq: jest.fn().mockReturnThis(),
-    select: jest.fn().mockReturnThis(),
-    single: jest.fn().mockResolvedValue({ data: null, error: null }),
-  }
-  return {
-    createClient: jest.fn().mockResolvedValue({
-      from: jest.fn().mockReturnValue(mockChain),
-    }),
-  }
-})
+jest.mock('@/services/data/plannedSessionRepository', () => ({
+  updatePlannedSession: jest.fn(),
+}))
 
 // =============================================================================
 // TYPED MOCK REFERENCES
@@ -46,6 +33,7 @@ jest.mock('@/lib/supabase/server', () => {
 const mockCreateSession = createSession as jest.Mock
 const mockGetRecentSessions = getRecentSessions as jest.Mock
 const mockGetSessionsByType = getSessionsByType as jest.Mock
+const mockUpdatePlannedSession = updatePlannedSession as jest.Mock
 
 // Suppress unused warning — mocked to prevent real calls, not asserted against
 void (updateSessionDeviation as jest.Mock)
@@ -82,6 +70,7 @@ beforeEach(() => {
   mockCreateSession.mockResolvedValue({ data: mockSession, error: null })
   mockGetRecentSessions.mockResolvedValue({ data: [], error: null })
   mockGetSessionsByType.mockResolvedValue({ data: [], error: null })
+  mockUpdatePlannedSession.mockResolvedValue({ data: null, error: null })
 })
 
 // =============================================================================

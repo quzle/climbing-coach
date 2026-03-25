@@ -6,7 +6,7 @@ import {
   getSessionsByType,
   updateSessionDeviation,
 } from '@/services/data/sessionRepository'
-import { createClient } from '@/lib/supabase/server'
+import { updatePlannedSession } from '@/services/data/plannedSessionRepository'
 import type { ApiResponse, SessionLog, SessionType } from '@/types'
 
 // =============================================================================
@@ -122,14 +122,18 @@ export async function POST(
 
     // Link back to the planned session if one was provided
     if (validated.planned_session_id !== null) {
-      const supabase = await createClient()
+      const plannedSessionResult = await updatePlannedSession(validated.planned_session_id, {
+        status: 'completed',
+      })
 
-      const { data: plannedSession } = await supabase
-        .from('planned_sessions')
-        .update({ status: 'completed' })
-        .eq('id', validated.planned_session_id)
-        .select('generated_plan')
-        .single()
+      if (plannedSessionResult.error) {
+        console.error(
+          '[POST /api/sessions] updatePlannedSession:',
+          plannedSessionResult.error,
+        )
+      }
+
+      const plannedSession = plannedSessionResult.data
 
       // Check for significant duration deviation (>20%)
       if (plannedSession && validated.duration_mins !== undefined) {
