@@ -1,6 +1,6 @@
 import React from 'react'
 import { render, screen, waitFor } from '@/lib/test-utils'
-import SessionLogPage from './page'
+import { SessionLogContent } from './session-log-content'
 
 // =============================================================================
 // MOCKS
@@ -46,14 +46,22 @@ beforeEach(() => {
   global.fetch = jest.fn()
 })
 
-describe('SessionLogPage', () => {
+describe('SessionLogContent', () => {
   it('renders page heading', () => {
-    render(<SessionLogPage />)
+    render(
+      <React.Suspense fallback={null}>
+        <SessionLogContent />
+      </React.Suspense>,
+    )
     expect(screen.getByText('Log Session')).toBeInTheDocument()
   })
 
   it('renders the SessionLogForm', () => {
-    render(<SessionLogPage />)
+    render(
+      <React.Suspense fallback={null}>
+        <SessionLogContent />
+      </React.Suspense>,
+    )
     expect(screen.getByText('SessionLogForm')).toBeInTheDocument()
   })
 
@@ -83,7 +91,11 @@ describe('SessionLogPage', () => {
       }),
     })
 
-    render(<SessionLogPage />)
+    render(
+      <React.Suspense fallback={null}>
+        <SessionLogContent />
+      </React.Suspense>,
+    )
 
     await waitFor(() => {
       expect(global.fetch).toHaveBeenCalledWith('/api/planned-sessions/planned-1')
@@ -106,7 +118,11 @@ describe('SessionLogPage', () => {
 
   it('shows success toast and redirects to / on form success', async () => {
     const { toast } = await import('sonner')
-    render(<SessionLogPage />)
+    render(
+      <React.Suspense fallback={null}>
+        <SessionLogContent />
+      </React.Suspense>,
+    )
 
     screen.getByRole('button', { name: /submit mock/i }).click()
 
