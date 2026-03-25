@@ -60,6 +60,17 @@ export async function POST(
     const { injury_area_health, ...checkinInput } = validated
 
     const alreadyCheckedIn = await hasCheckedInToday()
+    if (alreadyCheckedIn.error) {
+      console.error(
+        '[POST /api/readiness] hasCheckedInToday:',
+        alreadyCheckedIn.error,
+      )
+      return NextResponse.json(
+        { data: null, error: 'Failed to verify today\'s check-in status.' },
+        { status: 500 },
+      )
+    }
+
     if (alreadyCheckedIn.data === true) {
       return NextResponse.json(
         {
@@ -77,6 +88,14 @@ export async function POST(
     )
     if (result.error) {
       console.error('[POST /api/readiness]', result.error)
+
+      if (result.error.includes('Already checked in today')) {
+        return NextResponse.json(
+          { data: null, error: result.error },
+          { status: 409 },
+        )
+      }
+
       return NextResponse.json(
         { data: null, error: result.error },
         { status: 500 },

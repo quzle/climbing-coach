@@ -336,6 +336,20 @@ describe('createCheckin', () => {
     expect(result.error).not.toBeNull()
     expect(typeof result.error).toBe('string')
   })
+
+  it('maps duplicate-date insert failures to the already checked-in message', async () => {
+    mockChain.single.mockResolvedValue({
+      data: null,
+      error: { code: '23505', message: 'duplicate key value violates unique constraint' },
+    })
+
+    const result = await createCheckin(makeCheckinInput())
+
+    expect(result.data).toBeNull()
+    expect(result.error).toBe(
+      'Already checked in today. Only one check-in per day is allowed.',
+    )
+  })
 })
 
 describe('hasCheckedInToday', () => {

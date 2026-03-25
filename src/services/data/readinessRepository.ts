@@ -6,6 +6,13 @@ import type {
   ReadinessCheckinInsert,
 } from '@/types'
 
+type SupabaseErrorShape = {
+  code?: string
+  message?: string
+  details?: string
+  hint?: string
+}
+
 // =============================================================================
 // PRIVATE HELPERS
 // =============================================================================
@@ -155,7 +162,28 @@ export async function createCheckin(
       .single()
 
     if (error) {
-      console.error('[readinessRepository.createCheckin]', error)
+      const supabaseError = error as SupabaseErrorShape
+      console.error('[readinessRepository.createCheckin]', {
+        code: supabaseError.code,
+        message: supabaseError.message,
+        details: supabaseError.details,
+        hint: supabaseError.hint,
+      })
+
+      if (supabaseError.code === '23505') {
+        return {
+          data: null,
+          error: 'Already checked in today. Only one check-in per day is allowed.',
+        }
+      }
+
+      if (supabaseError.code === '42501' || supabaseError.code === 'PGRST301') {
+        return {
+          data: null,
+          error: 'Not authorized to create check-in. Please sign in again.',
+        }
+      }
+
       return { data: null, error: 'Failed to create check-in' }
     }
 

@@ -152,6 +152,29 @@ describe('POST /api/readiness', () => {
     expect(response.status).toBe(500)
   })
 
+  it('returns 500 when hasCheckedInToday fails', async () => {
+    mockHasCheckedInToday.mockResolvedValue({
+      data: null,
+      error: 'Failed to check status',
+    })
+
+    const response = await POST(makePostRequest(validBody))
+
+    expect(response.status).toBe(500)
+    expect(mockCreateCheckin).not.toHaveBeenCalled()
+  })
+
+  it('returns 409 when createCheckin reports duplicate-day conflict', async () => {
+    mockCreateCheckin.mockResolvedValue({
+      data: null,
+      error: 'Already checked in today. Only one check-in per day is allowed.',
+    })
+
+    const response = await POST(makePostRequest(validBody))
+
+    expect(response.status).toBe(409)
+  })
+
   it('passes injury_area_health array to createCheckin', async () => {
     const bodyWithInjury = {
       ...validBody,
