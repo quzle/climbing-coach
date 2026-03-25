@@ -154,10 +154,15 @@ export async function createCheckin(
   try {
     const supabase = await createClient()
     const readiness_score = calculateReadinessScore(input, injuryAreaHealth)
+    const insertPayload: ReadinessCheckinInsert = {
+      ...input,
+      readiness_score,
+      injury_area_health: injuryAreaHealth,
+    }
 
     const { data, error } = await supabase
       .from('readiness_checkins')
-      .insert({ ...input, readiness_score })
+      .insert(insertPayload)
       .select()
       .single()
 
@@ -181,6 +186,17 @@ export async function createCheckin(
         return {
           data: null,
           error: 'Not authorized to create check-in. Please sign in again.',
+        }
+      }
+
+      if (
+        supabaseError.code === 'PGRST204' ||
+        supabaseError.code === '42703' ||
+        supabaseError.code === '42P01'
+      ) {
+        return {
+          data: null,
+          error: 'Readiness database schema is out of date. Apply latest Supabase migrations.',
         }
       }
 

@@ -319,6 +319,7 @@ describe('createCheckin', () => {
     >
     expect(insertPayload).toHaveProperty('readiness_score')
     expect(typeof insertPayload['readiness_score']).toBe('number')
+    expect(insertPayload['injury_area_health']).toEqual([])
 
     expect(result.data).toEqual(createdRecord)
     expect(result.error).toBeNull()
@@ -348,6 +349,23 @@ describe('createCheckin', () => {
     expect(result.data).toBeNull()
     expect(result.error).toBe(
       'Already checked in today. Only one check-in per day is allowed.',
+    )
+  })
+
+  it('maps schema drift errors to an actionable migration message', async () => {
+    mockChain.single.mockResolvedValue({
+      data: null,
+      error: {
+        code: 'PGRST204',
+        message: "Could not find the 'fatigue' column of 'readiness_checkins' in the schema cache",
+      },
+    })
+
+    const result = await createCheckin(makeCheckinInput())
+
+    expect(result.data).toBeNull()
+    expect(result.error).toBe(
+      'Readiness database schema is out of date. Apply latest Supabase migrations.',
     )
   })
 })

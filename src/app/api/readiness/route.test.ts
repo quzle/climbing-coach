@@ -152,6 +152,21 @@ describe('POST /api/readiness', () => {
     expect(response.status).toBe(500)
   })
 
+  it('returns schema migration guidance when repository detects readiness schema drift', async () => {
+    mockCreateCheckin.mockResolvedValue({
+      data: null,
+      error: 'Readiness database schema is out of date. Apply latest Supabase migrations.',
+    })
+
+    const response = await POST(makePostRequest(validBody))
+    const body = await response.json()
+
+    expect(response.status).toBe(500)
+    expect(body.error).toBe(
+      'Readiness database schema is out of date. Apply latest Supabase migrations.',
+    )
+  })
+
   it('returns 500 when hasCheckedInToday fails', async () => {
     mockHasCheckedInToday.mockResolvedValue({
       data: null,
