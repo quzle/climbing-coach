@@ -1,6 +1,7 @@
 import { createClient } from '@/lib/supabase/server'
 import type {
   ApiResponse,
+  InjuryAreaHealth,
   ReadinessCheckin,
   ReadinessCheckinInsert,
 } from '@/types'
@@ -14,26 +15,40 @@ import type {
  * check-in metrics. All inputs are on a 1–5 scale.
  *
  * Weightings and rationale:
- *   sleep_quality   × 0.25 — sleep is the primary recovery driver
- *   fatigue         × 0.30 — highest weight; chronic fatigue is the main
- *                            training load signal (inverted: high fatigue → low score)
- *   finger_health   × 0.20 — injury risk gating; low score blocks finger-intensive sessions
- *   shoulder_health × 0.15 — secondary injury signal
- *   life_stress     × 0.10 — contextual; affects recovery quality
- *                            (inverted: high stress → low score)
+ *   sleep_quality      × 0.25 — sleep is the primary recovery driver
+ *   fatigue            × 0.30 — highest weight; chronic fatigue is the main
+ *                               training load signal (inverted: high fatigue → low score)
+ *   finger_health      × 0.20 — injury risk gating; low score blocks finger-intensive sessions
+ *   generalInjuryHealth × 0.15 — minimum health score across all tracked injury areas;
+ *                               defaults to 5 when no areas are tracked.
+ *                               Replaces the Phase 1 shoulder_health × 0.15 term. (ADR 004)
+ *   life_stress        × 0.10 — contextual; affects recovery quality
+ *                               (inverted: high stress → low score)
  *
  * Inversion: fatigue and life_stress are "bad when high", so we subtract from 6
  * to flip them into a "good when high" scale consistent with the others.
  *
  * @param data The raw check-in values before insertion
+ * @param injuryAreaHealth Optional list of injury area health ratings from the check-in
  * @returns Readiness score rounded to 2 decimal places
  */
-function calculateReadinessScore(data: ReadinessCheckinInsert): number {
+function calculateReadinessScore(
+  data: ReadinessCheckinInsert,
+  injuryAreaHealth: InjuryAreaHealth[],
+): number {
+  // Derive a single injury health signal: minimum across all tracked areas.
+  // When no areas are tracked we default to 5 (no restrictions), keeping
+  // the score equivalent to the Phase 1 shoulder_health = 5 baseline.
+  const generalInjuryHealth =
+    injuryAreaHealth.length > 0
+      ? Math.min(...injuryAreaHealth.map((a) => a.health))
+      : 5
+
   const score =
     data.sleep_quality * 0.25 +
     (6 - data.fatigue) * 0.3 +
     data.finger_health * 0.2 +
-    data.shoulder_health * 0.15 +
+    generalInjuryHealth * 0.15 +
     (6 - data.life_stress) * 0.1
 
   return Math.round(score * 100) / 100
@@ -122,14 +137,16 @@ export async function getRecentCheckins(
  * not pass readiness_score in the input payload.
  *
  * @param input Check-in values excluding readiness_score (computed internally)
+ * @param injuryAreaHealth Current health ratings for each tracked injury area
  * @returns The newly created check-in record
  */
 export async function createCheckin(
   input: Omit<ReadinessCheckinInsert, 'readiness_score'>,
+  injuryAreaHealth: InjuryAreaHealth[] = [],
 ): Promise<ApiResponse<ReadinessCheckin>> {
   try {
     const supabase = await createClient()
-    const readiness_score = calculateReadinessScore(input)
+    const readiness_score = calculateReadinessScore(input, injuryAreaHealth)
 
     const { data, error } = await supabase
       .from('readiness_checkins')

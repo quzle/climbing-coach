@@ -80,6 +80,7 @@ function makeSessionLog(overrides?: Partial<SessionLog>): SessionLog {
     quality_rating: 4,
     rpe: 7,
     shoulder_flag: false,
+    injury_flags: null,
     notes: null,
     planned_session_id: null,
     log_data: null,
@@ -207,6 +208,25 @@ describe('createSession', () => {
 
     expect(mockChain.insert).toHaveBeenCalledTimes(1)
     expect(result.data).toEqual(fakeSession)
+    expect(result.error).toBeNull()
+  })
+
+  it('accepts injury_flags as a jsonb array of area names', async () => {
+    const inputWithFlags: SessionLogInsert = {
+      ...validInput,
+      injury_flags: ['shoulder_left', 'finger_a2_right'] as unknown as import('@/lib/database.types').Json,
+    }
+    const sessionWithFlags = makeSessionLog({
+      injury_flags: ['shoulder_left', 'finger_a2_right'] as unknown as import('@/lib/database.types').Json,
+    })
+    mockChain.single.mockResolvedValue({ data: sessionWithFlags, error: null })
+
+    const result = await createSession(inputWithFlags)
+
+    expect(mockChain.insert).toHaveBeenCalledTimes(1)
+    const insertArg = mockChain.insert.mock.calls[0]?.[0] as SessionLogInsert
+    expect(insertArg.injury_flags).toEqual(['shoulder_left', 'finger_a2_right'])
+    expect(result.data?.injury_flags).toEqual(['shoulder_left', 'finger_a2_right'])
     expect(result.error).toBeNull()
   })
 

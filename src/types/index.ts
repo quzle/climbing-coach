@@ -18,8 +18,15 @@ export type WeeklyTemplate = Database['public']['Tables']['weekly_templates']['R
 /** An AI-generated or manually created session plan for a specific date. */
 export type PlannedSession = Database['public']['Tables']['planned_sessions']['Row']
 
-// TODO Phase 2: Add InjuryArea union type and
-// InjuryAreaHealth type. See ADR 004.
+/** A tracked injury area in the injury_areas table. */
+export type InjuryAreaRow = Database['public']['Tables']['injury_areas']['Row']
+
+/** Payload for adding a new tracked injury area. */
+export type InjuryAreaInsert = Database['public']['Tables']['injury_areas']['Insert']
+
+/** Partial update payload for a tracked injury area (e.g. archiving). */
+export type InjuryAreaUpdate = Database['public']['Tables']['injury_areas']['Update']
+
 /** A daily subjective readiness check-in (fatigue, sleep, finger health, etc). */
 export type ReadinessCheckin = Database['public']['Tables']['readiness_checkins']['Row']
 
@@ -70,6 +77,52 @@ export type PlannedSessionUpdate = Database['public']['Tables']['planned_session
 
 /** Partial update payload for a readiness check-in. */
 export type ReadinessCheckinUpdate = Database['public']['Tables']['readiness_checkins']['Update']
+
+// =============================================================================
+// INJURY TRACKING TYPES
+// Flexible, body-part-specific injury tracking introduced in ADR 004.
+// Replaces the hard-coded shoulder_health / shoulder_flag system from Phase 1.
+// =============================================================================
+
+/**
+ * All known climbing-relevant injury areas.
+ * The trailing `string` allows custom areas not yet in the enum.
+ */
+export type InjuryArea =
+  | 'shoulder_left'
+  | 'shoulder_right'
+  | 'finger_a2_left'
+  | 'finger_a2_right'
+  | 'finger_a4_left'
+  | 'finger_a4_right'
+  | 'finger_pip_left'
+  | 'finger_pip_right'
+  | 'elbow_medial_left'
+  | 'elbow_medial_right'
+  | 'elbow_lateral_left'
+  | 'elbow_lateral_right'
+  | 'wrist_left'
+  | 'wrist_right'
+  | 'knee_left'
+  | 'knee_right'
+  | 'ankle_left'
+  | 'ankle_right'
+  | 'lower_back'
+  | 'neck'
+  | 'hip_flexor_left'
+  | 'hip_flexor_right'
+  | (string & Record<never, never>)
+
+/**
+ * A single injury area health rating, as stored in
+ * readiness_checkins.injury_area_health jsonb.
+ */
+export type InjuryAreaHealth = {
+  area: InjuryArea
+  /** Subjective health score 1–5 (1 = cannot train, 5 = pain-free). */
+  health: number
+  notes: string | null
+}
 
 // =============================================================================
 // DOMAIN-SPECIFIC TYPES
@@ -292,21 +345,6 @@ export type SessionLogData =
  * @see src/services/ai/contextBuilder.ts
  */
 
-  // TODO Phase 2: Add programme field to AthleteContext
-  // when programme builder is implemented.
-  // See docs/architecture/decisions/003-prompt-evolution-strategy.md
-  // 
-  // Will add:
-  //   programme: ProgrammeContext | null
-  //
-  // ProgrammeContext will include:
-  //   currentPhase, currentMesocycleName, weekNumber,
-  //   completedPhases, upcomingPhases, activeProtocols,
-  //   weeklyTemplateForCurrentPhase
-
-// TODO Phase 2: Replace currentShoulderHealth with
-// injuryAreas: InjuryAreaHealth[] for flexible
-// injury tracking. See ADR 004.
 export type AthleteContext = {
   /** Today's readiness check-in, or null if not yet submitted */
   todaysReadiness: ReadinessCheckin | null
@@ -324,10 +362,25 @@ export type AthleteContext = {
   daysSinceLastSession: number
   /** Latest finger_health score from readiness check-ins, or null if no data */
   currentFingerHealth: number | null
-  /** Latest shoulder_health score from readiness check-ins, or null if no data */
+  /**
+   * @deprecated Phase 1 field — use injuryAreas instead.
+   * Retained for one release to avoid breaking existing callers.
+   * Will be removed after Phase Final column drop.
+   */
   currentShoulderHealth: number | null
   /** True if today's or any recent checkin has illness_flag set */
   illnessFlag: boolean
+  /**
+   * All tracked injury areas with their current health scores from today's check-in.
+   * Populated from readiness_checkins.injury_area_health (jsonb).
+   */
+  injuryAreas: InjuryAreaHealth[]
+  /** Injury area names that were flagged during any recent session (injury_flags jsonb). */
+  activeInjuryFlags: string[]
+  /** Areas from injuryAreas where health <= 2 — critical, training must be restricted. */
+  criticalInjuryAreas: string[]
+  /** Areas from injuryAreas where health === 3 — low, training should be reduced. */
+  lowInjuryAreas: string[]
   /**
    * Human-readable warning strings surfaced to the AI coach.
    * Examples: "Finger health below threshold — avoid crimping",

@@ -172,6 +172,30 @@ export type Database = {
         }
         Relationships: []
       }
+      injury_areas: {
+        Row: {
+          id: string
+          area: string
+          is_active: boolean
+          added_at: string
+          archived_at: string | null
+        }
+        Insert: {
+          id?: string
+          area: string
+          is_active?: boolean
+          added_at?: string
+          archived_at?: string | null
+        }
+        Update: {
+          id?: string
+          area?: string
+          is_active?: boolean
+          added_at?: string
+          archived_at?: string | null
+        }
+        Relationships: []
+      }
       readiness_checkins: {
         Row: {
           created_at: string | null
@@ -180,6 +204,7 @@ export type Database = {
           finger_health: number
           id: string
           illness_flag: boolean
+          injury_area_health: Json | null
           life_stress: number
           notes: string | null
           readiness_score: number | null
@@ -193,6 +218,7 @@ export type Database = {
           finger_health: number
           id?: string
           illness_flag?: boolean
+          injury_area_health?: Json | null
           life_stress: number
           notes?: string | null
           readiness_score?: number | null
@@ -206,6 +232,7 @@ export type Database = {
           finger_health?: number
           id?: string
           illness_flag?: boolean
+          injury_area_health?: Json | null
           life_stress?: number
           notes?: string | null
           readiness_score?: number | null
@@ -229,6 +256,7 @@ export type Database = {
           rpe: number | null
           session_type: string
           shoulder_flag: boolean
+          injury_flags: Json | null
         }
         Insert: {
           created_at?: string | null
@@ -236,6 +264,7 @@ export type Database = {
           deviation_from_plan?: string | null
           duration_mins?: number | null
           id?: string
+          injury_flags?: Json | null
           location?: string | null
           log_data?: Json | null
           notes?: string | null
@@ -251,6 +280,7 @@ export type Database = {
           deviation_from_plan?: string | null
           duration_mins?: number | null
           id?: string
+          injury_flags?: Json | null
           location?: string | null
           log_data?: Json | null
           notes?: string | null

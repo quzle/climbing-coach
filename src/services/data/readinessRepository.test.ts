@@ -1,5 +1,5 @@
 import { createClient } from '@/lib/supabase/server'
-import type { ReadinessCheckin, ReadinessCheckinInsert } from '@/types'
+import type { InjuryAreaHealth, ReadinessCheckin, ReadinessCheckinInsert } from '@/types'
 import {
   createCheckin,
   getAverageReadiness,
@@ -80,6 +80,8 @@ function makeCheckinInput(
     sleep_quality: 4,
     fatigue: 2,
     finger_health: 4,
+    // shoulder_health is still in the DB schema for backward compat but is no
+    // longer used in the score calculation — generalInjuryHealth is used instead.
     shoulder_health: 5,
     life_stress: 2,
     illness_flag: false,
@@ -103,47 +105,47 @@ describe('calculateReadinessScore (via createCheckin behaviour)', () => {
     ;(createClient as jest.Mock).mockResolvedValue({ from: mockFrom })
   })
 
-  it('computes a higher score for better readiness inputs', async () => {
-    // Best-case inputs: sleep=5, fatigue=1 (inverted to 5), finger=5,
-    // shoulder=5, life_stress=1 (inverted to 5).
+  it('computes a higher score for best-case inputs with no injuries', async () => {
+    // sleep=5, fatigue=1 (inverted to 5), finger=5, no injuries (defaults to 5),
+    // life_stress=1 (inverted to 5).
     // score = 5×0.25 + 5×0.30 + 5×0.20 + 5×0.15 + 5×0.10 = 5.0
     const highReadinessInput = makeCheckinInput({
       sleep_quality: 5,
       fatigue: 1,
       finger_health: 5,
-      shoulder_health: 5,
       life_stress: 1,
     })
     const createdRecord = makeReadinessCheckin({ readiness_score: 5.0 })
     mockChain.single.mockResolvedValue({ data: createdRecord, error: null })
 
-    const result = await createCheckin(highReadinessInput)
+    await createCheckin(highReadinessInput, [])
 
-    // The insert call should have been made with a high readiness_score
     const insertPayload = mockChain.insert.mock.calls[0]?.[0] as
       | (Omit<ReadinessCheckinInsert, 'readiness_score'> & {
           readiness_score: number
         })
       | undefined
     expect(insertPayload?.readiness_score).toBeCloseTo(5.0, 1)
-    expect(result.error).toBeNull()
   })
 
-  it('computes a lower score for poor readiness inputs', async () => {
-    // Worst-case: sleep=1, fatigue=5 (inverted to 1), finger=1,
-    // shoulder=1, life_stress=5 (inverted to 1).
+  it('computes a lower score for worst-case inputs with a critical injury area', async () => {
+    // sleep=1, fatigue=5 (inverted to 1), finger=1, generalInjuryHealth=1, life_stress=5 (inverted to 1).
     // score = 1×0.25 + 1×0.30 + 1×0.20 + 1×0.15 + 1×0.10 = 1.0
     const lowReadinessInput = makeCheckinInput({
       sleep_quality: 1,
       fatigue: 5,
       finger_health: 1,
-      shoulder_health: 1,
       life_stress: 5,
     })
+    const criticalInjuryArea: InjuryAreaHealth = {
+      area: 'shoulder_left',
+      health: 1,
+      notes: null,
+    }
     const createdRecord = makeReadinessCheckin({ readiness_score: 1.0 })
     mockChain.single.mockResolvedValue({ data: createdRecord, error: null })
 
-    await createCheckin(lowReadinessInput)
+    await createCheckin(lowReadinessInput, [criticalInjuryArea])
 
     const insertPayload = mockChain.insert.mock.calls[0]?.[0] as
       | (Omit<ReadinessCheckinInsert, 'readiness_score'> & {
@@ -153,60 +155,97 @@ describe('calculateReadinessScore (via createCheckin behaviour)', () => {
     expect(insertPayload?.readiness_score).toBeCloseTo(1.0, 1)
   })
 
-  it('weights fatigue more heavily than shoulder_health', async () => {
-    // Base: all metrics at 3. Then measure the effect of improving
-    // fatigue by 2 vs improving shoulder_health by 2.
-    // fatigue improvement of 2 → (6-1) - (6-3) = 2 points × 0.30 = 0.60
-    // shoulder improvement of 2 → 5 - 3 = 2 points × 0.15 = 0.30
-    // So fatigue change should produce a larger score delta.
+  it('uses the minimum health across multiple injury areas for generalInjuryHealth', async () => {
+    // Two injuries: shoulder=4, finger=2 → generalInjuryHealth = 2
+    // All other inputs at 3.
+    // score = 3×0.25 + (6-3)×0.30 + 3×0.20 + 2×0.15 + (6-3)×0.10 = 2.85
+    const input = makeCheckinInput({
+      sleep_quality: 3,
+      fatigue: 3,
+      finger_health: 3,
+      life_stress: 3,
+    })
+    const injuryAreas: InjuryAreaHealth[] = [
+      { area: 'shoulder_left', health: 4, notes: null },
+      { area: 'finger_a2_right', health: 2, notes: null },
+    ]
+    const createdRecord = makeReadinessCheckin({ readiness_score: 2.85 })
+    mockChain.single.mockResolvedValue({ data: createdRecord, error: null })
+
+    await createCheckin(input, injuryAreas)
+
+    const insertPayload = mockChain.insert.mock.calls[0]?.[0] as
+      | { readiness_score: number }
+      | undefined
+    expect(insertPayload?.readiness_score).toBeCloseTo(2.85, 2)
+  })
+
+  it('defaults generalInjuryHealth to 5 when no injury areas are tracked', async () => {
+    // With no injuries and all inputs at 3:
+    // score = 3×0.25 + (6-3)×0.30 + 3×0.20 + 5×0.15 + (6-3)×0.10 = 3.15
+    // Compare to one area at health=3:
+    // score = 3×0.25 + (6-3)×0.30 + 3×0.20 + 3×0.15 + (6-3)×0.10 = 2.85
+    // The no-injury score should be higher.
+    const input = makeCheckinInput({
+      sleep_quality: 3,
+      fatigue: 3,
+      finger_health: 3,
+      life_stress: 3,
+    })
+    const createdRecord = makeReadinessCheckin()
+    mockChain.single.mockResolvedValue({ data: createdRecord, error: null })
+
+    await createCheckin(input, []) // no injuries
+    const noInjuryScore = (mockChain.insert.mock.calls[0]?.[0] as { readiness_score: number }).readiness_score
+
+    mockChain.insert.mockClear()
+
+    await createCheckin(input, [{ area: 'shoulder_left', health: 3, notes: null }])
+    const withInjuryScore = (mockChain.insert.mock.calls[0]?.[0] as { readiness_score: number }).readiness_score
+
+    expect(noInjuryScore).toBeGreaterThan(withInjuryScore)
+  })
+
+  it('weights fatigue more heavily than generalInjuryHealth', async () => {
+    // Base: all metrics at 3, one injury at health=3.
+    // Improving fatigue by 2: delta = 2 × 0.30 = 0.60
+    // Improving injury health by 2 (3→5): delta = 2 × 0.15 = 0.30
+    // Fatigue change must produce a larger score delta.
 
     const baseInput = makeCheckinInput({
       sleep_quality: 3,
       fatigue: 3,
       finger_health: 3,
-      shoulder_health: 3,
       life_stress: 3,
     })
+    const baseInjury: InjuryAreaHealth[] = [
+      { area: 'shoulder_left', health: 3, notes: null },
+    ]
     const betterFatigueInput = makeCheckinInput({
       sleep_quality: 3,
       fatigue: 1, // improved by 2
       finger_health: 3,
-      shoulder_health: 3,
       life_stress: 3,
     })
-    const betterShoulderInput = makeCheckinInput({
-      sleep_quality: 3,
-      fatigue: 3,
-      finger_health: 3,
-      shoulder_health: 5, // improved by 2
-      life_stress: 3,
-    })
+    const betterInjuryHealth: InjuryAreaHealth[] = [
+      { area: 'shoulder_left', health: 5, notes: null }, // improved by 2
+    ]
 
-    // Trigger three separate inserts and capture the computed scores
-    const baseRecord = makeReadinessCheckin()
-    mockChain.single.mockResolvedValue({ data: baseRecord, error: null })
+    const record = makeReadinessCheckin()
+    mockChain.single.mockResolvedValue({ data: record, error: null })
 
-    await createCheckin(baseInput)
-    const baseScore = (
-      mockChain.insert.mock.calls[0]?.[0] as { readiness_score: number }
-    ).readiness_score
+    await createCheckin(baseInput, baseInjury)
+    const baseScore = (mockChain.insert.mock.calls[0]?.[0] as { readiness_score: number }).readiness_score
 
     mockChain.insert.mockClear()
-    await createCheckin(betterFatigueInput)
-    const fatigueScore = (
-      mockChain.insert.mock.calls[0]?.[0] as { readiness_score: number }
-    ).readiness_score
+    await createCheckin(betterFatigueInput, baseInjury)
+    const fatigueScore = (mockChain.insert.mock.calls[0]?.[0] as { readiness_score: number }).readiness_score
 
     mockChain.insert.mockClear()
-    await createCheckin(betterShoulderInput)
-    const shoulderScore = (
-      mockChain.insert.mock.calls[0]?.[0] as { readiness_score: number }
-    ).readiness_score
+    await createCheckin(baseInput, betterInjuryHealth)
+    const injuryScore = (mockChain.insert.mock.calls[0]?.[0] as { readiness_score: number }).readiness_score
 
-    const fatigueDelta = fatigueScore - baseScore
-    const shoulderDelta = shoulderScore - baseScore
-
-    expect(fatigueDelta).toBeGreaterThan(shoulderDelta)
+    expect(fatigueScore - baseScore).toBeGreaterThan(injuryScore - baseScore)
   })
 })
 

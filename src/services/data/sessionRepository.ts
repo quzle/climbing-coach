@@ -449,9 +449,12 @@ export async function getGradeProgressionData(): Promise<
 }
 
 /**
+ * @deprecated Phase 1 function — use injury_flags on session logs instead.
+ * Retained for one release cycle to avoid breaking any existing callers.
+ * Will be removed after the Phase Final column drop. See ADR 004.
+ *
  * @description Returns all sessions where shoulder_flag is true, ordered most
- * recent first. Used by the AI coach to monitor shoulder health trends and
- * assess whether shoulder-loading exercises are appropriate.
+ * recent first.
  *
  * @returns Array of session logs with shoulder_flag = true
  */
