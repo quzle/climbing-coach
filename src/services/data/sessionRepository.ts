@@ -447,39 +447,3 @@ export async function getGradeProgressionData(): Promise<
     return { data: null, error: 'An unexpected error occurred' }
   }
 }
-
-/**
- * @deprecated Phase 1 function — use injury_flags on session logs instead.
- * Retained for one release cycle to avoid breaking any existing callers.
- * Will be removed after the Phase Final column drop. See ADR 004.
- *
- * @description Returns all sessions where shoulder_flag is true, ordered most
- * recent first.
- *
- * @returns Array of session logs with shoulder_flag = true
- */
-export async function getSessionsWithShoulderFlag(): Promise<
-  ApiResponse<SessionLog[]>
-> {
-  try {
-    const supabase = await createClient()
-    const { data, error } = await supabase
-      .from('session_logs')
-      .select('*')
-      .eq('shoulder_flag', true)
-      .order('date', { ascending: false })
-
-    if (error) {
-      console.error('[sessionRepository.getSessionsWithShoulderFlag]', error)
-      return { data: null, error: 'Failed to fetch sessions with shoulder flag' }
-    }
-
-    return { data: data ?? [], error: null }
-  } catch (err) {
-    console.error(
-      '[sessionRepository.getSessionsWithShoulderFlag] unexpected error',
-      err,
-    )
-    return { data: null, error: 'An unexpected error occurred' }
-  }
-}

@@ -59,9 +59,9 @@ function makeReadinessCheckin(
     sleep_quality: 4,
     fatigue: 2,
     finger_health: 4,
-    shoulder_health: 5,
     life_stress: 2,
     illness_flag: false,
+    injury_area_health: null,
     readiness_score: 3.8,
     notes: null,
     created_at: '2026-03-24T08:00:00Z',
@@ -80,9 +80,6 @@ function makeCheckinInput(
     sleep_quality: 4,
     fatigue: 2,
     finger_health: 4,
-    // shoulder_health is still in the DB schema for backward compat but is no
-    // longer used in the score calculation — generalInjuryHealth is used instead.
-    shoulder_health: 5,
     life_stress: 2,
     illness_flag: false,
     notes: null,

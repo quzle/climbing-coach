@@ -38,7 +38,6 @@ const sessionLogSchema = z.object({
   duration_mins: z.number().int().positive().max(480).optional(),
   quality_rating: z.number().int().min(1).max(5).optional(),
   rpe: z.number().int().min(1).max(10).optional(),
-  shoulder_flag: z.boolean().default(false).optional(),
   injury_flags: z.array(z.string()).default([]),
   notes: z
     .string()

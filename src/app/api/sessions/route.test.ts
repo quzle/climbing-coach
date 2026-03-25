@@ -61,7 +61,6 @@ const validBody = {
   duration_mins: 90,
   quality_rating: 4,
   rpe: 7,
-  shoulder_flag: false,
   notes: null,
   planned_session_id: null,
   log_data: null,
@@ -135,8 +134,8 @@ describe('POST /api/sessions', () => {
     expect(response.status).toBe(400)
   })
 
-  it('defaults shoulder_flag to false when omitted', async () => {
-    const bodyWithoutFlag = {
+  it('defaults injury_flags to an empty array when omitted', async () => {
+    const bodyWithoutInjuryFlags = {
       date: validBody.date,
       session_type: validBody.session_type,
       location: validBody.location,
@@ -148,11 +147,11 @@ describe('POST /api/sessions', () => {
       log_data: validBody.log_data,
     }
 
-    const response = await POST(makePostRequest(bodyWithoutFlag))
+    const response = await POST(makePostRequest(bodyWithoutInjuryFlags))
 
     expect(response.status).toBe(201)
     expect(mockCreateSession).toHaveBeenCalledWith(
-      expect.objectContaining({ shoulder_flag: false }),
+      expect.objectContaining({ injury_flags: [] }),
     )
   })
 

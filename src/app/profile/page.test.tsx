@@ -129,7 +129,11 @@ describe('ProfilePage', () => {
     await waitFor(() => {
       const archiveButtons = screen.getAllByRole('button', { name: /archive/i })
       expect(archiveButtons.length).toBeGreaterThan(0)
-      fireEvent.click(archiveButtons[0])
+      const firstButton = archiveButtons[0]
+      if (!firstButton) {
+        throw new Error('Expected at least one archive button')
+      }
+      fireEvent.click(firstButton)
     })
 
     // shoulder_left should be removed from the tracked list but will reappear
@@ -153,7 +157,11 @@ describe('ProfilePage', () => {
 
     await waitFor(() => {
       const archiveButtons = screen.getAllByRole('button', { name: /archive/i })
-      fireEvent.click(archiveButtons[0])
+      const firstButton = archiveButtons[0]
+      if (!firstButton) {
+        throw new Error('Expected at least one archive button')
+      }
+      fireEvent.click(firstButton)
     })
 
     await waitFor(() => {

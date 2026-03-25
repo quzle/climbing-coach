@@ -32,7 +32,6 @@ function makeAthleteContext(
     lastSessionDate: '2025-03-22',
     daysSinceLastSession: 2,
     currentFingerHealth: 5,
-    currentShoulderHealth: 5,
     illnessFlag: false,
     warnings: [],
     injuryAreas: [],

@@ -8,7 +8,6 @@ import {
   getRecentSessions,
   getSessionById,
   getSessionCountThisWeek,
-  getSessionsWithShoulderFlag,
   updateSessionDeviation,
 } from './sessionRepository'
 
@@ -79,7 +78,6 @@ function makeSessionLog(overrides?: Partial<SessionLog>): SessionLog {
     duration_mins: 90,
     quality_rating: 4,
     rpe: 7,
-    shoulder_flag: false,
     injury_flags: null,
     notes: null,
     planned_session_id: null,
@@ -197,7 +195,6 @@ describe('createSession', () => {
     location: 'Boulder World Geneva',
     duration_mins: 90,
     rpe: 7,
-    shoulder_flag: false,
   }
 
   it('calls insert and returns the created session', async () => {
@@ -399,29 +396,3 @@ describe('getGradeProgressionData', () => {
   })
 })
 
-describe('getSessionsWithShoulderFlag', () => {
-  it('returns sessions where shoulder_flag is true', async () => {
-    const shoulderSession1 = makeSessionLog({ id: 's1', shoulder_flag: true })
-    const shoulderSession2 = makeSessionLog({ id: 's2', shoulder_flag: true })
-    mockChain.order.mockResolvedValue({
-      data: [shoulderSession1, shoulderSession2],
-      error: null,
-    })
-
-    const result = await getSessionsWithShoulderFlag()
-
-    expect(mockChain.eq).toHaveBeenCalledWith('shoulder_flag', true)
-    expect(result.data).toHaveLength(2)
-    expect(result.data?.every((s) => s.shoulder_flag)).toBe(true)
-    expect(result.error).toBeNull()
-  })
-
-  it('returns empty array when no shoulder-flagged sessions exist', async () => {
-    mockChain.order.mockResolvedValue({ data: [], error: null })
-
-    const result = await getSessionsWithShoulderFlag()
-
-    expect(result.data).toEqual([])
-    expect(result.error).toBeNull()
-  })
-})

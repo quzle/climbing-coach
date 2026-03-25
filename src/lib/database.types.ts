@@ -38,30 +38,6 @@ export type Database = {
         }
         Relationships: []
       }
-      injury_areas: {
-        Row: {
-          added_at: string
-          archived_at: string | null
-          area: string
-          id: string
-          is_active: boolean
-        }
-        Insert: {
-          added_at?: string
-          archived_at?: string | null
-          area: string
-          id?: string
-          is_active?: boolean
-        }
-        Update: {
-          added_at?: string
-          archived_at?: string | null
-          area?: string
-          id?: string
-          is_active?: boolean
-        }
-        Relationships: []
-      }
       mesocycles: {
         Row: {
           actual_end: string | null
@@ -196,6 +172,30 @@ export type Database = {
         }
         Relationships: []
       }
+      injury_areas: {
+        Row: {
+          id: string
+          area: string
+          is_active: boolean
+          added_at: string
+          archived_at: string | null
+        }
+        Insert: {
+          id?: string
+          area: string
+          is_active?: boolean
+          added_at?: string
+          archived_at?: string | null
+        }
+        Update: {
+          id?: string
+          area?: string
+          is_active?: boolean
+          added_at?: string
+          archived_at?: string | null
+        }
+        Relationships: []
+      }
       readiness_checkins: {
         Row: {
           created_at: string | null
@@ -208,7 +208,6 @@ export type Database = {
           life_stress: number
           notes: string | null
           readiness_score: number | null
-          shoulder_health: number
           sleep_quality: number
         }
         Insert: {
@@ -222,7 +221,6 @@ export type Database = {
           life_stress: number
           notes?: string | null
           readiness_score?: number | null
-          shoulder_health: number
           sleep_quality: number
         }
         Update: {
@@ -236,7 +234,6 @@ export type Database = {
           life_stress?: number
           notes?: string | null
           readiness_score?: number | null
-          shoulder_health?: number
           sleep_quality?: number
         }
         Relationships: []
@@ -248,7 +245,6 @@ export type Database = {
           deviation_from_plan: string | null
           duration_mins: number | null
           id: string
-          injury_flags: Json | null
           location: string | null
           log_data: Json | null
           notes: string | null
@@ -256,7 +252,7 @@ export type Database = {
           quality_rating: number | null
           rpe: number | null
           session_type: string
-          shoulder_flag: boolean
+          injury_flags: Json | null
         }
         Insert: {
           created_at?: string | null
@@ -272,7 +268,6 @@ export type Database = {
           quality_rating?: number | null
           rpe?: number | null
           session_type: string
-          shoulder_flag?: boolean
         }
         Update: {
           created_at?: string | null
@@ -288,7 +283,6 @@ export type Database = {
           quality_rating?: number | null
           rpe?: number | null
           session_type?: string
-          shoulder_flag?: boolean
         }
         Relationships: [
           {

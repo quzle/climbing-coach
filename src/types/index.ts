@@ -362,12 +362,6 @@ export type AthleteContext = {
   daysSinceLastSession: number
   /** Latest finger_health score from readiness check-ins, or null if no data */
   currentFingerHealth: number | null
-  /**
-   * @deprecated Phase 1 field — use injuryAreas instead.
-   * Retained for one release to avoid breaking existing callers.
-   * Will be removed after Phase Final column drop.
-   */
-  currentShoulderHealth: number | null
   /** True if today's or any recent checkin has illness_flag set */
   illnessFlag: boolean
   /**

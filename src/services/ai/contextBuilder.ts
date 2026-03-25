@@ -274,7 +274,6 @@ export async function buildAthleteContext(): Promise<AthleteContext> {
 
   // Derive convenience fields from most-recent check-in data
   const currentFingerHealth: number | null = todaysReadiness?.finger_health ?? null
-  const currentShoulderHealth: number | null = todaysReadiness?.shoulder_health ?? null
 
   // illnessFlag is true if today's check-in has it set, or if any check-in
   // in the last 14 days has it set (athlete may not have checked in today)
@@ -295,7 +294,6 @@ export async function buildAthleteContext(): Promise<AthleteContext> {
     lastSessionDate,
     daysSinceLastSession,
     currentFingerHealth,
-    currentShoulderHealth,
     illnessFlag,
     injuryAreas,
     activeInjuryFlags,

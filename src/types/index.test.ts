@@ -74,7 +74,7 @@ describe('AthleteContext', () => {
       planned_session_id: null,
       quality_rating: 8,
       rpe: 7,
-      shoulder_flag: false,
+      injury_flags: null,
     }
 
     const context: AthleteContext = {
@@ -86,8 +86,11 @@ describe('AthleteContext', () => {
       lastSessionDate: '2026-03-24',
       daysSinceLastSession: 0,
       currentFingerHealth: 4,
-      currentShoulderHealth: 5,
       illnessFlag: false,
+      injuryAreas: [],
+      activeInjuryFlags: [],
+      criticalInjuryAreas: [],
+      lowInjuryAreas: [],
       warnings: ['Consecutive training days — consider rest'],
     }
 
@@ -124,7 +127,7 @@ describe('ApiResponse', () => {
       planned_session_id: null,
       quality_rating: 9,
       rpe: 6,
-      shoulder_flag: false,
+      injury_flags: null,
     }
 
     const response: ApiResponse<SessionLog> = { data: log, error: null }
