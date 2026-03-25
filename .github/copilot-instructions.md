@@ -59,18 +59,23 @@ See `docs/architecture/overview.md` for full architecture documentation.
 
 ## Testing Rules
 
+- **Always write tests alongside implementation.** Tests are part of the same unit of work — never commit code without tests.
 - Every service function needs a unit test.
 - Every API route needs an integration test.
 - Every form component needs a component test.
+- Every custom hook needs a unit test.
 - Test files sit alongside their source file: `foo.ts` → `foo.test.ts`.
 - Import `render` from `@/lib/test-utils`, not directly from `@testing-library/react`.
+- Import `renderHook` and `act` directly from `@testing-library/react` (not test-utils).
 - **Always mock Supabase and Gemini. Never call real APIs in tests.**
+- Mock `localStorage` using an in-memory store + `Object.defineProperty(window, 'localStorage', { value: mock })` — see `useDraftSession.test.ts` for the pattern.
 - Test name format:
   ```ts
   describe('functionName', () => {
     it('does X when Y condition', () => { ... })
   })
   ```
+- End every implementation session with a `git add . && git commit -m "..."` command using Conventional Commits format.
 
 ---
 
@@ -98,6 +103,40 @@ See `docs/architecture/overview.md` for full architecture documentation.
   ```
 - **Never expose raw error messages or stack traces to the browser.** Log the full error server-side; return a safe generic message to the client.
 - Log errors server-side with enough context to reproduce: function name, input values, original error.
+
+---
+
+## Sub-Agent Usage (Context Management)
+
+To keep the main agent's context window efficient, **always delegate the following task types to a sub-agent** using the `Explore` agent via `runSubagent`. The main agent must not perform these tasks directly.
+
+### Always use a sub-agent for:
+
+**1. Context-intensive research and data reading**
+Any task that requires reading many files, traversing large directory trees, or aggregating information from across the codebase before the main agent can act. Examples:
+- "What does the current session log flow look like end-to-end?"
+- "Find all places that reference `ReadinessCheckin`"
+- Gathering an inventory of files before starting a large feature
+
+**2. Code review and audits**
+Checking existing code against the standards in this file (architecture rules, naming, TypeScript rules, testing rules, etc.). The sub-agent reads and evaluates; the main agent acts on the findings. Examples:
+- "Review `src/services/` for architecture violations"
+- "Check all API routes return the correct `{ data, error }` shape"
+- "Audit components for missing `min-h-[44px]` on interactive elements"
+
+**3. Reading debug output and logs**
+When debugging, the main agent should fix code. A sub-agent should read and interpret terminal output, error logs, stack traces, or test failure output. The sub-agent returns a diagnosis; the main agent applies the fix. Examples:
+- Interpreting a wall of Jest failure output
+- Reading a Vercel build log to find the root cause
+- Analysing a TypeScript error cascade
+
+### How to invoke
+Use the `Explore` agent. Specify thoroughness (`quick`, `medium`, or `thorough`) and exactly what to return:
+```
+runSubagent('Explore', 'Read src/services/ai/ and return: all exported function signatures, whether each has JSDoc, and any direct Supabase imports that violate architecture rules. Thoroughness: medium.')
+```
+
+The sub-agent's result is passed back to the main agent as a single message. The main agent then acts on it — it does **not** re-read the same files.
 
 ---
 
