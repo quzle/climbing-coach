@@ -6,6 +6,7 @@ import { WarningBanner } from '@/components/ui/WarningBanner'
 import { Skeleton } from '@/components/ui/skeleton'
 import { ChatMessage } from '@/components/chat/ChatMessage'
 import { ChatInput } from '@/components/chat/ChatInput'
+import { ResetChatDialog } from '@/components/chat/ResetChatDialog'
 import { useChatHistory, type StoredChatMessage } from '@/hooks/useChatHistory'
 import type { ApiResponse } from '@/types'
 
@@ -18,10 +19,15 @@ function ChatContent(): React.JSX.Element {
   const searchParams = useSearchParams()
   const initialValue = searchParams.get('message') ?? ''
 
-  const { messages, addMessage } = useChatHistory()
+  const { messages, addMessage, clearHistory } = useChatHistory()
   const [isLoading, setIsLoading] = useState(false)
   const [warnings, setWarnings] = useState<string[]>([])
   const bottomRef = useRef<HTMLDivElement>(null)
+
+  function handleResetChat(): void {
+    clearHistory()
+    setWarnings([])
+  }
 
   // Scroll to the latest message whenever messages update or loading starts.
   useEffect(() => {
@@ -102,7 +108,10 @@ function ChatContent(): React.JSX.Element {
     <div className="flex flex-col h-full">
       {/* Header */}
       <div className="border-b px-4 py-3 shrink-0">
-        <h1 className="text-lg font-semibold text-slate-900">Coach Chat</h1>
+        <div className="flex items-center justify-between gap-3">
+          <h1 className="text-lg font-semibold text-slate-900">Coach Chat</h1>
+          <ResetChatDialog onConfirmReset={handleResetChat} />
+        </div>
       </div>
 
       {/* Warnings banner */}
