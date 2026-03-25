@@ -35,6 +35,10 @@ function makeAthleteContext(
     currentShoulderHealth: 5,
     illnessFlag: false,
     warnings: [],
+    injuryAreas: [],
+    criticalInjuryAreas: [],
+    lowInjuryAreas: [],
+    activeInjuryFlags: [],
     ...overrides,
   }
 }
@@ -64,11 +68,11 @@ describe('buildSystemPrompt', () => {
     expect(prompt).toContain('Autumn 2025')
   })
 
-  it('includes shoulder injury warning', () => {
+  it('includes injury area reference in athlete profile', () => {
     const prompt = buildSystemPrompt(makeAthleteContext())
 
-    expect(prompt).toContain('shoulder')
-    expect(prompt).toContain('CRITICAL')
+    expect(prompt).toContain('injury area')
+    expect(prompt).toContain('CURRENT ATHLETE CONTEXT')
   })
 
   it('includes return-to-training protocol', () => {
@@ -97,7 +101,41 @@ describe('buildSystemPrompt', () => {
 
     expect(prompt).toContain('illness_flag')
     expect(prompt).toContain('finger_health')
-    expect(prompt).toContain('SHOULDER HEALTH')
+    expect(prompt).toContain('TRACKED INJURY AREAS')
+  })
+
+  it('shows no tracked areas when injuryAreas is empty', () => {
+    const prompt = buildSystemPrompt(makeAthleteContext({ injuryAreas: [] }))
+
+    expect(prompt).toContain('None currently tracked')
+  })
+
+  it('includes tracked area name and health when injuryAreas is populated', () => {
+    const prompt = buildSystemPrompt(
+      makeAthleteContext({
+        injuryAreas: [{ area: 'shoulder_left', health: 3, notes: null }],
+        criticalInjuryAreas: [],
+        lowInjuryAreas: ['shoulder_left'],
+      }),
+    )
+
+    expect(prompt).toContain('shoulder_left')
+    expect(prompt).toContain('3/5')
+    expect(prompt).toContain('[LOW]')
+  })
+
+  it('includes CRITICAL label and critical area guidance when area health <= 2', () => {
+    const prompt = buildSystemPrompt(
+      makeAthleteContext({
+        injuryAreas: [{ area: 'wrist_left', health: 2, notes: null }],
+        criticalInjuryAreas: ['wrist_left'],
+        lowInjuryAreas: [],
+      }),
+    )
+
+    expect(prompt).toContain('[CRITICAL]')
+    expect(prompt).toContain('wrist_left')
+    expect(prompt).toContain('Flag immediately')
   })
 
   it('calls formatContextForPrompt with the provided context', () => {

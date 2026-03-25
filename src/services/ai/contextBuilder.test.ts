@@ -1,4 +1,4 @@
-import type { ReadinessCheckin, SessionLog } from '@/types'
+import type { InjuryAreaRow, ReadinessCheckin, SessionLog } from '@/types'
 import {
   getTodaysCheckin,
   getRecentCheckins,
@@ -8,9 +8,9 @@ import {
   getRecentSessions,
   getSessionCountThisWeek,
   getLastSessionDate,
-  getSessionsWithShoulderFlag,
 } from '@/services/data/sessionRepository'
-import { buildAthleteContext, formatContextForPrompt } from './contextBuilder'
+import { getActiveInjuryAreas } from '@/services/data/injuryAreasRepository'
+import { buildAthleteContext, formatContextForPrompt, parseInjuryAreaHealth } from './contextBuilder'
 
 // =============================================================================
 // MODULE MOCKS
@@ -26,7 +26,10 @@ jest.mock('@/services/data/sessionRepository', () => ({
   getRecentSessions: jest.fn(),
   getSessionCountThisWeek: jest.fn(),
   getLastSessionDate: jest.fn(),
-  getSessionsWithShoulderFlag: jest.fn(),
+}))
+
+jest.mock('@/services/data/injuryAreasRepository', () => ({
+  getActiveInjuryAreas: jest.fn(),
 }))
 
 // Typed references to mocked functions
@@ -36,8 +39,7 @@ const mockGetAverageReadiness = getAverageReadiness as jest.Mock
 const mockGetRecentSessions = getRecentSessions as jest.Mock
 const mockGetSessionCountThisWeek = getSessionCountThisWeek as jest.Mock
 const mockGetLastSessionDate = getLastSessionDate as jest.Mock
-// Declared to satisfy type-checking of the full mock module declaration above
-const _mockGetSessionsWithShoulderFlag = getSessionsWithShoulderFlag as jest.Mock
+const mockGetActiveInjuryAreas = getActiveInjuryAreas as jest.Mock
 
 // =============================================================================
 // FACTORIES & HELPERS
@@ -61,6 +63,7 @@ function makeReadinessCheckin(
     illness_flag: false,
     readiness_score: 3.8,
     notes: null,
+    injury_area_health: null,
     created_at: new Date().toISOString(),
     ...overrides,
   }
@@ -80,11 +83,23 @@ function makeSessionLog(overrides?: Partial<SessionLog>): SessionLog {
     quality_rating: 4,
     rpe: 7,
     shoulder_flag: false,
+    injury_flags: null,
     notes: null,
     planned_session_id: null,
     log_data: null,
     deviation_from_plan: null,
     created_at: '2025-03-24T18:00:00Z',
+    ...overrides,
+  }
+}
+
+function makeInjuryAreaRow(overrides?: Partial<InjuryAreaRow>): InjuryAreaRow {
+  return {
+    id: 'area-uuid-1',
+    area: 'shoulder_left',
+    is_active: true,
+    added_at: '2026-03-25T10:00:00Z',
+    archived_at: null,
     ...overrides,
   }
 }
@@ -127,6 +142,7 @@ beforeEach(() => {
   })
   mockGetSessionCountThisWeek.mockResolvedValue({ data: 3, error: null })
   mockGetLastSessionDate.mockResolvedValue({ data: '2025-03-22', error: null })
+  mockGetActiveInjuryAreas.mockResolvedValue({ data: [], error: null })
 })
 
 // =============================================================================
@@ -209,31 +225,124 @@ describe('computeWarnings — finger health', () => {
   })
 })
 
-describe('computeWarnings — shoulder health', () => {
-  it('adds critical warning when shoulder_health is 1 or 2', async () => {
+describe('computeWarnings — injury areas', () => {
+  it('adds critical warning for an injury area with health 1 or 2', async () => {
     mockGetTodaysCheckin.mockResolvedValue({
-      data: makeReadinessCheckin({ shoulder_health: 2 }),
+      data: makeReadinessCheckin({
+        injury_area_health: [
+          { area: 'shoulder_left', health: 2, notes: null },
+        ],
+      }),
       error: null,
     })
 
     const context = await buildAthleteContext()
 
     expect(
-      context.warnings.some((w) => w.includes('Shoulder health critical')),
+      context.warnings.some(
+        (w) => w.includes('shoulder_left critical') && w.includes('avoid pressing'),
+      ),
     ).toBe(true)
   })
 
-  it('adds advisory warning when shoulder_health is 3', async () => {
+  it('adds advisory warning for an injury area with health 3', async () => {
     mockGetTodaysCheckin.mockResolvedValue({
-      data: makeReadinessCheckin({ shoulder_health: 3 }),
+      data: makeReadinessCheckin({
+        injury_area_health: [
+          { area: 'finger_a2_right', health: 3, notes: null },
+        ],
+      }),
       error: null,
     })
 
     const context = await buildAthleteContext()
 
     expect(
-      context.warnings.some((w) => w.includes('Shoulder health low (3/5)')),
+      context.warnings.some(
+        (w) => w.includes('finger_a2_right low (3/5)') && w.includes('avoid fingerboard'),
+      ),
     ).toBe(true)
+  })
+
+  it('adds no injury area warning when all areas are health 4 or 5', async () => {
+    mockGetTodaysCheckin.mockResolvedValue({
+      data: makeReadinessCheckin({
+        injury_area_health: [
+          { area: 'shoulder_left', health: 4, notes: null },
+          { area: 'finger_a2_right', health: 5, notes: null },
+        ],
+      }),
+      error: null,
+    })
+
+    const context = await buildAthleteContext()
+
+    expect(context.warnings.some((w) => w.includes('critical'))).toBe(false)
+    expect(context.warnings.some((w) => w.includes('low (3/5)'))).toBe(false)
+  })
+
+  it('adds warnings for multiple injury areas independently', async () => {
+    mockGetTodaysCheckin.mockResolvedValue({
+      data: makeReadinessCheckin({
+        injury_area_health: [
+          { area: 'shoulder_left', health: 1, notes: null },
+          { area: 'elbow_medial_right', health: 3, notes: null },
+        ],
+      }),
+      error: null,
+    })
+
+    const context = await buildAthleteContext()
+
+    expect(context.warnings.some((w) => w.includes('shoulder_left critical'))).toBe(true)
+    expect(context.warnings.some((w) => w.includes('elbow_medial_right low'))).toBe(true)
+  })
+
+  it('populates criticalInjuryAreas for health <= 2', async () => {
+    mockGetTodaysCheckin.mockResolvedValue({
+      data: makeReadinessCheckin({
+        injury_area_health: [
+          { area: 'wrist_left', health: 2, notes: null },
+          { area: 'shoulder_right', health: 4, notes: null },
+        ],
+      }),
+      error: null,
+    })
+
+    const context = await buildAthleteContext()
+
+    expect(context.criticalInjuryAreas).toContain('wrist_left')
+    expect(context.criticalInjuryAreas).not.toContain('shoulder_right')
+  })
+
+  it('populates lowInjuryAreas for health === 3', async () => {
+    mockGetTodaysCheckin.mockResolvedValue({
+      data: makeReadinessCheckin({
+        injury_area_health: [
+          { area: 'knee_left', health: 3, notes: null },
+          { area: 'lower_back', health: 4, notes: null },
+        ],
+      }),
+      error: null,
+    })
+
+    const context = await buildAthleteContext()
+
+    expect(context.lowInjuryAreas).toContain('knee_left')
+    expect(context.lowInjuryAreas).not.toContain('lower_back')
+  })
+
+  it('returns empty injuryAreas when injury_area_health is null', async () => {
+    mockGetTodaysCheckin.mockResolvedValue({
+      data: makeReadinessCheckin({ injury_area_health: null }),
+      error: null,
+    })
+
+    const context = await buildAthleteContext()
+
+    expect(context.injuryAreas).toEqual([])
+    expect(context.criticalInjuryAreas).toEqual([])
+    expect(context.lowInjuryAreas).toEqual([])
   })
 })
 
@@ -338,6 +447,7 @@ describe('buildAthleteContext', () => {
     expect(mockGetRecentSessions).toHaveBeenCalledTimes(1)
     expect(mockGetSessionCountThisWeek).toHaveBeenCalledTimes(1)
     expect(mockGetLastSessionDate).toHaveBeenCalledTimes(1)
+    expect(mockGetActiveInjuryAreas).toHaveBeenCalledTimes(1)
   })
 })
 
@@ -392,5 +502,94 @@ describe('formatContextForPrompt', () => {
     const output = formatContextForPrompt(context)
 
     expect(output).toContain('+5 more sessions not shown')
+  })
+
+  it('includes injury area health block when injuryAreas is populated', async () => {
+    mockGetTodaysCheckin.mockResolvedValue({
+      data: makeReadinessCheckin({
+        injury_area_health: [
+          { area: 'shoulder_left', health: 2, notes: null },
+        ],
+      }),
+      error: null,
+    })
+
+    const context = await buildAthleteContext()
+    const output = formatContextForPrompt(context)
+
+    expect(output).toContain('shoulder_left')
+    expect(output).toContain('2/5')
+  })
+
+  it('does not include a "Shoulder health" line (deprecated field)', async () => {
+    const context = await buildAthleteContext()
+    const output = formatContextForPrompt(context)
+
+    expect(output).not.toContain('Shoulder health:')
+  })
+
+  it('uses "Injuries" column header in trend table', async () => {
+    mockGetRecentCheckins.mockResolvedValue({
+      data: [makeReadinessCheckin()],
+      error: null,
+    })
+
+    const context = await buildAthleteContext()
+    const output = formatContextForPrompt(context)
+
+    expect(output).toContain('Injuries')
+    expect(output).not.toContain('| Shoulder |')
+  })
+
+  it('populates activeInjuryFlags from session injury_flags', async () => {
+    mockGetRecentSessions.mockResolvedValue({
+      data: [makeSessionLog({ injury_flags: ['shoulder_left', 'finger_a2_right'] })],
+      error: null,
+    })
+
+    const context = await buildAthleteContext()
+
+    expect(context.activeInjuryFlags).toContain('shoulder_left')
+    expect(context.activeInjuryFlags).toContain('finger_a2_right')
+  })
+})
+
+describe('parseInjuryAreaHealth', () => {
+  it('returns empty array for null', () => {
+    expect(parseInjuryAreaHealth(null)).toEqual([])
+  })
+
+  it('returns empty array for non-array value', () => {
+    expect(parseInjuryAreaHealth({ area: 'shoulder_left', health: 3 })).toEqual([])
+  })
+
+  it('returns empty array for a plain string', () => {
+    expect(parseInjuryAreaHealth('shoulder_left')).toEqual([])
+  })
+
+  it('filters out items missing area or health', () => {
+    const input = [
+      { area: 'shoulder_left', health: 3, notes: null },
+      { health: 4 },
+      { area: 'wrist_left' },
+      null,
+    ]
+    const result = parseInjuryAreaHealth(input)
+    expect(result).toHaveLength(1)
+    expect(result[0]?.area).toBe('shoulder_left')
+  })
+
+  it('correctly parses a valid array with notes', () => {
+    const input = [
+      { area: 'finger_a2_right', health: 3, notes: 'aching' },
+    ]
+    const result = parseInjuryAreaHealth(input)
+    expect(result).toEqual([{ area: 'finger_a2_right', health: 3, notes: 'aching' }])
+  })
+
+  it('coerces notes: null when notes field is absent', () => {
+    const input = [{ area: 'elbow_medial_right', health: 4 }]
+    const result = parseInjuryAreaHealth(input)
+    expect(result[0]?.notes).toBeNull()
   })
 })

@@ -1,5 +1,49 @@
-import type { AthleteContext } from '@/types'
+import type { AthleteContext, InjuryAreaHealth } from '@/types'
 import { formatContextForPrompt } from '@/services/ai/contextBuilder'
+
+/**
+ * @description Generates the DECISION RULES injury section dynamically from the
+ * athlete's currently tracked injury areas.
+ *
+ * @param injuryAreas All tracked areas with current health ratings
+ * @param criticalAreas Area names with health <= 2
+ * @param lowAreas Area names with health === 3
+ * @returns Formatted multi-line string for the system prompt
+ */
+function buildInjurySection(
+  injuryAreas: InjuryAreaHealth[],
+  criticalAreas: string[],
+  lowAreas: string[],
+): string {
+  if (injuryAreas.length === 0) {
+    return 'TRACKED INJURY AREAS:\n  None currently tracked.'
+  }
+
+  const lines = ['TRACKED INJURY AREAS (1-5 scale — review before every session):']
+  for (const area of injuryAreas) {
+    const status = area.health <= 2 ? 'CRITICAL' : area.health === 3 ? 'LOW' : 'OK'
+    const noteSuffix = area.notes ? ` — ${area.notes}` : ''
+    lines.push(`  ${area.area}: ${area.health}/5 [${status}]${noteSuffix}`)
+  }
+
+  if (criticalAreas.length > 0) {
+    lines.push('')
+    lines.push(`  Critical areas (${criticalAreas.join(', ')}):`)
+    lines.push('    → Modify or eliminate exercises that stress this area')
+    lines.push('    → Flag immediately and discuss with athlete')
+    lines.push('    → Do not normalise through pain')
+  }
+
+  if (lowAreas.length > 0) {
+    lines.push('')
+    lines.push(`  Low health areas (${lowAreas.join(', ')}):`)
+    lines.push('    → Reduce load on affected area by 50%')
+    lines.push('    → Monitor carefully during session')
+    lines.push('    → If it worsens mid-session: stop')
+  }
+
+  return lines.join('\n')
+}
 
 /**
  * @description Assembles the complete system prompt for the Gemini AI climbing
@@ -21,9 +65,6 @@ import { formatContextForPrompt } from '@/services/ai/contextBuilder'
  *   instruction
  */
 export function buildSystemPrompt(context: AthleteContext): string {
-  // TODO Phase 2: Replace hard-coded shoulder coaching
-  // instructions with dynamically generated injury
-  // section from athlete injury profile. See ADR 004.
   return `You are an expert climbing coach and periodisation specialist. You work exclusively with one athlete. You are available 24/7 via this chat interface.
 
 You follow evidence-based training principles drawn from:
@@ -61,12 +102,10 @@ Key performance limiters identified:
   - Route reading under pressure (onsight-specific)
   - Mental composure on committing terrain
 
-Injury history — CRITICAL:
-  Shoulder overuse injury (history).
-  This is the single most important safety constraint.
-  ALWAYS monitor shoulder health ratings.
-  NEVER programme heavy pressing or overhead loading without confirmed shoulder health of 4/5 or higher.
-  If shoulder_flag was true in any recent session, address this before any other topic.
+Injury history:
+  Tracked injury areas and current health are reported in the CURRENT ATHLETE CONTEXT block.
+  ALWAYS review active warnings and injury area health before recommending any session.
+  If any area appeared in injury_flags during recent sessions, address it before any other topic.
 
 // ─────────────────────────────────────────────────
 // PROGRAMME_STATE_OVERRIDE
@@ -181,18 +220,7 @@ FINGER HEALTH (1-5 scale):
   Score 4-5 (good):
     → Normal training, fingerboard permitted
 
-SHOULDER HEALTH (1-5 scale):
-  Score 1-2 (critical):
-    → Remove ALL pressing movements
-    → Scapular stability and band work only
-    → Flag immediately and discuss
-  Score 3 (low):
-    → Avoid heavy pressing
-    → Reduce overhead loading
-    → Monitor carefully during session
-    → If it worsens mid-session: stop
-  Score 4-5 (good):
-    → Normal antagonist training
+${buildInjurySection(context.injuryAreas, context.criticalInjuryAreas, context.lowInjuryAreas)}
 
 READINESS AVERAGE:
   Below 2.5/5 weekly average:

@@ -8,7 +8,14 @@ import {
   getSessionCountThisWeek,
   getLastSessionDate,
 } from '@/services/data/sessionRepository'
-import type { AthleteContext, ReadinessCheckin, SessionLog } from '@/types'
+import { getActiveInjuryAreas } from '@/services/data/injuryAreasRepository'
+import type {
+  AthleteContext,
+  InjuryAreaHealth,
+  InjuryAreaRow,
+  ReadinessCheckin,
+  SessionLog,
+} from '@/types'
 
 // =============================================================================
 // PRIVATE HELPERS
@@ -34,20 +41,70 @@ function computeDaysSince(dateString: string | null): number {
 }
 
 /**
+ * @description Maps an injury area name prefix to a human-readable training
+ * restriction string. Used to generate per-area warning messages.
+ *
+ * @param area The injury area identifier
+ * @returns A short restriction description, or null if no known rule applies
+ */
+function getAreaRestriction(area: string): string | null {
+  if (area.startsWith('shoulder_')) return 'avoid pressing and overhead loading'
+  if (area.startsWith('finger_')) return 'avoid fingerboard work and reduce crimping'
+  if (area.startsWith('elbow_medial_')) return 'avoid pulling movements and crimping'
+  if (area.startsWith('elbow_lateral_')) return 'avoid pushing and extension-heavy work'
+  if (area.startsWith('wrist_')) return 'avoid loading and fingerboard work'
+  if (area.startsWith('knee_')) return 'avoid high foot placements and deep knee bends'
+  if (area === 'lower_back') return 'avoid heavy pulling and sit-starts'
+  if (area.startsWith('hip_flexor_')) return 'avoid high steps and hip flexion under load'
+  return null
+}
+
+/**
+ * @description Parses the injury_area_health jsonb field from a readiness
+ * check-in into a typed array. Returns an empty array if the field is null,
+ * malformed, or does not match the expected shape.
+ *
+ * @param raw The raw jsonb value from the database
+ * @returns Typed array of InjuryAreaHealth, empty if unreadable
+ */
+export function parseInjuryAreaHealth(raw: unknown): InjuryAreaHealth[] {
+  if (!Array.isArray(raw)) return []
+  const result: InjuryAreaHealth[] = []
+  for (const item of raw) {
+    if (
+      typeof item === 'object' &&
+      item !== null &&
+      typeof (item as Record<string, unknown>).area === 'string' &&
+      typeof (item as Record<string, unknown>).health === 'number'
+    ) {
+      const r = item as Record<string, unknown>
+      result.push({
+        area: r.area as InjuryAreaHealth['area'],
+        health: r.health as number,
+        notes: typeof r.notes === 'string' ? r.notes : null,
+      })
+    }
+  }
+  return result
+}
+
+/**
  * @description Evaluates athlete readiness metrics and returns
  * human-readable warning strings for the AI coach to act on.
- * Rules are applied in priority order: illness → finger → shoulder →
+ * Rules are applied in priority order: illness → finger → injury areas →
  * weekly average → return-to-training → missing check-in.
  *
  * @param todaysReadiness Today's readiness check-in, or null if not submitted
  * @param weeklyAvg Mean readiness score over the past 7 days (0–5 scale)
  * @param daysSinceLastSession Number of days since the last logged session
+ * @param injuryAreas Current health ratings for all tracked injury areas
  * @returns Array of warning strings, empty if no warnings apply
  */
 function computeWarnings(
   todaysReadiness: ReadinessCheckin | null,
   weeklyAvg: number,
   daysSinceLastSession: number,
+  injuryAreas: InjuryAreaHealth[],
 ): string[] {
   const warnings: string[] = []
 
@@ -70,20 +127,19 @@ function computeWarnings(
     )
   }
 
-  // TODO Phase 2: Replace hard-coded shoulder rules
-  // with dynamic rules generated from injuryAreas array.
-  // Each tracked area will have its own health score
-  // and training restriction rules. See ADR 004.
-  // --- SHOULDER HEALTH ---
-  const shoulder = todaysReadiness?.shoulder_health ?? null
-  if (shoulder !== null && (shoulder === 1 || shoulder === 2)) {
-    warnings.push(
-      `🔴 Shoulder health critical (${shoulder}/5) — remove ALL pressing movements, scapular stability and band work only.`,
-    )
-  } else if (shoulder === 3) {
-    warnings.push(
-      '🟡 Shoulder health low (3/5) — avoid heavy pressing, monitor carefully during session.',
-    )
+  // --- TRACKED INJURY AREAS (dynamic — replaces hard-coded shoulder block) ---
+  for (const { area, health } of injuryAreas) {
+    const restriction = getAreaRestriction(area)
+    const restrictionText = restriction != null ? ` — ${restriction}` : ''
+    if (health === 1 || health === 2) {
+      warnings.push(
+        `🔴 ${area} critical (${health}/5)${restrictionText}.`,
+      )
+    } else if (health === 3) {
+      warnings.push(
+        `🟡 ${area} low (3/5)${restrictionText}, monitor carefully during session.`,
+      )
+    }
   }
 
   // --- WEEKLY READINESS AVERAGE ---
@@ -139,6 +195,7 @@ export async function buildAthleteContext(): Promise<AthleteContext> {
     recentSessionsResult,
     sessionCountResult,
     lastSessionDateResult,
+    activeInjuryAreasResult,
   ] = await Promise.all([
     getTodaysCheckin(),
     getRecentCheckins(14),
@@ -146,6 +203,7 @@ export async function buildAthleteContext(): Promise<AthleteContext> {
     getRecentSessions(30),
     getSessionCountThisWeek(),
     getLastSessionDate(),
+    getActiveInjuryAreas(),
   ])
 
   // Extract data, logging any errors and falling back to safe defaults
@@ -179,8 +237,40 @@ export async function buildAthleteContext(): Promise<AthleteContext> {
   }
   const lastSessionDate: string | null = lastSessionDateResult.data ?? null
 
+  if (activeInjuryAreasResult.error !== null) {
+    console.error('[contextBuilder.buildAthleteContext] getActiveInjuryAreas failed:', activeInjuryAreasResult.error)
+  }
+  const activeInjuryAreaRows: InjuryAreaRow[] = activeInjuryAreasResult.data ?? []
+
   const daysSinceLastSession = computeDaysSince(lastSessionDate)
-  const warnings = computeWarnings(todaysReadiness, weeklyReadinessAvg, daysSinceLastSession)
+
+  // Parse injury_area_health from today's check-in into typed objects.
+  // Falls back to empty array if no check-in or field is null/malformed.
+  const injuryAreas: InjuryAreaHealth[] = todaysReadiness?.injury_area_health != null
+    ? parseInjuryAreaHealth(todaysReadiness.injury_area_health)
+    : []
+
+  // Derive critical / low subsets for downstream consumers (promptBuilder, etc.)
+  const criticalInjuryAreas: string[] = injuryAreas
+    .filter((a) => a.health <= 2)
+    .map((a) => a.area)
+  const lowInjuryAreas: string[] = injuryAreas
+    .filter((a) => a.health === 3)
+    .map((a) => a.area)
+
+  // activeInjuryFlags: area names from any session in the last 30 days that
+  // had injury_flags set. Derived from the recent sessions we already fetched.
+  const activeInjuryFlags: string[] = [
+    ...new Set(
+      recentSessions.flatMap((s) => {
+        const flags = s.injury_flags
+        if (!Array.isArray(flags)) return []
+        return flags.filter((f): f is string => typeof f === 'string')
+      }),
+    ),
+  ]
+
+  const warnings = computeWarnings(todaysReadiness, weeklyReadinessAvg, daysSinceLastSession, injuryAreas)
 
   // Derive convenience fields from most-recent check-in data
   const currentFingerHealth: number | null = todaysReadiness?.finger_health ?? null
@@ -191,6 +281,10 @@ export async function buildAthleteContext(): Promise<AthleteContext> {
   const illnessFlag: boolean =
     todaysReadiness?.illness_flag === true ||
     recentCheckins.some((c) => c.illness_flag === true)
+
+  // activeInjuryAreaRows is fetched to surface in future profile endpoints;
+  // its presence confirms the injury_areas table is accessible.
+  void activeInjuryAreaRows
 
   return {
     todaysReadiness,
@@ -203,6 +297,10 @@ export async function buildAthleteContext(): Promise<AthleteContext> {
     currentFingerHealth,
     currentShoulderHealth,
     illnessFlag,
+    injuryAreas,
+    activeInjuryFlags,
+    criticalInjuryAreas,
+    lowInjuryAreas,
     warnings,
   }
 }
@@ -234,12 +332,23 @@ export function formatContextForPrompt(context: AthleteContext): string {
     lines.push(`Sleep quality:    ${r.sleep_quality}/5`)
     lines.push(`Fatigue:          ${r.fatigue}/5 (inverted: higher = more tired)`)
     lines.push(`Finger health:    ${r.finger_health}/5`)
-    lines.push(`Shoulder health:  ${r.shoulder_health}/5`)
     lines.push(`Life stress:      ${r.life_stress}/5 (inverted: higher = more stressed)`)
     lines.push(
       `Readiness score:  ${r.readiness_score !== null && r.readiness_score !== undefined ? r.readiness_score.toFixed(2) : 'N/A'}/5`,
     )
     lines.push(`Illness flag:     ${r.illness_flag ? 'Yes' : 'No'}`)
+
+    // Injury areas from today's check-in
+    if (context.injuryAreas.length > 0) {
+      lines.push('Injury areas:')
+      for (const { area, health, notes } of context.injuryAreas) {
+        const notesText = notes ? ` (${notes})` : ''
+        lines.push(`  ${area}: ${health}/5${notesText}`)
+      }
+    } else {
+      lines.push('Injury areas:     None tracked')
+    }
+
     lines.push(`Notes:            ${r.notes ?? 'None'}`)
   }
 
@@ -316,16 +425,19 @@ export function formatContextForPrompt(context: AthleteContext): string {
       (a, b) => new Date(a.date).getTime() - new Date(b.date).getTime(),
     )
 
-    lines.push('Date        Score  Finger  Shoulder  Illness')
+    lines.push('Date        Score  Finger  Injuries  Illness')
     for (const c of sorted) {
       const score =
         c.readiness_score !== null && c.readiness_score !== undefined
           ? c.readiness_score.toFixed(2).padStart(5)
           : '  N/A'
       const finger = String(c.finger_health).padStart(6)
-      const shoulder = String(c.shoulder_health).padStart(8)
+      const injuryAreas = parseInjuryAreaHealth(c.injury_area_health)
+      const injurySummary = injuryAreas.length > 0
+        ? injuryAreas.map((a) => `${a.area}:${a.health}`).join(',')
+        : 'none'
       const illness = (c.illness_flag ? 'Yes' : 'No').padStart(9)
-      lines.push(`${c.date}  ${score}  ${finger}  ${shoulder}  ${illness}`)
+      lines.push(`${c.date}  ${score}  ${finger}  ${injurySummary}  ${illness}`)
     }
   }
 
