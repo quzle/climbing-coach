@@ -1,10 +1,20 @@
-import { createMesocycle } from '@/services/data/mesocycleRepository'
-import { createPlannedSession } from '@/services/data/plannedSessionRepository'
+import {
+  createMesocycle,
+  deleteMesocycle,
+} from '@/services/data/mesocycleRepository'
+import {
+  createPlannedSession,
+  deletePlannedSession,
+} from '@/services/data/plannedSessionRepository'
 import {
   createProgramme,
+  deleteProgramme,
   getProgrammes,
 } from '@/services/data/programmeRepository'
-import { createWeeklyTemplate } from '@/services/data/weeklyTemplateRepository'
+import {
+  createWeeklyTemplate,
+  deleteWeeklyTemplate,
+} from '@/services/data/weeklyTemplateRepository'
 import type {
   ApiResponse,
   Intensity,
@@ -19,7 +29,7 @@ import type {
 const PHASE_2F_SEED_MARKER = '[phase2f-seed:v1]'
 
 type TemplateBlueprint = {
-  dayOfWeek: number
+  dayOfWeek: 0 | 1 | 2 | 3 | 4 | 5 | 6
   sessionLabel: string
   sessionType: SessionType
   intensity: Intensity
@@ -109,7 +119,7 @@ function buildProgrammeBlueprint(): ProgrammeBlueprint {
 
   const baseTemplates = makeTemplates([
     {
-      dayOfWeek: 1,
+      dayOfWeek: 0,
       sessionLabel: 'Aerobic Base + Easy Mileage',
       sessionType: 'aerobic',
       intensity: 'low',
@@ -118,7 +128,7 @@ function buildProgrammeBlueprint(): ProgrammeBlueprint {
       notes: 'Easy effort only. Nose-breathing pace if done hiking or easy circuits.',
     },
     {
-      dayOfWeek: 2,
+      dayOfWeek: 1,
       sessionLabel: 'General Strength',
       sessionType: 'strength',
       intensity: 'medium',
@@ -127,7 +137,7 @@ function buildProgrammeBlueprint(): ProgrammeBlueprint {
       notes: 'Keep 2 reps in reserve on loaded movements.',
     },
     {
-      dayOfWeek: 3,
+      dayOfWeek: 2,
       sessionLabel: 'Technique Bouldering',
       sessionType: 'bouldering',
       intensity: 'medium',
@@ -136,7 +146,7 @@ function buildProgrammeBlueprint(): ProgrammeBlueprint {
       notes: 'Submaximal problems with good rests.',
     },
     {
-      dayOfWeek: 4,
+      dayOfWeek: 3,
       sessionLabel: 'Mobility and Tissue Care',
       sessionType: 'mobility',
       intensity: 'low',
@@ -145,7 +155,7 @@ function buildProgrammeBlueprint(): ProgrammeBlueprint {
       notes: 'Recovery emphasis.',
     },
     {
-      dayOfWeek: 5,
+      dayOfWeek: 4,
       sessionLabel: 'Intro Fingerboard Density',
       sessionType: 'fingerboard',
       intensity: 'medium',
@@ -154,7 +164,7 @@ function buildProgrammeBlueprint(): ProgrammeBlueprint {
       notes: 'Skip if fingers feel tweaky.',
     },
     {
-      dayOfWeek: 6,
+      dayOfWeek: 5,
       sessionLabel: 'Endurance Lead Volume',
       sessionType: 'lead',
       intensity: 'medium',
@@ -163,7 +173,7 @@ function buildProgrammeBlueprint(): ProgrammeBlueprint {
       notes: 'Aim for relaxed movement between clips.',
     },
     {
-      dayOfWeek: 7,
+      dayOfWeek: 6,
       sessionLabel: 'Rest and Walk',
       sessionType: 'rest',
       intensity: 'low',
@@ -175,7 +185,7 @@ function buildProgrammeBlueprint(): ProgrammeBlueprint {
 
   const powerTemplates = makeTemplates([
     {
-      dayOfWeek: 1,
+      dayOfWeek: 0,
       sessionLabel: 'Max Hang Session',
       sessionType: 'fingerboard',
       intensity: 'high',
@@ -184,7 +194,7 @@ function buildProgrammeBlueprint(): ProgrammeBlueprint {
       notes: 'Long rests, low total volume.',
     },
     {
-      dayOfWeek: 2,
+      dayOfWeek: 1,
       sessionLabel: 'Restorative Mobility',
       sessionType: 'mobility',
       intensity: 'low',
@@ -193,7 +203,7 @@ function buildProgrammeBlueprint(): ProgrammeBlueprint {
       notes: 'No loading beyond bodyweight.',
     },
     {
-      dayOfWeek: 3,
+      dayOfWeek: 2,
       sessionLabel: 'Limit Bouldering',
       sessionType: 'bouldering',
       intensity: 'high',
@@ -202,7 +212,7 @@ function buildProgrammeBlueprint(): ProgrammeBlueprint {
       notes: 'Keep attempts low and high quality.',
     },
     {
-      dayOfWeek: 4,
+      dayOfWeek: 3,
       sessionLabel: 'Strength Maintenance',
       sessionType: 'strength',
       intensity: 'medium',
@@ -211,7 +221,7 @@ function buildProgrammeBlueprint(): ProgrammeBlueprint {
       notes: 'Keep fatigue low so Saturday stays useful.',
     },
     {
-      dayOfWeek: 5,
+      dayOfWeek: 4,
       sessionLabel: 'Aerobic Flush',
       sessionType: 'aerobic',
       intensity: 'low',
@@ -220,7 +230,7 @@ function buildProgrammeBlueprint(): ProgrammeBlueprint {
       notes: 'Easy spin, hike, or easy circuits.',
     },
     {
-      dayOfWeek: 6,
+      dayOfWeek: 5,
       sessionLabel: 'Steep Lead Power',
       sessionType: 'lead',
       intensity: 'medium',
@@ -229,7 +239,7 @@ function buildProgrammeBlueprint(): ProgrammeBlueprint {
       notes: 'Pick terrain that rewards precision under power.',
     },
     {
-      dayOfWeek: 7,
+      dayOfWeek: 6,
       sessionLabel: 'Full Rest',
       sessionType: 'rest',
       intensity: 'low',
@@ -241,7 +251,7 @@ function buildProgrammeBlueprint(): ProgrammeBlueprint {
 
   const powerEnduranceTemplates = makeTemplates([
     {
-      dayOfWeek: 1,
+      dayOfWeek: 0,
       sessionLabel: 'Aerobic Capacity Intervals',
       sessionType: 'aerobic',
       intensity: 'medium',
@@ -250,7 +260,7 @@ function buildProgrammeBlueprint(): ProgrammeBlueprint {
       notes: 'Controlled but steady discomfort.',
     },
     {
-      dayOfWeek: 2,
+      dayOfWeek: 1,
       sessionLabel: 'Strength Top-Up',
       sessionType: 'strength',
       intensity: 'medium',
@@ -259,7 +269,7 @@ function buildProgrammeBlueprint(): ProgrammeBlueprint {
       notes: 'Low volume.',
     },
     {
-      dayOfWeek: 3,
+      dayOfWeek: 2,
       sessionLabel: 'Route PE Intervals',
       sessionType: 'lead',
       intensity: 'high',
@@ -268,7 +278,7 @@ function buildProgrammeBlueprint(): ProgrammeBlueprint {
       notes: 'Link sections with short rests.',
     },
     {
-      dayOfWeek: 4,
+      dayOfWeek: 3,
       sessionLabel: 'Mobility Reset',
       sessionType: 'mobility',
       intensity: 'low',
@@ -277,7 +287,7 @@ function buildProgrammeBlueprint(): ProgrammeBlueprint {
       notes: 'Easy recovery circuit.',
     },
     {
-      dayOfWeek: 5,
+      dayOfWeek: 4,
       sessionLabel: 'Bouldering Power-Endurance',
       sessionType: 'bouldering',
       intensity: 'medium',
@@ -286,7 +296,7 @@ function buildProgrammeBlueprint(): ProgrammeBlueprint {
       notes: '4x4 or linked blocs style.',
     },
     {
-      dayOfWeek: 6,
+      dayOfWeek: 5,
       sessionLabel: 'Multipitch Simulation Day',
       sessionType: 'lead',
       intensity: 'high',
@@ -295,7 +305,7 @@ function buildProgrammeBlueprint(): ProgrammeBlueprint {
       notes: 'Treat transitions like a real day out.',
     },
     {
-      dayOfWeek: 7,
+      dayOfWeek: 6,
       sessionLabel: 'Rest and Fuel Prep',
       sessionType: 'rest',
       intensity: 'low',
@@ -307,7 +317,7 @@ function buildProgrammeBlueprint(): ProgrammeBlueprint {
 
   const performanceTemplates = makeTemplates([
     {
-      dayOfWeek: 1,
+      dayOfWeek: 0,
       sessionLabel: 'Mobility Primer',
       sessionType: 'mobility',
       intensity: 'low',
@@ -316,7 +326,7 @@ function buildProgrammeBlueprint(): ProgrammeBlueprint {
       notes: 'Short and easy.',
     },
     {
-      dayOfWeek: 2,
+      dayOfWeek: 1,
       sessionLabel: 'Lead Precision',
       sessionType: 'lead',
       intensity: 'medium',
@@ -325,7 +335,7 @@ function buildProgrammeBlueprint(): ProgrammeBlueprint {
       notes: 'Plenty of rest between serious burns.',
     },
     {
-      dayOfWeek: 3,
+      dayOfWeek: 2,
       sessionLabel: 'Full Rest',
       sessionType: 'rest',
       intensity: 'low',
@@ -334,7 +344,7 @@ function buildProgrammeBlueprint(): ProgrammeBlueprint {
       notes: 'No structured work.',
     },
     {
-      dayOfWeek: 4,
+      dayOfWeek: 3,
       sessionLabel: 'Sharpness Bouldering',
       sessionType: 'bouldering',
       intensity: 'medium',
@@ -343,7 +353,7 @@ function buildProgrammeBlueprint(): ProgrammeBlueprint {
       notes: 'Stop early if power fades.',
     },
     {
-      dayOfWeek: 5,
+      dayOfWeek: 4,
       sessionLabel: 'Travel and Mobility',
       sessionType: 'mobility',
       intensity: 'low',
@@ -352,7 +362,7 @@ function buildProgrammeBlueprint(): ProgrammeBlueprint {
       notes: 'Ideal pre-trip routine.',
     },
     {
-      dayOfWeek: 6,
+      dayOfWeek: 5,
       sessionLabel: 'Big Objective Day',
       sessionType: 'lead',
       intensity: 'high',
@@ -361,7 +371,7 @@ function buildProgrammeBlueprint(): ProgrammeBlueprint {
       notes: 'Treat as the key day of the week.',
     },
     {
-      dayOfWeek: 7,
+      dayOfWeek: 6,
       sessionLabel: 'Rest and Debrief',
       sessionType: 'rest',
       intensity: 'low',
@@ -433,7 +443,7 @@ function buildPlannedSessionsForMesocycle(
   for (let weekIndex = 0; weekIndex < 2; weekIndex += 1) {
     for (const template of mesocycle.templates) {
       const plannedDate = toIsoDate(
-        addUtcDays(startDate, weekIndex * 7 + template.dayOfWeek - 1),
+        addUtcDays(startDate, weekIndex * 7 + template.dayOfWeek),
       )
 
       plannedSessions.push({
@@ -457,6 +467,50 @@ function buildPlannedSessionsForMesocycle(
   return plannedSessions
 }
 
+async function rollbackSeedRows(
+  programmeId: string | null,
+  createdMesocycleIds: string[],
+  createdWeeklyTemplateIds: string[],
+  createdPlannedSessionIds: string[],
+): Promise<void> {
+  for (const plannedSessionId of [...createdPlannedSessionIds].reverse()) {
+    const deleteResult = await deletePlannedSession(plannedSessionId)
+    if (deleteResult.error !== null) {
+      console.error(
+        '[programmeSeed.rollbackSeedRows] deletePlannedSession:',
+        deleteResult.error,
+      )
+    }
+  }
+
+  for (const templateId of [...createdWeeklyTemplateIds].reverse()) {
+    const deleteResult = await deleteWeeklyTemplate(templateId)
+    if (deleteResult.error !== null) {
+      console.error(
+        '[programmeSeed.rollbackSeedRows] deleteWeeklyTemplate:',
+        deleteResult.error,
+      )
+    }
+  }
+
+  for (const mesocycleId of [...createdMesocycleIds].reverse()) {
+    const deleteResult = await deleteMesocycle(mesocycleId)
+    if (deleteResult.error !== null) {
+      console.error(
+        '[programmeSeed.rollbackSeedRows] deleteMesocycle:',
+        deleteResult.error,
+      )
+    }
+  }
+
+  if (programmeId !== null) {
+    const deleteResult = await deleteProgramme(programmeId)
+    if (deleteResult.error !== null) {
+      console.error('[programmeSeed.rollbackSeedRows] deleteProgramme:', deleteResult.error)
+    }
+  }
+}
+
 /**
  * @description Seeds a deterministic 16-week summer multipitch programme in development-oriented environments.
  * It creates one programme, four mesocycles, weekly templates for each mesocycle, and two weeks of planned sessions for the active block.
@@ -466,6 +520,21 @@ function buildPlannedSessionsForMesocycle(
 export async function seedSummerMultipitchProgramme(): Promise<
   ApiResponse<SeedProgrammeResult>
 > {
+  let createdProgrammeId: string | null = null
+  const createdMesocycleIds: string[] = []
+  const createdWeeklyTemplateIds: string[] = []
+  const createdPlannedSessionIds: string[] = []
+
+  async function failWithRollback(message: string): Promise<ApiResponse<SeedProgrammeResult>> {
+    await rollbackSeedRows(
+      createdProgrammeId,
+      createdMesocycleIds,
+      createdWeeklyTemplateIds,
+      createdPlannedSessionIds,
+    )
+    return { data: null, error: message }
+  }
+
   try {
     const existingProgrammesResult = await getProgrammes()
     if (existingProgrammesResult.error !== null) {
@@ -509,6 +578,8 @@ export async function seedSummerMultipitchProgramme(): Promise<
       }
     }
 
+    createdProgrammeId = programmeResult.data.id
+
     let createdMesocycleCount = 0
     let createdWeeklyTemplateCount = 0
     let createdPlannedSessionCount = 0
@@ -532,13 +603,11 @@ export async function seedSummerMultipitchProgramme(): Promise<
           '[programmeSeed.seedSummerMultipitchProgramme] createMesocycle:',
           mesocycleResult.error,
         )
-        return {
-          data: null,
-          error: mesocycleResult.error ?? 'Failed to create mesocycle',
-        }
+        return failWithRollback(mesocycleResult.error ?? 'Failed to create mesocycle')
       }
 
       createdMesocycleCount += 1
+      createdMesocycleIds.push(mesocycleResult.data.id)
       const templateIdsByDay = new Map<number, string>()
 
       for (const template of mesocycle.templates) {
@@ -558,13 +627,13 @@ export async function seedSummerMultipitchProgramme(): Promise<
             '[programmeSeed.seedSummerMultipitchProgramme] createWeeklyTemplate:',
             templateResult.error,
           )
-          return {
-            data: null,
-            error: templateResult.error ?? 'Failed to create weekly template',
-          }
+          return failWithRollback(
+            templateResult.error ?? 'Failed to create weekly template',
+          )
         }
 
         createdWeeklyTemplateCount += 1
+        createdWeeklyTemplateIds.push(templateResult.data.id)
         templateIdsByDay.set(template.dayOfWeek, templateResult.data.id)
       }
 
@@ -585,14 +654,13 @@ export async function seedSummerMultipitchProgramme(): Promise<
               '[programmeSeed.seedSummerMultipitchProgramme] createPlannedSession:',
               plannedSessionResult.error,
             )
-            return {
-              data: null,
-              error:
-                plannedSessionResult.error ?? 'Failed to create planned session',
-            }
+            return failWithRollback(
+              plannedSessionResult.error ?? 'Failed to create planned session',
+            )
           }
 
           createdPlannedSessionCount += 1
+          createdPlannedSessionIds.push(plannedSessionResult.data.id)
         }
       }
     }
@@ -609,6 +677,12 @@ export async function seedSummerMultipitchProgramme(): Promise<
       error: null,
     }
   } catch (err) {
+    await rollbackSeedRows(
+      createdProgrammeId,
+      createdMesocycleIds,
+      createdWeeklyTemplateIds,
+      createdPlannedSessionIds,
+    )
     console.error('[programmeSeed.seedSummerMultipitchProgramme] unexpected error', err)
     return { data: null, error: 'An unexpected error occurred' }
   }

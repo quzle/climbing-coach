@@ -10,7 +10,7 @@ const paramsSchema = z.object({ id: z.string().uuid() })
 
 const updateWeeklyTemplateSchema = z
   .object({
-    day_of_week: z.number().int().min(1).max(7).optional(),
+    day_of_week: z.number().int().min(0).max(6).optional(),
     session_label: z.string().min(1).max(120).optional(),
     session_type: z
       .enum([

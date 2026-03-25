@@ -152,3 +152,32 @@ export async function updateMesocycle(
     return { data: null, error: 'An unexpected error occurred' }
   }
 }
+
+/**
+ * @description Deletes a mesocycle row by UUID.
+ * @param id Mesocycle UUID
+ * @returns Deleted mesocycle row
+ */
+export async function deleteMesocycle(
+  id: string,
+): Promise<ApiResponse<Mesocycle>> {
+  try {
+    const supabase = await createClient()
+    const { data, error } = await supabase
+      .from('mesocycles')
+      .delete()
+      .eq('id', id)
+      .select()
+      .single()
+
+    if (error) {
+      console.error('[mesocycleRepository.deleteMesocycle]', error)
+      return { data: null, error: 'Failed to delete mesocycle' }
+    }
+
+    return { data, error: null }
+  } catch (err) {
+    console.error('[mesocycleRepository.deleteMesocycle] unexpected error', err)
+    return { data: null, error: 'An unexpected error occurred' }
+  }
+}

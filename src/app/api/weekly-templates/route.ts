@@ -10,7 +10,7 @@ const querySchema = z.object({ mesocycle_id: z.string().uuid() })
 
 const createWeeklyTemplateSchema = z.object({
   mesocycle_id: z.string().uuid(),
-  day_of_week: z.number().int().min(1).max(7),
+  day_of_week: z.number().int().min(0).max(6),
   session_label: z.string().min(1).max(120),
   session_type: z.enum([
     'bouldering',

@@ -1,35 +1,53 @@
-import { createMesocycle } from '@/services/data/mesocycleRepository'
-import { createPlannedSession } from '@/services/data/plannedSessionRepository'
+import {
+  createMesocycle,
+  deleteMesocycle,
+} from '@/services/data/mesocycleRepository'
+import {
+  createPlannedSession,
+  deletePlannedSession,
+} from '@/services/data/plannedSessionRepository'
 import {
   createProgramme,
+  deleteProgramme,
   getProgrammes,
 } from '@/services/data/programmeRepository'
-import { createWeeklyTemplate } from '@/services/data/weeklyTemplateRepository'
+import {
+  createWeeklyTemplate,
+  deleteWeeklyTemplate,
+} from '@/services/data/weeklyTemplateRepository'
 import type { Mesocycle, PlannedSession, Programme, WeeklyTemplate } from '@/types'
 import { seedSummerMultipitchProgramme } from './programmeSeed'
 
 jest.mock('@/services/data/programmeRepository', () => ({
   getProgrammes: jest.fn(),
   createProgramme: jest.fn(),
+  deleteProgramme: jest.fn(),
 }))
 
 jest.mock('@/services/data/mesocycleRepository', () => ({
   createMesocycle: jest.fn(),
+  deleteMesocycle: jest.fn(),
 }))
 
 jest.mock('@/services/data/weeklyTemplateRepository', () => ({
   createWeeklyTemplate: jest.fn(),
+  deleteWeeklyTemplate: jest.fn(),
 }))
 
 jest.mock('@/services/data/plannedSessionRepository', () => ({
   createPlannedSession: jest.fn(),
+  deletePlannedSession: jest.fn(),
 }))
 
 const mockGetProgrammes = getProgrammes as jest.Mock
 const mockCreateProgramme = createProgramme as jest.Mock
+const mockDeleteProgramme = deleteProgramme as jest.Mock
 const mockCreateMesocycle = createMesocycle as jest.Mock
+const mockDeleteMesocycle = deleteMesocycle as jest.Mock
 const mockCreateWeeklyTemplate = createWeeklyTemplate as jest.Mock
+const mockDeleteWeeklyTemplate = deleteWeeklyTemplate as jest.Mock
 const mockCreatePlannedSession = createPlannedSession as jest.Mock
+const mockDeletePlannedSession = deletePlannedSession as jest.Mock
 
 function makeProgramme(overrides?: Partial<Programme>): Programme {
   return {
@@ -98,6 +116,10 @@ beforeEach(() => {
 
   mockGetProgrammes.mockResolvedValue({ data: [], error: null })
   mockCreateProgramme.mockResolvedValue({ data: makeProgramme(), error: null })
+  mockDeleteProgramme.mockResolvedValue({ data: makeProgramme(), error: null })
+  mockDeleteMesocycle.mockResolvedValue({ data: makeMesocycle(1), error: null })
+  mockDeleteWeeklyTemplate.mockResolvedValue({ data: makeWeeklyTemplate(1), error: null })
+  mockDeletePlannedSession.mockResolvedValue({ data: makePlannedSession(1), error: null })
 
   let mesocycleIndex = 0
   mockCreateMesocycle.mockImplementation(async (input) => {

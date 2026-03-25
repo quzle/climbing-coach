@@ -50,7 +50,7 @@ const mesocycleSchema = z.object({
 })
 
 const weeklyTemplateSchema = z.object({
-  day_of_week: z.number().int().min(1).max(7),
+  day_of_week: z.number().int().min(0).max(6),
   session_label: z.string().min(1).max(120),
   session_type: z.enum([
     'bouldering',
@@ -78,13 +78,13 @@ type ProgrammeBuilderEditorProps = {
 }
 
 const DAY_OPTIONS = [
-  { value: 1, label: 'Mon' },
-  { value: 2, label: 'Tue' },
-  { value: 3, label: 'Wed' },
-  { value: 4, label: 'Thu' },
-  { value: 5, label: 'Fri' },
-  { value: 6, label: 'Sat' },
-  { value: 7, label: 'Sun' },
+  { value: 0, label: 'Mon' },
+  { value: 1, label: 'Tue' },
+  { value: 2, label: 'Wed' },
+  { value: 3, label: 'Thu' },
+  { value: 4, label: 'Fri' },
+  { value: 5, label: 'Sat' },
+  { value: 6, label: 'Sun' },
 ]
 
 /**
@@ -133,7 +133,7 @@ export function ProgrammeBuilderEditor({
   const templateForm = useForm<WeeklyTemplateFormValues>({
     resolver: zodResolver(weeklyTemplateSchema),
     values: {
-      day_of_week: selectedTemplate?.day_of_week ?? 1,
+      day_of_week: selectedTemplate?.day_of_week ?? 0,
       session_label: selectedTemplate?.session_label ?? '',
       session_type: (selectedTemplate?.session_type ?? 'rest') as WeeklyTemplateFormValues['session_type'],
       intensity: (selectedTemplate?.intensity ?? 'low') as WeeklyTemplateFormValues['intensity'],

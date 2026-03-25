@@ -123,3 +123,32 @@ export async function updateWeeklyTemplate(
     return { data: null, error: 'An unexpected error occurred' }
   }
 }
+
+/**
+ * @description Deletes a weekly template row by UUID.
+ * @param id Weekly template UUID
+ * @returns Deleted weekly template row
+ */
+export async function deleteWeeklyTemplate(
+  id: string,
+): Promise<ApiResponse<WeeklyTemplate>> {
+  try {
+    const supabase = await createClient()
+    const { data, error } = await supabase
+      .from('weekly_templates')
+      .delete()
+      .eq('id', id)
+      .select()
+      .single()
+
+    if (error) {
+      console.error('[weeklyTemplateRepository.deleteWeeklyTemplate]', error)
+      return { data: null, error: 'Failed to delete weekly template' }
+    }
+
+    return { data, error: null }
+  } catch (err) {
+    console.error('[weeklyTemplateRepository.deleteWeeklyTemplate] unexpected error', err)
+    return { data: null, error: 'An unexpected error occurred' }
+  }
+}

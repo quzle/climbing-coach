@@ -50,12 +50,12 @@ function getWeekStartMonday(dateString?: string): string {
  * @description Converts weekly_templates.day_of_week to a concrete ISO date
  * within the specified Monday-start week.
  * @param weekStartMonday ISO date of week start (Monday)
- * @param dayOfWeek DB day (1=Mon ... 7=Sun, 0 treated as Sun)
+ * @param dayOfWeek DB day (0=Mon ... 6=Sun)
  * @returns Planned date in YYYY-MM-DD format
  */
 function resolvePlannedDate(weekStartMonday: string, dayOfWeek: number): string {
-  const safeDay = dayOfWeek === 0 ? 7 : Math.min(Math.max(dayOfWeek, 1), 7)
-  const offsetDays = safeDay - 1
+  const safeDay = Math.min(Math.max(dayOfWeek, 0), 6)
+  const offsetDays = safeDay
   const plannedDate = parseIsoDateUtc(weekStartMonday)
   plannedDate.setUTCDate(plannedDate.getUTCDate() + offsetDays)
   return toIsoDate(plannedDate)

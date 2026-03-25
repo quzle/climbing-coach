@@ -148,3 +148,32 @@ export async function updateProgramme(
     return { data: null, error: 'An unexpected error occurred' }
   }
 }
+
+/**
+ * @description Deletes a programme row by UUID.
+ * @param id Programme UUID
+ * @returns Deleted programme row
+ */
+export async function deleteProgramme(
+  id: string,
+): Promise<ApiResponse<Programme>> {
+  try {
+    const supabase = await createClient()
+    const { data, error } = await supabase
+      .from('programmes')
+      .delete()
+      .eq('id', id)
+      .select()
+      .single()
+
+    if (error) {
+      console.error('[programmeRepository.deleteProgramme]', error)
+      return { data: null, error: 'Failed to delete programme' }
+    }
+
+    return { data, error: null }
+  } catch (err) {
+    console.error('[programmeRepository.deleteProgramme] unexpected error', err)
+    return { data: null, error: 'An unexpected error occurred' }
+  }
+}

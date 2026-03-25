@@ -2,6 +2,7 @@ import { createClient } from '@/lib/supabase/server'
 import type { Mesocycle, MesocycleInsert, MesocycleUpdate } from '@/types'
 import {
   createMesocycle,
+  deleteMesocycle,
   getActiveMesocycle,
   getMesocycleById,
   getMesocyclesByProgramme,
@@ -18,6 +19,7 @@ function makeSupabaseMock() {
     select: jest.fn().mockReturnThis(),
     insert: jest.fn().mockReturnThis(),
     update: jest.fn().mockReturnThis(),
+    delete: jest.fn().mockReturnThis(),
     eq: jest.fn().mockReturnThis(),
     gte: jest.fn().mockReturnThis(),
     lte: jest.fn().mockReturnThis(),
@@ -114,5 +116,16 @@ describe('mesocycleRepository', () => {
 
     expect(mockChain.update).toHaveBeenCalledWith(updates)
     expect(result.data?.status).toBe('completed')
+  })
+
+  it('deleteMesocycle deletes and returns the mesocycle', async () => {
+    const mesocycle = makeMesocycle()
+    mockChain.single.mockResolvedValue({ data: mesocycle, error: null })
+
+    const result = await deleteMesocycle('mesocycle-1')
+
+    expect(mockChain.delete).toHaveBeenCalled()
+    expect(mockChain.eq).toHaveBeenCalledWith('id', 'mesocycle-1')
+    expect(result.data).toEqual(mesocycle)
   })
 })

@@ -2,6 +2,7 @@ import { createClient } from '@/lib/supabase/server'
 import type { Programme, ProgrammeInsert, ProgrammeUpdate } from '@/types'
 import {
   createProgramme,
+  deleteProgramme,
   getActiveProgramme,
   getProgrammeById,
   getProgrammes,
@@ -18,6 +19,7 @@ function makeSupabaseMock() {
     select: jest.fn().mockReturnThis(),
     insert: jest.fn().mockReturnThis(),
     update: jest.fn().mockReturnThis(),
+    delete: jest.fn().mockReturnThis(),
     eq: jest.fn().mockReturnThis(),
     gte: jest.fn().mockReturnThis(),
     lte: jest.fn().mockReturnThis(),
@@ -109,5 +111,16 @@ describe('programmeRepository', () => {
     expect(mockChain.update).toHaveBeenCalledWith(updates)
     expect(mockChain.eq).toHaveBeenCalledWith('id', 'programme-1')
     expect(result.data?.notes).toBe('Updated notes')
+  })
+
+  it('deleteProgramme deletes and returns the programme', async () => {
+    const programme = makeProgramme()
+    mockChain.single.mockResolvedValue({ data: programme, error: null })
+
+    const result = await deleteProgramme('programme-1')
+
+    expect(mockChain.delete).toHaveBeenCalled()
+    expect(mockChain.eq).toHaveBeenCalledWith('id', 'programme-1')
+    expect(result.data).toEqual(programme)
   })
 })
