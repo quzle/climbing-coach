@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
-import { useForm, type UseFormReturn } from 'react-hook-form'
+import { useForm, useWatch, type UseFormReturn } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
@@ -202,7 +202,9 @@ export function SessionLogForm({
   }, [])
 
   // ── Auto-save draft on state changes ────────────────────────────────────
-  const watchedValues = form.watch()
+  // useWatch subscribes via a stable hook — avoids the infinite loop that
+  // form.watch() causes when used at render level (new ref on every render).
+  const watchedValues = useWatch({ control: form.control })
   useEffect(() => {
     if (stage === 1) return
     const values = form.getValues()
