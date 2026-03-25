@@ -19,7 +19,7 @@ function hasLegacyRequiredColumnError(error: SupabaseErrorShape): boolean {
     return false
   }
 
-  return /overall_fatigue|motivation|shoulder_health/.test(message)
+  return /shoulder_health/.test(message)
 }
 
 function getLegacyShoulderHealth(injuryAreaHealth: InjuryAreaHealth[]): number {
@@ -40,8 +40,6 @@ function buildLegacyCompatiblePayload(
 ): ReadinessCheckinInsert {
   const legacyPayload = {
     ...payload,
-    overall_fatigue: payload.fatigue,
-    motivation: 6 - payload.life_stress,
     shoulder_health: getLegacyShoulderHealth(injuryAreaHealth),
   }
 

@@ -376,7 +376,7 @@ describe('createCheckin', () => {
         data: null,
         error: {
           code: '23502',
-          message: 'null value in column "overall_fatigue" of relation "readiness_checkins" violates not-null constraint',
+          message: 'null value in column "shoulder_health" of relation "readiness_checkins" violates not-null constraint',
         },
       })
       .mockResolvedValueOnce({ data: createdRecord, error: null })
@@ -385,9 +385,9 @@ describe('createCheckin', () => {
 
     expect(mockChain.insert).toHaveBeenCalledTimes(2)
     const retryPayload = mockChain.insert.mock.calls[1]?.[0] as Record<string, unknown>
-    expect(retryPayload['overall_fatigue']).toBeDefined()
-    expect(retryPayload['motivation']).toBeDefined()
     expect(retryPayload['shoulder_health']).toBeDefined()
+    expect(retryPayload['overall_fatigue']).toBeUndefined()
+    expect(retryPayload['motivation']).toBeUndefined()
     expect(result.data).toEqual(createdRecord)
     expect(result.error).toBeNull()
   })
