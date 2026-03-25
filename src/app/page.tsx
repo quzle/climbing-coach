@@ -1,34 +1,168 @@
-// TODO SETUP-16: Replace with full dashboard
+'use client'
+
+import { useState, useEffect } from 'react'
 import Link from 'next/link'
+import { format, parseISO } from 'date-fns'
 import { Button } from '@/components/ui/button'
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
+import { Skeleton } from '@/components/ui/skeleton'
+import type { ApiResponse, ReadinessCheckin, SessionLog, SessionType } from '@/types'
 
-const NAV_LINKS = [
-  { href: '/readiness', label: 'Daily Check-in' },
-  { href: '/session/log', label: 'Log Session' },
-  { href: '/chat', label: 'Coach Chat' },
-  { href: '/dev', label: 'Component Testing (dev)' },
-]
+// =============================================================================
+// TYPES
+// =============================================================================
 
-export default function Home() {
+type ReadinessData = {
+  todaysCheckin: ReadinessCheckin | null
+  hasCheckedInToday: boolean
+  weeklyAvg: number
+}
+
+type SessionsData = {
+  sessions: SessionLog[]
+}
+
+// =============================================================================
+// CONSTANTS
+// =============================================================================
+
+const SESSION_TYPE_LABELS: Partial<Record<SessionType, string>> = {
+  bouldering: 'Bouldering',
+  kilterboard: 'Kilterboard',
+  lead: 'Lead',
+  fingerboard: 'Fingerboard',
+  strength: 'Strength',
+  aerobic: 'Aerobic',
+  rest: 'Rest',
+  mobility: 'Mobility',
+}
+
+// =============================================================================
+// COMPONENT
+// =============================================================================
+
+/**
+ * @description Home dashboard. Fetches today's readiness check-in and the most
+ * recent session in parallel and renders summary cards for each.
+ */
+export default function Home(): React.JSX.Element {
+  const [readiness, setReadiness] = useState<ReadinessData | null>(null)
+  const [recentSession, setRecentSession] = useState<SessionLog | null>(null)
+  const [isLoading, setIsLoading] = useState(true)
+
+  useEffect(() => {
+    async function load(): Promise<void> {
+      const [readinessRes, sessionsRes] = await Promise.allSettled([
+        fetch('/api/readiness').then((r) => r.json() as Promise<ApiResponse<ReadinessData>>),
+        fetch('/api/sessions?days=7').then((r) => r.json() as Promise<ApiResponse<SessionsData>>),
+      ])
+
+      if (readinessRes.status === 'fulfilled' && readinessRes.value.data) {
+        setReadiness(readinessRes.value.data)
+      }
+      if (sessionsRes.status === 'fulfilled' && sessionsRes.value.data) {
+        const all = sessionsRes.value.data.sessions
+        setRecentSession(all.length > 0 ? (all[0] ?? null) : null)
+      }
+
+      setIsLoading(false)
+    }
+    void load()
+  }, [])
+
   return (
-    <div className="flex min-h-screen flex-col items-center justify-center bg-slate-50 px-4">
-      <div className="w-full max-w-sm space-y-8">
-        <div className="text-center">
-          <h1 className="text-3xl font-bold text-slate-900">Climbing Coach</h1>
-          <p className="mt-2 text-slate-500">AI-powered training assistant</p>
+    <div className="min-h-screen bg-slate-50">
+      <div className="mx-auto max-w-lg px-4 py-6 space-y-6">
+        {/* Header */}
+        <div>
+          <h1 className="text-2xl font-bold text-slate-900">Climbing Coach</h1>
+          <p className="text-sm text-slate-500">AI-powered training assistant</p>
         </div>
 
-        <div className="flex flex-col gap-3">
-          {NAV_LINKS.map(({ href, label }) => (
-            <Button key={href} variant="outline" className="h-12 w-full text-base" asChild>
-              <Link href={href}>{label}</Link>
-            </Button>
-          ))}
-        </div>
+        {/* Readiness card */}
+        <Card>
+          <CardHeader className="pb-2">
+            <CardTitle className="text-base">Today&apos;s Readiness</CardTitle>
+          </CardHeader>
+          <CardContent>
+            {isLoading ? (
+              <div className="space-y-2">
+                <Skeleton className="h-4 w-32" />
+                <Skeleton className="h-4 w-48" />
+              </div>
+            ) : readiness?.hasCheckedInToday && readiness.todaysCheckin ? (
+              <div className="space-y-1">
+                <p className="text-sm text-slate-700">
+                  Weekly avg: <span className="font-semibold">{readiness.weeklyAvg.toFixed(1)} / 5</span>
+                </p>
+                <p className="text-xs text-slate-500">
+                  Sleep {readiness.todaysCheckin.sleep_quality} · Fatigue{' '}
+                  {readiness.todaysCheckin.fatigue} · Fingers{' '}
+                  {readiness.todaysCheckin.finger_health}
+                </p>
+              </div>
+            ) : (
+              <div>
+                <p className="text-sm text-slate-500 mb-3">No check-in today</p>
+                <Button asChild size="sm" className="min-h-[44px]">
+                  <Link href="/readiness">Complete check-in</Link>
+                </Button>
+              </div>
+            )}
+          </CardContent>
+        </Card>
 
-        <p className="text-xs text-slate-400 text-center">
-          Home dashboard coming in SETUP-16
-        </p>
+        {/* Recent session card */}
+        <Card>
+          <CardHeader className="pb-2">
+            <CardTitle className="text-base">Last Session</CardTitle>
+          </CardHeader>
+          <CardContent>
+            {isLoading ? (
+              <div className="space-y-2">
+                <Skeleton className="h-4 w-32" />
+                <Skeleton className="h-4 w-48" />
+              </div>
+            ) : recentSession ? (
+              <div className="space-y-1">
+                <p className="text-sm font-medium text-slate-800">
+                  {SESSION_TYPE_LABELS[recentSession.session_type as SessionType] ??
+                    recentSession.session_type}
+                </p>
+                <p className="text-xs text-slate-500">
+                  {format(parseISO(recentSession.date), 'EEE d MMM')}
+                  {recentSession.duration_mins
+                    ? ` · ${recentSession.duration_mins} min`
+                    : ''}
+                </p>
+              </div>
+            ) : (
+              <p className="text-sm text-slate-500">No sessions in the last 7 days</p>
+            )}
+          </CardContent>
+        </Card>
+
+        {/* Quick actions */}
+        <div className="grid grid-cols-3 gap-3">
+          <Button asChild variant="outline" className="min-h-[44px] flex-col h-auto py-3 gap-1">
+            <Link href="/session/log">
+              <span className="text-lg">💪</span>
+              <span className="text-xs">Log Session</span>
+            </Link>
+          </Button>
+          <Button asChild variant="outline" className="min-h-[44px] flex-col h-auto py-3 gap-1">
+            <Link href="/readiness">
+              <span className="text-lg">📋</span>
+              <span className="text-xs">Check-in</span>
+            </Link>
+          </Button>
+          <Button asChild variant="outline" className="min-h-[44px] flex-col h-auto py-3 gap-1">
+            <Link href="/chat">
+              <span className="text-lg">💬</span>
+              <span className="text-xs">Ask Coach</span>
+            </Link>
+          </Button>
+        </div>
       </div>
     </div>
   )
