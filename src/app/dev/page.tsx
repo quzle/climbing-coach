@@ -1,5 +1,6 @@
 import Link from 'next/link'
 import { notFound } from 'next/navigation'
+import { SeedProgrammeTrigger } from '@/components/dev/SeedProgrammeTrigger'
 
 const DEV_CARDS = [
   {
@@ -64,6 +65,8 @@ export default function DevPage(): React.ReactElement {
           <h1 className="text-3xl font-bold text-slate-900">🛠 Dev Component Testing</h1>
           <p className="mt-1 text-slate-600">Only visible in development mode</p>
         </div>
+
+        <SeedProgrammeTrigger />
 
         <div className="grid grid-cols-2 gap-3">
           {DEV_CARDS.map((card) => (

@@ -229,6 +229,50 @@ describe('SessionLogForm — submission', () => {
       expect(onSuccess).toHaveBeenCalledTimes(1)
     })
   })
+
+  it('submits linked planned session data when prefilled from a plan', async () => {
+    const plannedSessionId = '559f2dc4-e2a2-463a-8aef-acdb94fe74ec'
+
+    render(
+      <SessionLogForm
+        defaultSessionType="strength"
+        plannedSessionId={plannedSessionId}
+        initialValues={{
+          date: '2026-03-30',
+          duration_mins: 90,
+          notes: 'Planned session:\nDo 4 hard problems',
+          planned_session_id: plannedSessionId,
+        }}
+        onFormReady={(form) => {
+          capturedForm = form
+        }}
+      />, 
+    )
+
+    await act(async () => {
+      capturedForm!.setValue('date', '2026-03-30', { shouldValidate: true })
+      capturedForm!.setValue('duration_mins', 90, { shouldValidate: true })
+      capturedForm!.setValue('notes', 'Planned session:\nDo 4 hard problems', {
+        shouldValidate: true,
+      })
+      capturedForm!.setValue('planned_session_id', plannedSessionId, {
+        shouldValidate: true,
+      })
+      capturedForm!.setValue('injury_flags', [], { shouldValidate: true })
+    })
+
+    fireEvent.submit(document.querySelector('form')!)
+
+    await waitFor(() => {
+      expect(mockFetch).toHaveBeenCalledWith(
+        '/api/sessions',
+        expect.objectContaining({
+          method: 'POST',
+          body: expect.stringContaining(plannedSessionId),
+        }),
+      )
+    })
+  })
 })
 
 // =============================================================================

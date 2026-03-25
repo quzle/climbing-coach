@@ -53,6 +53,7 @@ const CLIMBING_TYPES = new Set<SessionType>(['bouldering', 'kilterboard', 'lead'
 export type SessionLogFormProps = {
   defaultSessionType?: SessionType
   plannedSessionId?: string
+  initialValues?: Partial<SessionLogFormData>
   onSuccess?: () => void
   mockMode?: boolean
   /**
@@ -156,6 +157,7 @@ function buildChatMessage(
 export function SessionLogForm({
   defaultSessionType,
   plannedSessionId,
+  initialValues,
   onSuccess,
   mockMode = false,
   onFormReady,
@@ -192,10 +194,22 @@ export function SessionLogForm({
   const form = useForm<SessionLogFormData>({
     resolver: zodResolver(sessionLogFormSchema),
     defaultValues: {
-      date: new Date().toISOString().split('T')[0],
+      date: initialValues?.date ?? new Date().toISOString().split('T')[0],
       session_type: defaultSessionType,
-      injury_flags: [],
-      planned_session_id: plannedSessionId,
+      duration_mins: initialValues?.duration_mins,
+      rpe: initialValues?.rpe,
+      quality_rating: initialValues?.quality_rating,
+      injury_flags: initialValues?.injury_flags ?? [],
+      notes: initialValues?.notes,
+      planned_session_id: plannedSessionId ?? initialValues?.planned_session_id,
+      location: initialValues?.location,
+      location_type: initialValues?.location_type,
+      rock_type: initialValues?.rock_type,
+      angle: initialValues?.angle,
+      pitch_count: initialValues?.pitch_count,
+      focus_area: initialValues?.focus_area,
+      activity: initialValues?.activity,
+      elevation_gain_m: initialValues?.elevation_gain_m,
     },
   })
 
