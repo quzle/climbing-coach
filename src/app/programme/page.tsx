@@ -92,16 +92,25 @@ export default function ProgrammePage(): React.JSX.Element {
           </p>
         )}
 
-        {!isLoading && !error && !snapshot?.currentProgramme && (
-          <div className="py-16 text-center">
-            <p className="text-3xl mb-3">📋</p>
-            <p className="text-sm font-medium text-slate-600">No active programme found</p>
-            <p className="mt-1 text-xs text-slate-400">
-              Set one up to see your training plan here.
-            </p>
-            <Button asChild className="mt-5 min-h-[44px]">
-              <Link href="/programme/setup">Set Up Training Plan</Link>
-            </Button>
+        {!isLoading && !error && !snapshot?.currentProgramme && snapshot !== null && (
+          <div className="grid gap-4 lg:grid-cols-[minmax(0,0.8fr)_minmax(0,1.2fr)]">
+            <Card>
+              <CardHeader>
+                <CardTitle>Start Your Programme</CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-3 text-sm text-slate-600">
+                <p>
+                  Phase 2C is now live in-app. Create your macrocycle here, then add
+                  mesocycles and weekly structure without leaving the planner.
+                </p>
+                <p>
+                  Once a programme exists, this page becomes your planning workspace for
+                  edits, session generation, and week-ahead review.
+                </p>
+              </CardContent>
+            </Card>
+
+            <ProgrammeBuilderEditor snapshot={snapshot} onSaved={loadSnapshot} />
           </div>
         )}
 
@@ -207,6 +216,11 @@ export default function ProgrammePage(): React.JSX.Element {
                           <Badge variant="outline" className="capitalize text-xs">
                             {s.status}
                           </Badge>
+                          <Button asChild size="sm" className="min-h-[44px]">
+                            <Link href={`/session/log?planned_session_id=${s.id}`}>
+                              Start session
+                            </Link>
+                          </Button>
                         </li>
                       ))}
                     </ul>

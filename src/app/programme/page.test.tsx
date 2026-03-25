@@ -155,11 +155,19 @@ describe('ProgrammePage', () => {
     expect(screen.getByText('fingerboard')).toBeInTheDocument()
   })
 
+  it('renders start session link for an upcoming planned session', async () => {
+    mockFetchOk()
+    render(<ProgrammePage />)
+
+    const link = await screen.findByRole('link', { name: /start session/i })
+    expect(link).toHaveAttribute('href', '/session/log?planned_session_id=ps-1')
+  })
+
   it('shows empty state when no programme is active', async () => {
     mockFetchOk({ ...mockSnapshot, currentProgramme: null })
     render(<ProgrammePage />)
     await waitFor(() => {
-      expect(screen.getByText('No active programme found')).toBeInTheDocument()
+      expect(screen.getByText('Start Your Programme')).toBeInTheDocument()
     })
   })
 
@@ -167,17 +175,17 @@ describe('ProgrammePage', () => {
     mockFetchOk({ ...mockSnapshot, currentProgramme: null })
     render(<ProgrammePage />)
     await waitFor(() => {
-      expect(screen.getByText('No active programme found')).toBeInTheDocument()
+      expect(screen.getByText('Start Your Programme')).toBeInTheDocument()
     })
     expect(screen.queryByText('16-Week Peak 2026')).not.toBeInTheDocument()
   })
 
-  it('shows setup CTA in empty state', async () => {
+  it('shows builder editor instead of obsolete setup CTA in empty state', async () => {
     mockFetchOk({ ...mockSnapshot, currentProgramme: null })
     render(<ProgrammePage />)
 
-    const setupLink = await screen.findByRole('link', { name: /set up training plan/i })
-    expect(setupLink).toHaveAttribute('href', '/programme/setup')
+    expect(await screen.findByText('Programme Builder')).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: /create programme/i })).toBeInTheDocument()
   })
 
   it('shows error message when API returns an error', async () => {

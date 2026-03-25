@@ -94,4 +94,37 @@ describe('ProgrammeBuilderEditor', () => {
     })
     await waitFor(() => expect(onSaved).toHaveBeenCalled())
   })
+
+  it('creates a programme when no active programme exists', async () => {
+    const onSaved = jest.fn().mockResolvedValue(undefined)
+    render(
+      <ProgrammeBuilderEditor
+        snapshot={{ ...snapshot, currentProgramme: null, activeMesocycle: null, currentWeeklyTemplate: [] }}
+        onSaved={onSaved}
+      />,
+    )
+
+    fireEvent.change(screen.getByLabelText('Name'), {
+      target: { value: 'New Season' },
+    })
+    fireEvent.change(screen.getByLabelText('Goal'), {
+      target: { value: 'Build a first programme' },
+    })
+    fireEvent.change(screen.getByLabelText('Start Date'), {
+      target: { value: '2026-01-05' },
+    })
+    fireEvent.change(screen.getByLabelText('Target Date'), {
+      target: { value: '2026-04-26' },
+    })
+
+    fireEvent.click(screen.getByRole('button', { name: 'Create Programme' }))
+
+    await waitFor(() => {
+      expect(global.fetch).toHaveBeenCalledWith(
+        '/api/programmes',
+        expect.objectContaining({ method: 'POST' }),
+      )
+    })
+    await waitFor(() => expect(onSaved).toHaveBeenCalled())
+  })
 })

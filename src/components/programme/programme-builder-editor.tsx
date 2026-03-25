@@ -144,15 +144,19 @@ export function ProgrammeBuilderEditor({
   })
 
   async function submitProgramme(values: ProgrammeFormValues): Promise<void> {
-    if (snapshot.currentProgramme === null) return
     setError(null)
     setIsSavingProgramme(true)
     try {
-      const response = await fetch(`/api/programmes/${snapshot.currentProgramme.id}`, {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(values),
-      })
+      const isCreate = snapshot.currentProgramme === null
+      const currentProgrammeId = snapshot.currentProgramme?.id
+      const response = await fetch(
+        isCreate ? '/api/programmes' : `/api/programmes/${currentProgrammeId}`,
+        {
+          method: isCreate ? 'POST' : 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(values),
+        },
+      )
       const json = (await response.json()) as ApiResponse<{ programme: Programme }>
       if (!response.ok || json.error !== null) {
         setError(json.error ?? 'Failed to save programme settings.')
@@ -165,6 +169,17 @@ export function ProgrammeBuilderEditor({
       setIsSavingProgramme(false)
     }
   }
+
+  const programmeCardTitle =
+    snapshot.currentProgramme === null ? 'Create Programme' : 'Programme Settings'
+  const programmeButtonLabel =
+    snapshot.currentProgramme === null
+      ? isSavingProgramme
+        ? 'Creating programme...'
+        : 'Create Programme'
+      : isSavingProgramme
+        ? 'Saving programme...'
+        : 'Save Programme'
 
   async function submitMesocycle(values: MesocycleFormValues): Promise<void> {
     if (snapshot.activeMesocycle === null) return
@@ -261,52 +276,50 @@ export function ProgrammeBuilderEditor({
         </CardContent>
       </Card>
 
-      {snapshot.currentProgramme !== null ? (
-        <Card>
-          <CardHeader>
-            <CardTitle>Programme Settings</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <form
-              className="grid gap-3 md:grid-cols-2"
-              onSubmit={programmeForm.handleSubmit((values) => void submitProgramme(values))}
-            >
-              <div className="space-y-1 md:col-span-1">
-                <Label htmlFor="programme-name">Name</Label>
-                <Input id="programme-name" className="min-h-[44px]" {...programmeForm.register('name')} />
-              </div>
-              <div className="space-y-1 md:col-span-1">
-                <Label htmlFor="programme-goal">Goal</Label>
-                <Input id="programme-goal" className="min-h-[44px]" {...programmeForm.register('goal')} />
-              </div>
-              <div className="space-y-1">
-                <Label htmlFor="programme-start">Start Date</Label>
-                <Input id="programme-start" type="date" className="min-h-[44px]" {...programmeForm.register('start_date')} />
-              </div>
-              <div className="space-y-1">
-                <Label htmlFor="programme-target">Target Date</Label>
-                <Input id="programme-target" type="date" className="min-h-[44px]" {...programmeForm.register('target_date')} />
-              </div>
-              <div className="space-y-1 md:col-span-2">
-                <Label htmlFor="programme-notes">Notes</Label>
-                <Textarea
-                  id="programme-notes"
-                  className="min-h-[88px]"
-                  value={programmeForm.watch('notes') ?? ''}
-                  onChange={(event) =>
-                    programmeForm.setValue('notes', event.target.value.length > 0 ? event.target.value : null)
-                  }
-                />
-              </div>
-              <div className="md:col-span-2">
-                <Button type="submit" className="min-h-[44px]" disabled={isSavingProgramme}>
-                  {isSavingProgramme ? 'Saving programme...' : 'Save Programme'}
-                </Button>
-              </div>
-            </form>
-          </CardContent>
-        </Card>
-      ) : null}
+      <Card>
+        <CardHeader>
+          <CardTitle>{programmeCardTitle}</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <form
+            className="grid gap-3 md:grid-cols-2"
+            onSubmit={programmeForm.handleSubmit((values) => void submitProgramme(values))}
+          >
+            <div className="space-y-1 md:col-span-1">
+              <Label htmlFor="programme-name">Name</Label>
+              <Input id="programme-name" className="min-h-[44px]" {...programmeForm.register('name')} />
+            </div>
+            <div className="space-y-1 md:col-span-1">
+              <Label htmlFor="programme-goal">Goal</Label>
+              <Input id="programme-goal" className="min-h-[44px]" {...programmeForm.register('goal')} />
+            </div>
+            <div className="space-y-1">
+              <Label htmlFor="programme-start">Start Date</Label>
+              <Input id="programme-start" type="date" className="min-h-[44px]" {...programmeForm.register('start_date')} />
+            </div>
+            <div className="space-y-1">
+              <Label htmlFor="programme-target">Target Date</Label>
+              <Input id="programme-target" type="date" className="min-h-[44px]" {...programmeForm.register('target_date')} />
+            </div>
+            <div className="space-y-1 md:col-span-2">
+              <Label htmlFor="programme-notes">Notes</Label>
+              <Textarea
+                id="programme-notes"
+                className="min-h-[88px]"
+                value={programmeForm.watch('notes') ?? ''}
+                onChange={(event) =>
+                  programmeForm.setValue('notes', event.target.value.length > 0 ? event.target.value : null)
+                }
+              />
+            </div>
+            <div className="md:col-span-2">
+              <Button type="submit" className="min-h-[44px]" disabled={isSavingProgramme}>
+                {programmeButtonLabel}
+              </Button>
+            </div>
+          </form>
+        </CardContent>
+      </Card>
 
       {snapshot.activeMesocycle !== null ? (
         <Card>
