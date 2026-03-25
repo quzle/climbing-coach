@@ -1,6 +1,17 @@
 import type { AthleteContext, InjuryAreaHealth } from '@/types'
 import { formatContextForPrompt } from '@/services/ai/contextBuilder'
 
+const DAY_LABELS: Record<number, string> = {
+  0: 'Sun',
+  1: 'Mon',
+  2: 'Tue',
+  3: 'Wed',
+  4: 'Thu',
+  5: 'Fri',
+  6: 'Sat',
+  7: 'Sun',
+}
+
 /**
  * @description Generates the DECISION RULES injury section dynamically from the
  * athlete's currently tracked injury areas.
@@ -40,6 +51,111 @@ function buildInjurySection(
     lines.push('    → Reduce load on affected area by 50%')
     lines.push('    → Monitor carefully during session')
     lines.push('    → If it worsens mid-session: stop')
+  }
+
+  return lines.join('\n')
+}
+
+/**
+ * @description Converts a mesocycle date range into the current week position.
+ * @param startDate Planned start date of the mesocycle
+ * @param endDate Planned end date of the mesocycle
+ * @returns Human-readable week string, or null when dates are invalid
+ */
+function buildMesocycleWeekLabel(startDate: string, endDate: string): string | null {
+  const start = new Date(startDate)
+  const end = new Date(endDate)
+  const now = new Date()
+
+  if (Number.isNaN(start.getTime()) || Number.isNaN(end.getTime())) {
+    return null
+  }
+
+  const millisecondsPerDay = 24 * 60 * 60 * 1000
+  const millisecondsPerWeek = 7 * millisecondsPerDay
+  const totalWeeks = Math.max(
+    1,
+    Math.ceil((end.getTime() - start.getTime() + millisecondsPerDay) / millisecondsPerWeek),
+  )
+  const currentWeek = Math.min(
+    totalWeeks,
+    Math.max(1, Math.floor((now.getTime() - start.getTime()) / millisecondsPerWeek) + 1),
+  )
+
+  return `Week ${currentWeek}/${totalWeeks}`
+}
+
+/**
+ * @description Builds the current programme section dynamically from live programme data.
+ * @param context The current athlete context
+ * @returns Multi-line programme state section for the system prompt
+ */
+function buildProgrammeSection(context: AthleteContext): string {
+  const lines = ['=== CURRENT PROGRAMME STATE ===']
+
+  if (context.currentProgramme === null) {
+    lines.push('No active programme found in the app yet.')
+    lines.push(
+      'If the athlete asks for periodised planning, explain that the programme builder needs to be seeded first.',
+    )
+    return lines.join('\n')
+  }
+
+  const programme = context.currentProgramme
+  lines.push(`Programme: ${programme.name}`)
+  lines.push(`Start date: ${programme.start_date}`)
+  lines.push(`Target date: ${programme.target_date}`)
+  lines.push(`Goal: ${programme.goal}`)
+  if (programme.notes) {
+    lines.push(`Programme notes: ${programme.notes}`)
+  }
+
+  lines.push('')
+
+  if (context.activeMesocycle === null) {
+    lines.push('Current block: No active mesocycle found.')
+  } else {
+    const mesocycle = context.activeMesocycle
+    const weekLabel = buildMesocycleWeekLabel(
+      mesocycle.planned_start,
+      mesocycle.planned_end,
+    )
+    lines.push(`Current block: ${mesocycle.name}${weekLabel ? ` (${weekLabel})` : ''}`)
+    lines.push(`Phase type: ${mesocycle.phase_type}`)
+    lines.push(`Status: ${mesocycle.status}`)
+    lines.push(`Dates: ${mesocycle.planned_start} → ${mesocycle.planned_end}`)
+    lines.push(`Focus: ${mesocycle.focus}`)
+    if (mesocycle.interruption_notes) {
+      lines.push(`Interruption notes: ${mesocycle.interruption_notes}`)
+    }
+  }
+
+  lines.push('')
+  lines.push('=== WEEKLY TEMPLATE (ACTIVE MESOCYCLE) ===')
+  if (context.currentWeeklyTemplate.length === 0) {
+    lines.push('No weekly template has been defined for the active mesocycle.')
+  } else {
+    for (const slot of context.currentWeeklyTemplate) {
+      const dayLabel = DAY_LABELS[slot.day_of_week] ?? `Day ${slot.day_of_week}`
+      const focusSuffix = slot.primary_focus ? ` — ${slot.primary_focus}` : ''
+      const durationSuffix = slot.duration_mins !== null ? ` (${slot.duration_mins} min)` : ''
+      lines.push(
+        `${dayLabel}: ${slot.session_label} [${slot.session_type}, ${slot.intensity}]${durationSuffix}${focusSuffix}`,
+      )
+    }
+  }
+
+  lines.push('')
+  lines.push('=== UPCOMING PLANNED SESSIONS ===')
+  if (context.upcomingPlannedSessions.length === 0) {
+    lines.push('No planned sessions generated for the next 7 days.')
+  } else {
+    for (const session of context.upcomingPlannedSessions.slice(0, 7)) {
+      const notesSuffix = session.generation_notes ? ` — ${session.generation_notes}` : ''
+      lines.push(
+        `${session.planned_date}: ${session.session_type} [${session.status}]${notesSuffix}`,
+      )
+    }
   }
 
   return lines.join('\n')
@@ -107,42 +223,7 @@ Injury history:
   ALWAYS review active warnings and injury area health before recommending any session.
   If any area appeared in injury_flags during recent sessions, address it before any other topic.
 
-// ─────────────────────────────────────────────────
-// PROGRAMME_STATE_OVERRIDE
-// TODO: Replace with dynamic programme context
-// in Phase 2. See ADR 003.
-// Update this block manually when phases change.
-// Last updated: 2026-03-24
-// ─────────────────────────────────────────────────
-
-=== CURRENT PROGRAMME STATE ===
-
-Programme: 2024-25 Multipitch Performance Season
-Start date: October 2024
-Target: Autumn 2025 outdoor season
-
-Completed phases:
-  Base Strength (Oct-Jan, 3 months) — COMPLETED
-  Focus: injury prevention, general strength foundation, reduced shoulder overuse risk.
-
-Current situation:
-  Power Phase — INTERRUPTED after week 2 (February)
-  Reason: illness, approximately 4 weeks of very reduced training (1 kilterboard session, 1 bouldering session in 4 weeks).
-  Status: returning to training now.
-
-Planned phases ahead:
-  Abbreviated Power Phase resumption (3-4 weeks)
-    → Recapture lost power adaptations before May
-    → Do not skip this — jumping to climbing-specific work without adequate power base risks poor performance AND injury
-  Climbing-Specific Phase (May-June, slight delay from original plan acceptable)
-    → Transition to sport-specific work
-    → Volume endurance, onsight practice, route reading, efficiency
-  Performance Phase (July-August)
-    → Peak for autumn season
-    → Sharpen, maintain, recover
-  Outdoor Season (Autumn 2025)
-    → Target: onsight 7a-7b on limestone and granite
-    → Key objectives: multipitch, sustained grades, route reading, gear efficiency
+${buildProgrammeSection(context)}
 
 === RETURN-TO-TRAINING PROTOCOL ===
 
@@ -167,34 +248,6 @@ Week 3 back:
 Do NOT allow the athlete to skip or compress this protocol even if they feel good.
 If they push back, explain:
   Illness causes measurable detraining in as little as 2 weeks — connective tissue (tendons, pulleys) deconditions more slowly than cardiovascular fitness but also recovers more slowly. Coming back too hard after illness is a leading cause of finger and shoulder injuries in climbers.
-
-// ─────────────────────────────────────────────────
-// END PROGRAMME_STATE_OVERRIDE
-// ─────────────────────────────────────────────────
-
-=== NORMAL WEEKLY TRAINING STRUCTURE ===
-
-Monday:    Hard bouldering session (gym, with friends)
-           Intensity: HIGH
-           This is a social commitment — do not reschedule.
-           In return-to-training protocol: reduce volume, not the session itself.
-
-Wednesday: Kilterboard session (short)
-           Intensity: MEDIUM
-           Focus: movement quality, power-endurance
-
-Friday:    Lead climbing session
-           Intensity: MEDIUM-HIGH
-           Focus: route reading, endurance, efficiency
-
-Weekend:   One day strength training (weights/cables)
-           Focus: antagonist work, shoulder stability, injury prevention — NEVER skip this
-
-           One day hiking or ski touring
-           Purpose: aerobic base, enjoyment, recovery
-           This is fun-primary — do not over-prescribe.
-
-Note: total weekly load = 3 climbing sessions + 1 strength + 1 aerobic. This is sustainable and appropriate for current phase.
 
 === DECISION RULES ===
 

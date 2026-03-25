@@ -54,6 +54,15 @@ export type WeeklyTemplateInsert = Database['public']['Tables']['weekly_template
 /** Payload for creating a new planned session. */
 export type PlannedSessionInsert = Database['public']['Tables']['planned_sessions']['Insert']
 
+/** Payload for updating an existing programme. */
+export type ProgrammeUpdate = Database['public']['Tables']['programmes']['Update']
+
+/** Payload for updating an existing mesocycle. */
+export type MesocycleUpdate = Database['public']['Tables']['mesocycles']['Update']
+
+/** Payload for updating an existing weekly template slot. */
+export type WeeklyTemplateUpdate = Database['public']['Tables']['weekly_templates']['Update']
+
 /** Payload for creating a new readiness check-in. */
 export type ReadinessCheckinInsert = Database['public']['Tables']['readiness_checkins']['Insert']
 
@@ -364,6 +373,14 @@ export type AthleteContext = {
   currentFingerHealth: number | null
   /** True if today's or any recent checkin has illness_flag set */
   illnessFlag: boolean
+  /** Current active programme, or null when none is live today. */
+  currentProgramme: Programme | null
+  /** Current active mesocycle, or null when no block is active. */
+  activeMesocycle: Mesocycle | null
+  /** Weekly template rows for the active mesocycle ordered by day_of_week. */
+  currentWeeklyTemplate: WeeklyTemplate[]
+  /** Planned sessions for the next 7 days ordered by planned_date ascending. */
+  upcomingPlannedSessions: PlannedSession[]
   /**
    * All tracked injury areas with their current health scores from today's check-in.
    * Populated from readiness_checkins.injury_area_health (jsonb).
@@ -381,6 +398,19 @@ export type AthleteContext = {
    *           "4 consecutive training days — consider rest"
    */
   warnings: string[]
+}
+
+/**
+ * Aggregated planning snapshot used by the Phase 2 programme builder UI.
+ * This combines active programme state, full mesocycle list, current template,
+ * and upcoming planned sessions into a single API response shape.
+ */
+export type ProgrammeBuilderSnapshot = {
+  currentProgramme: Programme | null
+  activeMesocycle: Mesocycle | null
+  mesocycles: Mesocycle[]
+  currentWeeklyTemplate: WeeklyTemplate[]
+  upcomingPlannedSessions: PlannedSession[]
 }
 
 // =============================================================================

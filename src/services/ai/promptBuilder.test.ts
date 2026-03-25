@@ -1,4 +1,10 @@
-import type { AthleteContext } from '@/types'
+import type {
+  AthleteContext,
+  Mesocycle,
+  PlannedSession,
+  Programme,
+  WeeklyTemplate,
+} from '@/types'
 import { formatContextForPrompt } from '@/services/ai/contextBuilder'
 import { buildSystemPrompt } from './promptBuilder'
 
@@ -33,11 +39,76 @@ function makeAthleteContext(
     daysSinceLastSession: 2,
     currentFingerHealth: 5,
     illnessFlag: false,
+    currentProgramme: null,
+    activeMesocycle: null,
+    currentWeeklyTemplate: [],
+    upcomingPlannedSessions: [],
     warnings: [],
     injuryAreas: [],
     criticalInjuryAreas: [],
     lowInjuryAreas: [],
     activeInjuryFlags: [],
+    ...overrides,
+  }
+}
+
+function makeProgramme(overrides?: Partial<Programme>): Programme {
+  return {
+    id: 'programme-1',
+    created_at: '2026-03-25T10:00:00Z',
+    goal: 'Consistent 7b onsight',
+    name: 'Summer Multipitch Season',
+    notes: null,
+    start_date: '2026-01-05',
+    target_date: '2026-04-26',
+    ...overrides,
+  }
+}
+
+function makeMesocycle(overrides?: Partial<Mesocycle>): Mesocycle {
+  return {
+    id: 'mesocycle-1',
+    actual_end: null,
+    actual_start: null,
+    created_at: '2026-03-25T10:00:00Z',
+    focus: 'Limit bouldering and finger strength',
+    interruption_notes: null,
+    name: 'Power & Finger Strength',
+    phase_type: 'power',
+    planned_end: '2026-03-30',
+    planned_start: '2026-03-03',
+    programme_id: 'programme-1',
+    status: 'active',
+    ...overrides,
+  }
+}
+
+function makeWeeklyTemplate(overrides?: Partial<WeeklyTemplate>): WeeklyTemplate {
+  return {
+    id: 'template-1',
+    day_of_week: 1,
+    duration_mins: 90,
+    intensity: 'high',
+    mesocycle_id: 'mesocycle-1',
+    notes: null,
+    primary_focus: 'Power',
+    session_label: 'Limit Bouldering',
+    session_type: 'bouldering',
+    ...overrides,
+  }
+}
+
+function makePlannedSession(overrides?: Partial<PlannedSession>): PlannedSession {
+  return {
+    id: 'planned-session-1',
+    created_at: '2026-03-25T10:00:00Z',
+    generated_plan: null,
+    generation_notes: 'Increase volume by 10%',
+    mesocycle_id: 'mesocycle-1',
+    planned_date: '2026-03-26',
+    session_type: 'bouldering',
+    status: 'planned',
+    template_id: 'template-1',
     ...overrides,
   }
 }
@@ -85,7 +156,7 @@ describe('buildSystemPrompt', () => {
     const prompt = buildSystemPrompt(makeAthleteContext())
 
     expect(prompt).toContain('onsight')
-    expect(prompt).toContain('route reading')
+    expect(prompt).toContain('Route reading')
   })
 
   it('includes the dynamic context section', () => {
@@ -93,6 +164,43 @@ describe('buildSystemPrompt', () => {
 
     expect(prompt).toContain('CURRENT ATHLETE CONTEXT')
     expect(prompt).toContain('TEST CONTEXT')
+  })
+
+  it('falls back gracefully when no active programme exists', () => {
+    const prompt = buildSystemPrompt(makeAthleteContext())
+
+    expect(prompt).toContain('CURRENT PROGRAMME STATE')
+    expect(prompt).toContain('No active programme found in the app yet')
+  })
+
+  it('renders live programme state, weekly template, and upcoming sessions', () => {
+    const prompt = buildSystemPrompt(
+      makeAthleteContext({
+        currentProgramme: makeProgramme(),
+        activeMesocycle: makeMesocycle(),
+        currentWeeklyTemplate: [
+          makeWeeklyTemplate(),
+          makeWeeklyTemplate({
+            id: 'template-2',
+            day_of_week: 4,
+            duration_mins: 75,
+            intensity: 'medium',
+            primary_focus: 'Power-endurance',
+            session_label: 'Circuits',
+            session_type: 'lead',
+          }),
+        ],
+        upcomingPlannedSessions: [makePlannedSession()],
+      }),
+    )
+
+    expect(prompt).toContain('Summer Multipitch Season')
+    expect(prompt).toContain('Power & Finger Strength')
+    expect(prompt).toContain('WEEKLY TEMPLATE (ACTIVE MESOCYCLE)')
+    expect(prompt).toContain('Mon: Limit Bouldering')
+    expect(prompt).toContain('Thu: Circuits')
+    expect(prompt).toContain('UPCOMING PLANNED SESSIONS')
+    expect(prompt).toContain('2026-03-26: bouldering [planned]')
   })
 
   it('includes all decision rules', () => {

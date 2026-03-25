@@ -1,4 +1,12 @@
-import type { InjuryAreaRow, ReadinessCheckin, SessionLog } from '@/types'
+import type {
+  InjuryAreaRow,
+  Mesocycle,
+  PlannedSession,
+  Programme,
+  ReadinessCheckin,
+  SessionLog,
+  WeeklyTemplate,
+} from '@/types'
 import {
   getTodaysCheckin,
   getRecentCheckins,
@@ -10,7 +18,16 @@ import {
   getLastSessionDate,
 } from '@/services/data/sessionRepository'
 import { getActiveInjuryAreas } from '@/services/data/injuryAreasRepository'
-import { buildAthleteContext, formatContextForPrompt, parseInjuryAreaHealth } from './contextBuilder'
+import { getActiveProgramme } from '@/services/data/programmeRepository'
+import { getActiveMesocycle } from '@/services/data/mesocycleRepository'
+import { getWeeklyTemplateByMesocycle } from '@/services/data/weeklyTemplateRepository'
+import { getUpcomingPlannedSessions } from '@/services/data/plannedSessionRepository'
+import {
+  buildAthleteContext,
+  buildProgrammeContext,
+  formatContextForPrompt,
+  parseInjuryAreaHealth,
+} from './contextBuilder'
 
 // =============================================================================
 // MODULE MOCKS
@@ -32,6 +49,22 @@ jest.mock('@/services/data/injuryAreasRepository', () => ({
   getActiveInjuryAreas: jest.fn(),
 }))
 
+jest.mock('@/services/data/programmeRepository', () => ({
+  getActiveProgramme: jest.fn(),
+}))
+
+jest.mock('@/services/data/mesocycleRepository', () => ({
+  getActiveMesocycle: jest.fn(),
+}))
+
+jest.mock('@/services/data/weeklyTemplateRepository', () => ({
+  getWeeklyTemplateByMesocycle: jest.fn(),
+}))
+
+jest.mock('@/services/data/plannedSessionRepository', () => ({
+  getUpcomingPlannedSessions: jest.fn(),
+}))
+
 // Typed references to mocked functions
 const mockGetTodaysCheckin = getTodaysCheckin as jest.Mock
 const mockGetRecentCheckins = getRecentCheckins as jest.Mock
@@ -40,6 +73,10 @@ const mockGetRecentSessions = getRecentSessions as jest.Mock
 const mockGetSessionCountThisWeek = getSessionCountThisWeek as jest.Mock
 const mockGetLastSessionDate = getLastSessionDate as jest.Mock
 const mockGetActiveInjuryAreas = getActiveInjuryAreas as jest.Mock
+const mockGetActiveProgramme = getActiveProgramme as jest.Mock
+const mockGetActiveMesocycle = getActiveMesocycle as jest.Mock
+const mockGetWeeklyTemplateByMesocycle = getWeeklyTemplateByMesocycle as jest.Mock
+const mockGetUpcomingPlannedSessions = getUpcomingPlannedSessions as jest.Mock
 
 // =============================================================================
 // FACTORIES & HELPERS
@@ -102,6 +139,67 @@ function makeInjuryAreaRow(overrides?: Partial<InjuryAreaRow>): InjuryAreaRow {
   }
 }
 
+function makeProgramme(overrides?: Partial<Programme>): Programme {
+  return {
+    id: 'programme-1',
+    created_at: '2026-03-25T10:00:00Z',
+    goal: 'Consistent 7b onsight',
+    name: 'Summer Multipitch Season',
+    notes: null,
+    start_date: '2026-01-05',
+    target_date: '2026-04-26',
+    ...overrides,
+  }
+}
+
+function makeMesocycle(overrides?: Partial<Mesocycle>): Mesocycle {
+  return {
+    id: 'mesocycle-1',
+    actual_end: null,
+    actual_start: null,
+    created_at: '2026-03-25T10:00:00Z',
+    focus: 'Power and finger strength',
+    interruption_notes: null,
+    name: 'Power Block',
+    phase_type: 'power',
+    planned_end: '2026-03-30',
+    planned_start: '2026-03-03',
+    programme_id: 'programme-1',
+    status: 'active',
+    ...overrides,
+  }
+}
+
+function makeWeeklyTemplate(overrides?: Partial<WeeklyTemplate>): WeeklyTemplate {
+  return {
+    id: 'template-1',
+    day_of_week: 1,
+    duration_mins: 90,
+    intensity: 'high',
+    mesocycle_id: 'mesocycle-1',
+    notes: null,
+    primary_focus: 'Power',
+    session_label: 'Limit Bouldering',
+    session_type: 'bouldering',
+    ...overrides,
+  }
+}
+
+function makePlannedSession(overrides?: Partial<PlannedSession>): PlannedSession {
+  return {
+    id: 'planned-session-1',
+    created_at: '2026-03-25T10:00:00Z',
+    generated_plan: null,
+    generation_notes: null,
+    mesocycle_id: 'mesocycle-1',
+    planned_date: '2026-03-26',
+    session_type: 'bouldering',
+    status: 'planned',
+    template_id: 'template-1',
+    ...overrides,
+  }
+}
+
 /**
  * Returns an ISO date string (YYYY-MM-DD) for n days before today.
  * Uses local date components (not toISOString) so the result matches the
@@ -141,6 +239,41 @@ beforeEach(() => {
   mockGetSessionCountThisWeek.mockResolvedValue({ data: 3, error: null })
   mockGetLastSessionDate.mockResolvedValue({ data: '2025-03-22', error: null })
   mockGetActiveInjuryAreas.mockResolvedValue({ data: [], error: null })
+  mockGetActiveProgramme.mockResolvedValue({ data: null, error: null })
+  mockGetActiveMesocycle.mockResolvedValue({ data: null, error: null })
+  mockGetWeeklyTemplateByMesocycle.mockResolvedValue({ data: [], error: null })
+  mockGetUpcomingPlannedSessions.mockResolvedValue({ data: [], error: null })
+})
+
+describe('buildProgrammeContext', () => {
+  it('returns live programme state when planning data exists', async () => {
+    mockGetActiveProgramme.mockResolvedValue({ data: makeProgramme(), error: null })
+    mockGetActiveMesocycle.mockResolvedValue({ data: makeMesocycle(), error: null })
+    mockGetWeeklyTemplateByMesocycle.mockResolvedValue({
+      data: [makeWeeklyTemplate()],
+      error: null,
+    })
+    mockGetUpcomingPlannedSessions.mockResolvedValue({
+      data: [makePlannedSession()],
+      error: null,
+    })
+
+    const result = await buildProgrammeContext()
+
+    expect(result.currentProgramme?.name).toBe('Summer Multipitch Season')
+    expect(result.activeMesocycle?.name).toBe('Power Block')
+    expect(result.currentWeeklyTemplate).toHaveLength(1)
+    expect(result.upcomingPlannedSessions).toHaveLength(1)
+  })
+
+  it('returns safe fallbacks when no planning data exists', async () => {
+    const result = await buildProgrammeContext()
+
+    expect(result.currentProgramme).toBeNull()
+    expect(result.activeMesocycle).toBeNull()
+    expect(result.currentWeeklyTemplate).toEqual([])
+    expect(result.upcomingPlannedSessions).toEqual([])
+  })
 })
 
 // =============================================================================
@@ -166,6 +299,28 @@ describe('computeWarnings — illness', () => {
     const context = await buildAthleteContext()
 
     expect(context.warnings.some((w) => w.includes('ILLNESS'))).toBe(false)
+  })
+})
+
+describe('buildAthleteContext — programme context', () => {
+  it('merges current programme state into AthleteContext', async () => {
+    mockGetActiveProgramme.mockResolvedValue({ data: makeProgramme(), error: null })
+    mockGetActiveMesocycle.mockResolvedValue({ data: makeMesocycle(), error: null })
+    mockGetWeeklyTemplateByMesocycle.mockResolvedValue({
+      data: [makeWeeklyTemplate()],
+      error: null,
+    })
+    mockGetUpcomingPlannedSessions.mockResolvedValue({
+      data: [makePlannedSession()],
+      error: null,
+    })
+
+    const context = await buildAthleteContext()
+
+    expect(context.currentProgramme?.name).toBe('Summer Multipitch Season')
+    expect(context.activeMesocycle?.phase_type).toBe('power')
+    expect(context.currentWeeklyTemplate[0]?.session_label).toBe('Limit Bouldering')
+    expect(context.upcomingPlannedSessions[0]?.planned_date).toBe('2026-03-26')
   })
 })
 

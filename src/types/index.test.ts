@@ -1,10 +1,14 @@
 import type {
   ApiResponse,
   AthleteContext,
+  Mesocycle,
+  PlannedSession,
+  Programme,
   GradeResult,
   SessionLog,
   SessionLogData,
   SessionType,
+  WeeklyTemplate,
 } from '@/types'
 
 // -----------------------------------------------------------------------------
@@ -77,6 +81,55 @@ describe('AthleteContext', () => {
       injury_flags: null,
     }
 
+    const programme: Programme = {
+      id: 'programme-1',
+      created_at: '2026-03-24T10:00:00Z',
+      goal: 'Consistent 7b onsight',
+      name: 'Summer Multipitch Season',
+      notes: null,
+      start_date: '2026-01-05',
+      target_date: '2026-04-26',
+    }
+
+    const mesocycle: Mesocycle = {
+      id: 'mesocycle-1',
+      actual_end: null,
+      actual_start: null,
+      created_at: '2026-03-24T10:00:00Z',
+      focus: 'Power and finger strength',
+      interruption_notes: null,
+      name: 'Power Block',
+      phase_type: 'power',
+      planned_end: '2026-03-30',
+      planned_start: '2026-03-03',
+      programme_id: 'programme-1',
+      status: 'active',
+    }
+
+    const weeklyTemplate: WeeklyTemplate = {
+      id: 'template-1',
+      day_of_week: 1,
+      duration_mins: 90,
+      intensity: 'high',
+      mesocycle_id: 'mesocycle-1',
+      notes: null,
+      primary_focus: 'Power',
+      session_label: 'Limit Bouldering',
+      session_type: 'bouldering',
+    }
+
+    const plannedSession: PlannedSession = {
+      id: 'planned-1',
+      created_at: '2026-03-24T10:00:00Z',
+      generated_plan: null,
+      generation_notes: null,
+      mesocycle_id: 'mesocycle-1',
+      planned_date: '2026-03-25',
+      session_type: 'bouldering',
+      status: 'planned',
+      template_id: 'template-1',
+    }
+
     const context: AthleteContext = {
       todaysReadiness: null,
       weeklyReadinessAvg: 3.75,
@@ -87,6 +140,10 @@ describe('AthleteContext', () => {
       daysSinceLastSession: 0,
       currentFingerHealth: 4,
       illnessFlag: false,
+      currentProgramme: programme,
+      activeMesocycle: mesocycle,
+      currentWeeklyTemplate: [weeklyTemplate],
+      upcomingPlannedSessions: [plannedSession],
       injuryAreas: [],
       activeInjuryFlags: [],
       criticalInjuryAreas: [],

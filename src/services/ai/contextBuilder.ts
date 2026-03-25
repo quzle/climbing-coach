@@ -9,12 +9,20 @@ import {
   getLastSessionDate,
 } from '@/services/data/sessionRepository'
 import { getActiveInjuryAreas } from '@/services/data/injuryAreasRepository'
+import { getActiveProgramme } from '@/services/data/programmeRepository'
+import { getActiveMesocycle } from '@/services/data/mesocycleRepository'
+import { getWeeklyTemplateByMesocycle } from '@/services/data/weeklyTemplateRepository'
+import { getUpcomingPlannedSessions } from '@/services/data/plannedSessionRepository'
 import type {
   AthleteContext,
   InjuryAreaHealth,
   InjuryAreaRow,
+  Mesocycle,
+  PlannedSession,
+  Programme,
   ReadinessCheckin,
   SessionLog,
+  WeeklyTemplate,
 } from '@/types'
 
 // =============================================================================
@@ -176,6 +184,65 @@ function computeWarnings(
 // =============================================================================
 
 /**
+ * @description Fetches the active programme slice used by the AI coach.
+ * This includes the current programme, active mesocycle, weekly template for
+ * that mesocycle, and upcoming planned sessions for the next 7 days.
+ *
+ * @returns Planning-related subset of AthleteContext with safe fallbacks
+ */
+export async function buildProgrammeContext(): Promise<
+  Pick<
+    AthleteContext,
+    'currentProgramme' | 'activeMesocycle' | 'currentWeeklyTemplate' | 'upcomingPlannedSessions'
+  >
+> {
+  const [activeProgrammeResult, activeMesocycleResult, upcomingPlannedSessionsResult] =
+    await Promise.all([
+      getActiveProgramme(),
+      getActiveMesocycle(),
+      getUpcomingPlannedSessions(7),
+    ])
+
+  if (activeProgrammeResult.error !== null) {
+    console.error('[contextBuilder.buildProgrammeContext] getActiveProgramme failed:', activeProgrammeResult.error)
+  }
+  const currentProgramme: Programme | null = activeProgrammeResult.data ?? null
+
+  if (activeMesocycleResult.error !== null) {
+    console.error('[contextBuilder.buildProgrammeContext] getActiveMesocycle failed:', activeMesocycleResult.error)
+  }
+  const activeMesocycle: Mesocycle | null = activeMesocycleResult.data ?? null
+
+  if (upcomingPlannedSessionsResult.error !== null) {
+    console.error(
+      '[contextBuilder.buildProgrammeContext] getUpcomingPlannedSessions failed:',
+      upcomingPlannedSessionsResult.error,
+    )
+  }
+  const upcomingPlannedSessions: PlannedSession[] =
+    upcomingPlannedSessionsResult.data ?? []
+
+  let currentWeeklyTemplate: WeeklyTemplate[] = []
+  if (activeMesocycle !== null) {
+    const weeklyTemplateResult = await getWeeklyTemplateByMesocycle(activeMesocycle.id)
+    if (weeklyTemplateResult.error !== null) {
+      console.error(
+        '[contextBuilder.buildProgrammeContext] getWeeklyTemplateByMesocycle failed:',
+        weeklyTemplateResult.error,
+      )
+    }
+    currentWeeklyTemplate = weeklyTemplateResult.data ?? []
+  }
+
+  return {
+    currentProgramme,
+    activeMesocycle,
+    currentWeeklyTemplate,
+    upcomingPlannedSessions,
+  }
+}
+
+/**
  * @description Fetches all athlete data from Supabase and assembles a complete
  * AthleteContext object. All data fetches run in parallel via Promise.all to
  * minimise latency on each serverless invocation.
@@ -196,6 +263,7 @@ export async function buildAthleteContext(): Promise<AthleteContext> {
     sessionCountResult,
     lastSessionDateResult,
     activeInjuryAreasResult,
+    programmeContext,
   ] = await Promise.all([
     getTodaysCheckin(),
     getRecentCheckins(14),
@@ -204,6 +272,7 @@ export async function buildAthleteContext(): Promise<AthleteContext> {
     getSessionCountThisWeek(),
     getLastSessionDate(),
     getActiveInjuryAreas(),
+    buildProgrammeContext(),
   ])
 
   // Extract data, logging any errors and falling back to safe defaults
@@ -295,6 +364,10 @@ export async function buildAthleteContext(): Promise<AthleteContext> {
     daysSinceLastSession,
     currentFingerHealth,
     illnessFlag,
+    currentProgramme: programmeContext.currentProgramme,
+    activeMesocycle: programmeContext.activeMesocycle,
+    currentWeeklyTemplate: programmeContext.currentWeeklyTemplate,
+    upcomingPlannedSessions: programmeContext.upcomingPlannedSessions,
     injuryAreas,
     activeInjuryFlags,
     criticalInjuryAreas,
