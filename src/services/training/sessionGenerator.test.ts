@@ -144,8 +144,8 @@ beforeEach(() => {
   mockGetActiveMesocycle.mockResolvedValue({ data: makeMesocycle(), error: null })
   mockGetWeeklyTemplateByMesocycle.mockResolvedValue({
     data: [
-      makeWeeklyTemplate({ id: 'template-1', day_of_week: 1, session_type: 'bouldering' }),
-      makeWeeklyTemplate({ id: 'template-2', day_of_week: 4, session_type: 'fingerboard' }),
+      makeWeeklyTemplate({ id: 'template-1', day_of_week: 0, session_type: 'bouldering' }),
+      makeWeeklyTemplate({ id: 'template-2', day_of_week: 2, session_type: 'fingerboard' }),
     ],
     error: null,
   })
@@ -179,7 +179,7 @@ describe('generatePlannedSessionsForActiveMesocycle', () => {
     )
     expect(mockCreatePlannedSession).toHaveBeenCalledWith(
       expect.objectContaining({
-        planned_date: '2026-04-02',
+        planned_date: '2026-04-01',
         template_id: 'template-2',
         session_type: 'fingerboard',
       }),
@@ -215,7 +215,7 @@ describe('generatePlannedSessionsForActiveMesocycle', () => {
     expect(mockCreatePlannedSession).toHaveBeenCalledTimes(1)
     expect(mockCreatePlannedSession).toHaveBeenCalledWith(
       expect.objectContaining({
-        planned_date: '2026-04-02',
+        planned_date: '2026-04-01',
         template_id: 'template-2',
       }),
     )

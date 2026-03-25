@@ -179,10 +179,10 @@ describe('buildSystemPrompt', () => {
         currentProgramme: makeProgramme(),
         activeMesocycle: makeMesocycle(),
         currentWeeklyTemplate: [
-          makeWeeklyTemplate(),
+          makeWeeklyTemplate({ day_of_week: 0 }),
           makeWeeklyTemplate({
             id: 'template-2',
-            day_of_week: 4,
+            day_of_week: 2,
             duration_mins: 75,
             intensity: 'medium',
             primary_focus: 'Power-endurance',
@@ -198,7 +198,7 @@ describe('buildSystemPrompt', () => {
     expect(prompt).toContain('Power & Finger Strength')
     expect(prompt).toContain('WEEKLY TEMPLATE (ACTIVE MESOCYCLE)')
     expect(prompt).toContain('Mon: Limit Bouldering')
-    expect(prompt).toContain('Thu: Circuits')
+    expect(prompt).toContain('Wed: Circuits')
     expect(prompt).toContain('UPCOMING PLANNED SESSIONS')
     expect(prompt).toContain('2026-03-26: bouldering [planned]')
   })

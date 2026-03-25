@@ -43,7 +43,7 @@ const mockSnapshot = {
     {
       id: 'wt-2',
       mesocycle_id: 'meso-1',
-      day_of_week: 3,
+      day_of_week: 2,
       session_type: 'bouldering',
       session_label: 'Bouldering — Hard Problems',
       intensity: 'high',
@@ -54,7 +54,7 @@ const mockSnapshot = {
     {
       id: 'wt-1',
       mesocycle_id: 'meso-1',
-      day_of_week: 1,
+      day_of_week: 0,
       session_type: 'fingerboard',
       session_label: 'Fingerboard — Limit Hangs',
       intensity: 'high',
