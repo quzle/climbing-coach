@@ -12,10 +12,10 @@ import type { ChatMessage, ChatMessageInsert } from '@/types'
  * @description Gemini model identifier. Update this string to change model
  * without touching business logic.
  * If this exact model ID is unavailable, check aistudio.google.com for the
- * current Gemini 2.5 Pro model ID and update this constant.
+ * current Gemini 3.1 Flash preview model ID and update this constant.
  * @see docs/architecture/decisions/002-gemini-over-openai.md
  */
-const MODEL_NAME = 'gemini-2.5-pro'
+const MODEL_NAME = 'gemini-3.1-flash-lite-preview'
 
 /**
  * @description Maximum number of previous chat messages to include in each
