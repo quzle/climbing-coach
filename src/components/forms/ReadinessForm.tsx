@@ -331,6 +331,7 @@ export function ReadinessForm({
           {/* Step input */}
           {currentStepConfig.type === 'rating' && (
             <Controller
+              key={currentStepConfig.field}
               control={form.control}
               name={currentStepConfig.field}
               render={({ field }) => (
