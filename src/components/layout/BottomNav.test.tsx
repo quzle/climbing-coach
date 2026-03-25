@@ -26,7 +26,7 @@ jest.mock('next/link', () => {
 // =============================================================================
 
 describe('BottomNav', () => {
-  it('renders all 5 navigation tabs', () => {
+  it('renders all 6 navigation tabs', () => {
     mockUsePathname.mockReturnValue('/')
     render(<BottomNav />)
 
@@ -35,6 +35,7 @@ describe('BottomNav', () => {
     expect(screen.getByText('Log')).toBeInTheDocument()
     expect(screen.getByText('Chat')).toBeInTheDocument()
     expect(screen.getByText('History')).toBeInTheDocument()
+    expect(screen.getByText('Profile')).toBeInTheDocument()
   })
 
   it('renders correct hrefs for each tab', () => {
@@ -46,6 +47,7 @@ describe('BottomNav', () => {
     expect(screen.getByRole('link', { name: /^log$/i })).toHaveAttribute('href', '/session/log')
     expect(screen.getByRole('link', { name: /^chat$/i })).toHaveAttribute('href', '/chat')
     expect(screen.getByRole('link', { name: /history/i })).toHaveAttribute('href', '/history')
+    expect(screen.getByRole('link', { name: /^profile$/i })).toHaveAttribute('href', '/profile')
   })
 
   it('applies active styles to the Home tab when on /', () => {
@@ -95,6 +97,14 @@ describe('BottomNav', () => {
 
     const historyLink = screen.getByRole('link', { name: /history/i })
     expect(historyLink).toHaveClass('text-blue-600')
+  })
+
+  it('applies active styles to Profile tab when on /profile', () => {
+    mockUsePathname.mockReturnValue('/profile')
+    render(<BottomNav />)
+
+    const profileLink = screen.getByRole('link', { name: /^profile$/i })
+    expect(profileLink).toHaveClass('text-blue-600')
   })
 
   it('only one tab is active at a time', () => {

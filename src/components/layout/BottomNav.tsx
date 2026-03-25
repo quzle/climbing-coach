@@ -2,7 +2,7 @@
 
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
-import { Home, ClipboardCheck, Dumbbell, MessageCircle, History } from 'lucide-react'
+import { Home, ClipboardCheck, Dumbbell, MessageCircle, History, User } from 'lucide-react'
 
 const TABS = [
   { href: '/', label: 'Home', icon: Home },
@@ -10,6 +10,7 @@ const TABS = [
   { href: '/session/log', label: 'Log', icon: Dumbbell },
   { href: '/chat', label: 'Chat', icon: MessageCircle },
   { href: '/history', label: 'History', icon: History },
+  { href: '/profile', label: 'Profile', icon: User },
 ] as const
 
 /**
