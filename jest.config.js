@@ -20,6 +20,9 @@ const config = {
     // Mock static file imports (images, fonts, svg, etc.)
     '\\.(jpg|jpeg|png|gif|webp|svg|ico|woff|woff2|ttf|otf|eot)$':
       '<rootDir>/__mocks__/fileMock.ts',
+    // ESM-only packages: redirect to CJS-compatible mocks
+    '^react-markdown$': '<rootDir>/__mocks__/react-markdown.tsx',
+    '^rehype-sanitize$': '<rootDir>/__mocks__/rehype-sanitize.ts',
   },
   transform: {
     '^.+\\.tsx?$': [

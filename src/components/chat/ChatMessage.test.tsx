@@ -54,10 +54,29 @@ describe('ChatMessage', () => {
 
   it('renders multiline content preserving whitespace', () => {
     const { container } = render(
-      <ChatMessage message={makeMessage({ content: 'Line one\nLine two' })} />,
+      <ChatMessage message={makeMessage({ role: 'user', content: 'Line one\nLine two' })} />,
     )
     // RTL normalises whitespace in text queries; query the p element directly
     const p = container.querySelector('p')
     expect(p).toHaveClass('whitespace-pre-wrap')
+  })
+
+  it('renders assistant message content through ReactMarkdown', () => {
+    render(
+      <ChatMessage
+        message={makeMessage({ role: 'assistant', content: '**Bold text** and normal text' })}
+      />,
+    )
+    // The mock renders children as-is; content should appear in the DOM
+    expect(screen.getByText('**Bold text** and normal text')).toBeInTheDocument()
+  })
+
+  it('does not use a plain <p> wrapper for assistant messages', () => {
+    const { container } = render(
+      <ChatMessage message={makeMessage({ role: 'assistant', content: 'Coach reply' })} />,
+    )
+    // Assistant messages go through ReactMarkdown, not the plain whitespace-pre-wrap <p>
+    const p = container.querySelector('p.whitespace-pre-wrap')
+    expect(p).toBeNull()
   })
 })
