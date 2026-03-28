@@ -1,6 +1,7 @@
 import Link from 'next/link'
 import { notFound } from 'next/navigation'
 import { SeedProgrammeTrigger } from '@/components/dev/SeedProgrammeTrigger'
+import { ClearAllDataTrigger } from '@/components/dev/ClearAllDataTrigger'
 
 const DEV_CARDS = [
   {
@@ -67,6 +68,8 @@ export default function DevPage(): React.ReactElement {
         </div>
 
         <SeedProgrammeTrigger />
+
+        <ClearAllDataTrigger />
 
         <div className="grid grid-cols-2 gap-3">
           {DEV_CARDS.map((card) => (
