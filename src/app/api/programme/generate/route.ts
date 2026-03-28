@@ -45,30 +45,31 @@ Hard rules:
 // =============================================================================
 
 function buildWizardUserMessage(input: WizardInput, historyText: string): string {
-  const peakLine =
-    input.peak_event_label && input.peak_event_date
-      ? `Target event: ${input.peak_event_label} on ${input.peak_event_date}`
-      : 'No specific target event'
-
-  const injuriesLine = input.injuries?.trim()
-    ? `Injuries/concerns: ${input.injuries}`
-    : 'Injuries/concerns: None'
+  const gradeParts: string[] = []
+  if (input.current_grade_bouldering) gradeParts.push(`Bouldering: ${input.current_grade_bouldering}`)
+  if (input.current_grade_sport) gradeParts.push(`Sport/Lead: ${input.current_grade_sport}`)
+  if (input.current_grade_onsight) gradeParts.push(`Onsight: ${input.current_grade_onsight}`)
+  const gradeText = gradeParts.length > 0 ? gradeParts.join(' | ') : 'Not specified'
+  const goalGradeText = input.goal_grade?.trim() || 'Not specified'
 
   return `Design a periodised climbing training plan.
 
-ATHLETE:
-- Bouldering: 6c/7a Font
-- Sport climbing: 6c/7a
-- Onsight (multipitch): ~6c
-- Primary goal: Onsight 7a-7b multipitch
+ATHLETE PROFILE:
+- Current grades: ${gradeText}
+- Goal grade: ${goalGradeText}
+- Strengths: ${input.strengths}
+- Weaknesses / areas to develop: ${input.weaknesses}
 
-PARAMETERS:
+PROGRAMME PARAMETERS:
 - Goal: ${input.goal}
 - Start date: ${input.start_date}
 - Total duration: ${input.duration_weeks} weeks (duration_weeks must sum to exactly ${input.duration_weeks})
-- ${peakLine}
 - Primary focus: ${input.focus}
-- ${injuriesLine}
+- Target event: ${input.peak_event_label?.trim() || 'None'}
+- Injuries / concerns: ${input.injuries?.trim() || 'None'}
+
+ADDITIONAL CONTEXT:
+${input.additional_context?.trim() || 'None'}
 
 TRAINING HISTORY (completed mesocycles, most recent first):
 ${historyText}

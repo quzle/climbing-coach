@@ -144,6 +144,7 @@ export type Database = {
       }
       programmes: {
         Row: {
+          athlete_profile: Json | null
           created_at: string | null
           goal: string
           id: string
@@ -153,6 +154,7 @@ export type Database = {
           target_date: string
         }
         Insert: {
+          athlete_profile?: Json | null
           created_at?: string | null
           goal: string
           id?: string
@@ -162,6 +164,7 @@ export type Database = {
           target_date: string
         }
         Update: {
+          athlete_profile?: Json | null
           created_at?: string | null
           goal?: string
           id?: string

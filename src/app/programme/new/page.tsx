@@ -35,10 +35,16 @@ type FormData = {
   goal: string
   start_date: string
   duration_weeks: number
-  peak_event_label: string
-  peak_event_date: string
   focus: string
+  current_grade_bouldering: string
+  current_grade_sport: string
+  current_grade_onsight: string
+  goal_grade: string
+  strengths: string
+  weaknesses: string
+  peak_event_label: string
   injuries: string
+  additional_context: string
 }
 
 // =============================================================================
@@ -166,11 +172,23 @@ export default function ProgrammeWizardPage(): React.JSX.Element {
     goal: '',
     start_date: todayIso(),
     duration_weeks: 12,
-    peak_event_label: '',
-    peak_event_date: '',
     focus: 'general',
+    current_grade_bouldering: '',
+    current_grade_sport: '',
+    current_grade_onsight: '',
+    goal_grade: '',
+    strengths: '',
+    weaknesses: '',
+    peak_event_label: '',
     injuries: '',
+    additional_context: '',
   })
+
+  // Derived: plan end date shown live below the duration picker
+  const planEndDate =
+    form.start_date
+      ? addDaysToDate(form.start_date, form.duration_weeks * 7 - 1)
+      : null
 
   async function handleGenerate() {
     setFieldErrors({})
@@ -180,10 +198,16 @@ export default function ProgrammeWizardPage(): React.JSX.Element {
       goal: form.goal,
       start_date: form.start_date,
       duration_weeks: form.duration_weeks,
-      peak_event_label: form.peak_event_label || undefined,
-      peak_event_date: form.peak_event_date || undefined,
       focus: form.focus as WizardInput['focus'],
+      current_grade_bouldering: form.current_grade_bouldering || undefined,
+      current_grade_sport: form.current_grade_sport || undefined,
+      current_grade_onsight: form.current_grade_onsight || undefined,
+      goal_grade: form.goal_grade || undefined,
+      strengths: form.strengths,
+      weaknesses: form.weaknesses,
+      peak_event_label: form.peak_event_label || undefined,
       injuries: form.injuries || undefined,
+      additional_context: form.additional_context || undefined,
     }
 
     const validation = wizardInputSchema.safeParse(wizardInput)
@@ -228,10 +252,16 @@ export default function ProgrammeWizardPage(): React.JSX.Element {
       goal: form.goal,
       start_date: form.start_date,
       duration_weeks: form.duration_weeks,
-      peak_event_label: form.peak_event_label || undefined,
-      peak_event_date: form.peak_event_date || undefined,
       focus: form.focus as WizardInput['focus'],
+      current_grade_bouldering: form.current_grade_bouldering || undefined,
+      current_grade_sport: form.current_grade_sport || undefined,
+      current_grade_onsight: form.current_grade_onsight || undefined,
+      goal_grade: form.goal_grade || undefined,
+      strengths: form.strengths,
+      weaknesses: form.weaknesses,
+      peak_event_label: form.peak_event_label || undefined,
       injuries: form.injuries || undefined,
+      additional_context: form.additional_context || undefined,
     }
 
     try {
@@ -365,50 +395,41 @@ export default function ProgrammeWizardPage(): React.JSX.Element {
             <FieldError message={fieldErrors.goal} />
           </div>
 
-          {/* Start date + duration */}
-          <div className="grid grid-cols-2 gap-4">
-            <div>
-              <Label htmlFor="start_date">Start date</Label>
-              <Input
-                id="start_date"
-                type="date"
-                className="mt-1"
-                value={form.start_date}
-                onChange={(e) => setForm((p) => ({ ...p, start_date: e.target.value }))}
-              />
-              <FieldError message={fieldErrors.start_date} />
-            </div>
-            <div>
-              <SectionLabel>Duration (weeks)</SectionLabel>
-              <div className="flex flex-wrap gap-2">
-                {DURATION_WEEK_OPTIONS.map((w) => (
-                  <ToggleButton
-                    key={w}
-                    active={form.duration_weeks === w}
-                    onClick={() => setForm((p) => ({ ...p, duration_weeks: w }))}
-                  >
-                    {w}w
-                  </ToggleButton>
-                ))}
-              </div>
-            </div>
+          {/* Start date */}
+          <div>
+            <Label htmlFor="start_date">Start date</Label>
+            <Input
+              id="start_date"
+              type="date"
+              className="mt-1"
+              value={form.start_date}
+              onChange={(e) => setForm((p) => ({ ...p, start_date: e.target.value }))}
+            />
+            <FieldError message={fieldErrors.start_date} />
           </div>
 
-          {/* Peak event (optional) */}
+          {/* Duration + auto end date */}
           <div>
-            <SectionLabel>Peak event (optional)</SectionLabel>
-            <div className="grid grid-cols-2 gap-2">
-              <Input
-                placeholder="e.g. Red Rocks trip"
-                value={form.peak_event_label}
-                onChange={(e) => setForm((p) => ({ ...p, peak_event_label: e.target.value }))}
-              />
-              <Input
-                type="date"
-                value={form.peak_event_date}
-                onChange={(e) => setForm((p) => ({ ...p, peak_event_date: e.target.value }))}
-              />
+            <SectionLabel>Duration</SectionLabel>
+            <div className="flex flex-wrap gap-2">
+              {DURATION_WEEK_OPTIONS.map((w) => (
+                <ToggleButton
+                  key={w}
+                  active={form.duration_weeks === w}
+                  onClick={() => setForm((p) => ({ ...p, duration_weeks: w }))}
+                >
+                  {w} weeks
+                </ToggleButton>
+              ))}
             </div>
+            {planEndDate && (
+              <p className="mt-2 text-xs text-slate-500">
+                Your plan ends on{' '}
+                <span className="font-medium text-slate-700">
+                  {format(parseISO(planEndDate), 'd MMM yyyy')}
+                </span>
+              </p>
+            )}
           </div>
 
           {/* Focus */}
@@ -427,6 +448,93 @@ export default function ProgrammeWizardPage(): React.JSX.Element {
             </div>
           </div>
 
+          {/* Current grades */}
+          <div>
+            <SectionLabel>Current grades (optional — helps the AI calibrate the plan)</SectionLabel>
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <Label htmlFor="current_grade_bouldering" className="text-xs text-slate-500">Bouldering</Label>
+                <Input
+                  id="current_grade_bouldering"
+                  className="mt-1"
+                  placeholder="e.g. 7a Font"
+                  value={form.current_grade_bouldering}
+                  onChange={(e) => setForm((p) => ({ ...p, current_grade_bouldering: e.target.value }))}
+                />
+              </div>
+              <div>
+                <Label htmlFor="current_grade_sport" className="text-xs text-slate-500">Sport / Lead</Label>
+                <Input
+                  id="current_grade_sport"
+                  className="mt-1"
+                  placeholder="e.g. 6c+"
+                  value={form.current_grade_sport}
+                  onChange={(e) => setForm((p) => ({ ...p, current_grade_sport: e.target.value }))}
+                />
+              </div>
+              <div>
+                <Label htmlFor="current_grade_onsight" className="text-xs text-slate-500">Onsight</Label>
+                <Input
+                  id="current_grade_onsight"
+                  className="mt-1"
+                  placeholder="e.g. 6c"
+                  value={form.current_grade_onsight}
+                  onChange={(e) => setForm((p) => ({ ...p, current_grade_onsight: e.target.value }))}
+                />
+              </div>
+              <div>
+                <Label htmlFor="goal_grade" className="text-xs text-slate-500">Goal grade</Label>
+                <Input
+                  id="goal_grade"
+                  className="mt-1"
+                  placeholder="e.g. 7b onsight"
+                  value={form.goal_grade}
+                  onChange={(e) => setForm((p) => ({ ...p, goal_grade: e.target.value }))}
+                />
+              </div>
+            </div>
+          </div>
+
+          {/* Strengths */}
+          <div>
+            <Label htmlFor="strengths">What are you good at?</Label>
+            <Textarea
+              id="strengths"
+              className="mt-1"
+              rows={3}
+              placeholder="e.g. I excel at technical, vertical sequences with small footholds and precise footwork. I'm comfortable on sustained slabs and feel confident on crimps up to half-pad."
+              value={form.strengths}
+              onChange={(e) => setForm((p) => ({ ...p, strengths: e.target.value }))}
+            />
+            <FieldError message={fieldErrors.strengths} />
+          </div>
+
+          {/* Weaknesses */}
+          <div>
+            <Label htmlFor="weaknesses">What do you need to work on?</Label>
+            <Textarea
+              id="weaknesses"
+              className="mt-1"
+              rows={3}
+              placeholder="e.g. I struggle on powerful, overhanging movement — especially when I need to move fast between big holds. Compression problems and dynamic moves feel unreliable."
+              value={form.weaknesses}
+              onChange={(e) => setForm((p) => ({ ...p, weaknesses: e.target.value }))}
+            />
+            <FieldError message={fieldErrors.weaknesses} />
+          </div>
+
+          {/* Target event (optional) */}
+          <div>
+            <Label htmlFor="peak_event_label">Target event (optional)</Label>
+            <Input
+              id="peak_event_label"
+              className="mt-1"
+              placeholder="e.g. Red Rocks trip, summer alpine season"
+              value={form.peak_event_label}
+              onChange={(e) => setForm((p) => ({ ...p, peak_event_label: e.target.value }))}
+            />
+          </div>
+
           {/* Injuries */}
           <div>
             <Label htmlFor="injuries">Current injuries or concerns (optional)</Label>
@@ -437,6 +545,19 @@ export default function ProgrammeWizardPage(): React.JSX.Element {
               placeholder="e.g. Left A2 pulley, mild — avoid crimping"
               value={form.injuries}
               onChange={(e) => setForm((p) => ({ ...p, injuries: e.target.value }))}
+            />
+          </div>
+
+          {/* Additional context */}
+          <div>
+            <Label htmlFor="additional_context">Anything else the AI should know? (optional)</Label>
+            <Textarea
+              id="additional_context"
+              className="mt-1"
+              rows={3}
+              placeholder="e.g. I have access to a circuit board and prefer to use it for power-endurance work instead of lead sessions when I don't have a partner. I can train 4 days a week but Thursdays are never available."
+              value={form.additional_context}
+              onChange={(e) => setForm((p) => ({ ...p, additional_context: e.target.value }))}
             />
           </div>
 

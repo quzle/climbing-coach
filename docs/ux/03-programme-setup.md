@@ -29,18 +29,19 @@ sequenceDiagram
     App-->>User: Empty state: "Start Your Programme" card + "Create with AI wizard →" button
 
     User->>App: Taps "Create with AI wizard →"
-    App-->>User: /programme/new — wizard form (goal, start date, duration, focus, injuries)
+    App-->>User: /programme/new — wizard form (goal, start date, duration, current grades, goal grade, focus, strengths, weaknesses, injuries, additional context)
+    Note right of App: End date is auto-rendered from start_date + duration_weeks (no date input)
 
     User->>App: Submits wizard form
-    App->>API: POST /api/programme/generate { goal, start_date, duration_weeks, focus, ... }
+    App->>API: POST /api/programme/generate { goal, start_date, duration_weeks, focus, current_grade_*, goal_grade, strengths, weaknesses, ... }
     API->>Gemini: Generate periodised plan (mesocycle blocks, phase types, objectives)
     Gemini-->>API: GeneratedPlan JSON
     API-->>App: { programme, mesocycles[] } (not yet persisted)
     App-->>User: Review screen: programme summary + mesocycle cards with phase labels and objectives
 
     User->>App: Taps "Confirm & create programme"
-    App->>API: POST /api/programme/confirm { programme, mesocycles[] }
-    API->>Supabase: INSERT programme + all mesocycles (dates computed sequentially)
+    App->>API: POST /api/programme/confirm { wizard_input, plan }
+    API->>Supabase: INSERT programme (with athlete_profile JSONB) + all mesocycles (dates computed sequentially)
     Supabase-->>API: Created rows
     API-->>App: { programme_id, first_mesocycle_id }
     App-->>User: Redirect to /programme/[programmeId]/setup-week

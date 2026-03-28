@@ -317,13 +317,19 @@ AI wizard — step 1. Accepts a training goal description and generates a period
 
 ```ts
 {
-  goal:              string          // 1–500 chars; e.g. "Onsight 7b by October"
-  start_date:        string          // YYYY-MM-DD
-  duration_weeks:    number          // 4–52
-  focus:             string          // broad training focus
-  peak_event_label?: string          // optional event name
-  peak_event_date?:  string          // YYYY-MM-DD; optional
-  injuries?:         string          // optional free-text injury notes
+  goal:                      string    // 1–300 chars; e.g. "Onsight 7b by October"
+  start_date:                string    // YYYY-MM-DD
+  duration_weeks:            number    // 4–52
+  focus:                     string    // "power" | "endurance" | "technique" | "general"
+  strengths:                 string    // 1–500 chars; what the athlete is good at
+  weaknesses:                string    // 1–500 chars; areas to develop
+  current_grade_bouldering?: string    // e.g. "7a Font"; optional
+  current_grade_sport?:      string    // e.g. "6c+"; optional
+  current_grade_onsight?:    string    // e.g. "6c"; optional
+  goal_grade?:               string    // e.g. "7b onsight"; optional
+  peak_event_label?:         string    // optional event name, max 100 chars
+  injuries?:                 string    // optional free-text injury notes, max 500 chars
+  additional_context?:       string    // optional free-text, max 1000 chars
 }
 ```
 
@@ -333,10 +339,9 @@ AI wizard — step 1. Accepts a training goal description and generates a period
 {
   data: {
     programme: {
-      name:           string
-      goal:           string
-      start_date:     string
-      target_date:    string
+      name:  string
+      goal:  string
+      notes: string | null
     }
     mesocycles: {
       name:           string
@@ -353,9 +358,16 @@ AI wizard — step 1. Accepts a training goal description and generates a period
 
 ### `POST /api/programme/confirm`
 
-AI wizard — step 2. Persists the reviewed plan: creates the programme row and all mesocycle rows with computed dates. Returns the new programme ID and the first mesocycle ID (earliest `planned_start`) so the client can navigate to weekly schedule setup.
+AI wizard — step 2. Persists the reviewed plan: creates the programme row and all mesocycle rows with computed dates. Stores `strengths`, `weaknesses`, `additional_context`, and grade fields in the `athlete_profile` JSONB column on the programme. Returns the new programme ID and the first mesocycle ID so the client can navigate to weekly schedule setup.
 
-**Request body:** the same shape as the `POST /api/programme/generate` response `data` field.
+**Request body**
+
+```ts
+{
+  wizard_input: { /* same shape as POST /api/programme/generate request body */ }
+  plan:         { /* same shape as POST /api/programme/generate response data */ }
+}
+```
 
 **Response** `201`
 

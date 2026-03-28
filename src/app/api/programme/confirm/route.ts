@@ -49,6 +49,15 @@ export async function POST(
         notes: plan.programme.notes ?? null,
         start_date: wizard_input.start_date,
         target_date: addDaysToDate(wizard_input.start_date, wizard_input.duration_weeks * 7 - 1),
+        athlete_profile: {
+          current_grade_bouldering: wizard_input.current_grade_bouldering ?? null,
+          current_grade_sport: wizard_input.current_grade_sport ?? null,
+          current_grade_onsight: wizard_input.current_grade_onsight ?? null,
+          goal_grade: wizard_input.goal_grade ?? null,
+          strengths: wizard_input.strengths,
+          weaknesses: wizard_input.weaknesses,
+          additional_context: wizard_input.additional_context ?? null,
+        },
       })
       .select()
       .single()

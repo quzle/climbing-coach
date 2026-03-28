@@ -85,13 +85,16 @@ export const wizardInputSchema = z.object({
   goal: z.string().min(1, 'Goal is required').max(300),
   start_date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, 'Invalid date format'),
   duration_weeks: z.number().int().min(4).max(52),
-  peak_event_label: z.string().max(100).optional(),
-  peak_event_date: z
-    .string()
-    .regex(/^\d{4}-\d{2}-\d{2}$/)
-    .optional(),
   focus: z.enum(FOCUS_OPTIONS),
+  current_grade_bouldering: z.string().max(50).optional(),
+  current_grade_sport: z.string().max(50).optional(),
+  current_grade_onsight: z.string().max(50).optional(),
+  goal_grade: z.string().max(100).optional(),
+  strengths: z.string().min(1, 'Describe your strengths').max(500),
+  weaknesses: z.string().min(1, 'Describe your weaknesses').max(500),
+  peak_event_label: z.string().max(100).optional(),
   injuries: z.string().max(500).optional(),
+  additional_context: z.string().max(1000).optional(),
 })
 
 export type WizardInput = z.infer<typeof wizardInputSchema>
