@@ -5,6 +5,7 @@ import { useRouter, useSearchParams } from 'next/navigation'
 import { toast } from 'sonner'
 import { SessionLogForm, type SessionLogFormData } from '@/components/forms/SessionLogForm'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
+import { ProseMarkdown } from '@/components/ui/prose-markdown'
 import type { ApiResponse, PlannedSession, SessionType } from '@/types'
 import type { Json } from '@/lib/database.types'
 
@@ -135,9 +136,9 @@ export function SessionLogContent(): React.JSX.Element {
                 <p>Planned duration: {plannedPlan.duration_mins} minutes</p>
               ) : null}
               {plannedPlan?.ai_plan_text ? (
-                <p className="whitespace-pre-wrap text-xs text-slate-500">
+                <ProseMarkdown className="text-xs text-slate-500">
                   {plannedPlan.ai_plan_text}
-                </p>
+                </ProseMarkdown>
               ) : null}
             </CardContent>
           </Card>

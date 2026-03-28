@@ -8,6 +8,7 @@ import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Skeleton } from '@/components/ui/skeleton'
 import { ProgrammeBuilderEditor } from '@/components/programme/programme-builder-editor'
+import { ProseMarkdown } from '@/components/ui/prose-markdown'
 import type { ApiResponse, ProgrammeBuilderSnapshot, WeeklyTemplate } from '@/types'
 
 const DAY_LABELS: Record<number, string> = {
@@ -306,8 +307,10 @@ export default function ProgrammePage(): React.JSX.Element {
                               </Button>
                             </div>
                             {isExpanded && (
-                              <div className="px-0 pb-2 text-xs text-slate-600 whitespace-pre-wrap">
-                                {plan?.ai_plan_text ?? 'No plan content available.'}
+                              <div className="px-0 pb-2 text-xs text-slate-600">
+                                {plan?.ai_plan_text
+                                  ? <ProseMarkdown>{plan.ai_plan_text}</ProseMarkdown>
+                                  : 'No plan content available.'}
                               </div>
                             )}
                           </li>
