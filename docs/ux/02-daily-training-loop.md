@@ -21,11 +21,13 @@ sequenceDiagram
     User->>App: Opens app (/)
     App->>API: GET /api/readiness?days=7
     App->>API: GET /api/sessions?days=7
-    Note over App: Both requests fire in parallel
-    API->>Supabase: Query readiness_checkins
+    App->>API: GET /api/planned-sessions?upcoming_days=1
+    Note over App: All three requests fire in parallel
+    API->>Supabase: Query readiness_checkins (+ last session date + active injury areas for warnings)
     API->>Supabase: Query session_logs
-    Supabase-->>API: Today's check-in: null, last 7 sessions
-    App-->>User: Home: "No check-in today" card + recent sessions list
+    API->>Supabase: Query planned_sessions for today
+    Supabase-->>API: Today's check-in (with warnings computed), last 7 sessions, today's planned session
+    App-->>User: Home: readiness card + active warnings (if checked in) + today's session card + last session card
 
     User->>App: Taps "Check-in" tab (/readiness)
     App->>API: GET /api/readiness (to fetch active injury areas for the form)
@@ -92,9 +94,9 @@ sequenceDiagram
 
 | Stage | User action | System response | Friction / gap |
 |---|---|---|---|
-| **Open app** | Opens app on a training day | Home dashboard: empty check-in card, last few sessions listed | Home page doesn't show today's planned session. The most important piece of information for a training day is one tap away but not on the home screen. |
-| **Submit check-in** | Navigates to /readiness, fills form | Form renders with dynamic injury area fields; warnings returned on submit | Warnings appear briefly after submit but aren't persisted visibly. If the user navigates away, they won't see the warnings again without re-submitting or going to Chat. |
-| **Find today's session** | Navigates to /programme | Full programme snapshot loaded; upcoming sessions card visible | The user must navigate to the Plan tab — a second tap after opening the app — to see what they're doing today. There is no "today" view. |
+| **Open app** | Opens app on a training day | Home dashboard: readiness card, today's planned session card (if one exists), active warning banners (if checked in with flags), last session card | ~~Home page doesn't show today's planned session~~ — resolved. Today's session and warnings are now shown on the home screen. |
+| **Submit check-in** | Navigates to /readiness, fills form | Form renders with dynamic injury area fields; warnings returned on submit and shown persistently on home page | ~~Warnings are transient~~ — resolved. `GET /api/readiness` now computes and returns warnings; home page displays them whenever `hasCheckedInToday` is true and warnings are non-empty. |
+| **Find today's session** | Opens app or navigates to home | Today's planned session shown directly on home dashboard with "Start session" link | The user no longer needs to navigate to /programme to find today's session. The Plan tab still provides the full week view and editor. |
 | **Start the session** | Taps "Start session" | Navigated to /session/log with planned_session_id in URL | Pre-fill depends on the planned session having a `generated_plan` JSON. If the session was created manually without AI generation, the form pre-fills minimally. |
 | **Log the session** | Reviews pre-fill, adds performance data, submits | Session logged; planned session marked completed | The `log_data` structured fields (problems, sets, exercises) are form arrays that require multiple taps per entry. On mobile this is slow for sessions with many problems/sets. |
 | **Chat with coach** | Navigates to /chat, asks about the session | AI coach has full context (today's log, readiness, warnings); responds in markdown | The coach doesn't proactively acknowledge the session just logged — the user has to initiate. There's no "session complete" prompt or automatic debrief. |
@@ -103,8 +105,11 @@ sequenceDiagram
 
 ## Gap summary
 
-- **No "today" view.** The home dashboard does not show today's planned session. A user on a training day must visit both `/readiness` and `/programme` before starting — the two most important pieces of daily context are on separate pages with no connection between them.
-- **Warnings are transient.** Active warnings are returned by `POST /api/readiness` and `POST /api/chat` but are not persistently visible. A user who submits a check-in and then navigates away loses the warning context unless they open the chat.
-- **No session debrief prompt.** After logging a session, there's no nudge to review it with the coach. The coach's value is highest immediately after a session (while it's fresh) but nothing connects the log confirmation screen to the chat.
-- **Log_data entry is verbose on mobile.** The structured data forms (problems, sets) require multiple taps per entry. The programme builder editor is explicitly "laptop-optimized" — the session log form has the same issue on mobile.
-- **Chat context lag.** The coach context is rebuilt on every request from Supabase. If the user logs a session and immediately opens chat, the session will be in context — but the sequence is not communicated to the user.
+### Resolved
+- ~~**No "today" view.**~~ Home page now fetches today's planned session (`GET /api/planned-sessions?upcoming_days=1`) and shows it in a dedicated card with a direct "Start session" link.
+- ~~**Warnings are transient.**~~ `GET /api/readiness` now computes warnings server-side and returns them. Home page renders warning banners whenever the user has checked in with active flags.
+
+### Open
+- **No session debrief prompt.** After logging a session, there's no nudge to review it with the coach. The readiness success view has an "Ask your coach" button, but the session log confirmation has no equivalent.
+- **Log_data entry is verbose on mobile.** The structured data forms (problems, sets, exercises) require multiple taps per entry. On mobile this is slow for sessions with many problems.
+- **Chat context lag.** The coach context is rebuilt from Supabase on every request. If the user logs a session and immediately opens chat, the session will be in context — but this is not communicated to the user.

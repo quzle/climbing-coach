@@ -100,20 +100,22 @@ sequenceDiagram
 
 | Stage | User action | System response | Friction / gap |
 |---|---|---|---|
-| **Arrive at programme page** | Taps "Plan" tab | Empty-state card with create form visible | Empty-state copy references internal build phase labels, not user-facing language. |
-| **Create programme** | Fills name, goal, dates | Programme created; page reloads showing overview card | No suggested goal templates or examples. `target_date` has no validation against `start_date`. Status is not shown — the user doesn't know the programme is now "active". |
-| **Add first mesocycle** | Fills mesocycle details | Mesocycle created; weekly structure section appears | `phase_type` enum values have no descriptions or guidance. The user must know what "power_endurance" means in a climbing context. `planned_start` / `planned_end` have no validation against the programme dates. |
-| **Build weekly template** | Adds slots one by one | Each slot appears in the weekly structure card | No bulk-add. Adding a 4-day training week requires 4 separate form submissions. There is no indication that sessions won't generate without at least one slot. |
-| **Edit existing setup** | Changes a mesocycle's status to 'interrupted' | Update applied | `interruption_notes` is a free-text field with no prompt. The coach uses this field in the prompt — its value matters — but the user has no guidance on what to write. |
-| **Setup complete** | No explicit completion step | Weekly structure card shows defined slots | No "setup complete" signal. No confirmation that the AI coach now has full context. The transition from "set up" to "ready to use" is invisible. |
+| **Arrive at programme page** | Taps "Plan" tab | Empty-state card with user-facing copy and create form visible | ~~Developer copy~~ resolved. The empty state now explains the purpose of programme setup in plain language. |
+| **Create programme** | Fills name, goal, dates | Programme created; "Getting started" step indicator appears with step 2 highlighted | No suggested goal templates or examples. `target_date` has no validation against `start_date`. |
+| **Add first mesocycle** | Fills mesocycle details | Mesocycle created; step indicator advances to step 3 | `phase_type` enum values have no descriptions. The user must know what "power_endurance" means in a climbing context. `planned_start`/`planned_end` have no validation against programme dates. |
+| **Build weekly template** | Adds slots one by one | Each slot appears; step indicator advances to step 4 | "Generate Week Sessions" button is now disabled until at least one slot exists — the user knows they need to add slots before generating. No bulk-add affordance. |
+| **Edit existing setup** | Changes a mesocycle's status to 'interrupted' | Update applied | `interruption_notes` has no prompt. The coach uses this field — its value matters — but the user has no guidance on what to write. |
+| **Setup complete** | Generates sessions | Sessions appear; "Getting started" step indicator hides automatically | The indicator disappearing is the implicit completion signal. No explicit "setup complete" confirmation. |
 
 ---
 
 ## Gap summary
 
-- **No step-by-step progression.** The three-step sequence (programme → mesocycle → weekly template) is not communicated as a sequence. Each step reveals the next only after the previous is submitted — a breadcrumb trail rather than a plan.
-- **Phase type jargon unexplained.** `base`, `power`, `power_endurance`, `climbing_specific`, `performance`, `deload` are displayed as raw enum values. A new user has no idea what these mean. Tooltips or a short description alongside each option would significantly lower the barrier.
-- **No date validation between layers.** A mesocycle's `planned_start`/`planned_end` can fall outside the programme's `start_date`/`target_date` without any error. Similarly, a programme's `target_date` can precede its `start_date`.
-- **No "you're set up" confirmation.** After defining the weekly template, there is no feedback that setup is complete and the user can now generate sessions. The next step (generating sessions) is on the same page but not visually connected to the template setup.
-- **Editing a mesocycle status is undiscoverable.** Marking a mesocycle as `interrupted` is possible via the inline editor but requires the user to find the status field. There is no prominent "interrupt this block" or "start a new block" action.
-- **Multiple mesocycles per programme.** The data model supports multiple mesocycles per programme (one per training block), but the UI currently shows only the active one. A user working through a multi-block programme has no overview of the full structure.
+### Resolved
+- ~~**No step-by-step progression.**~~ A "Getting started" step indicator on `/programme` communicates the four-step sequence (programme → mesocycle → weekly template → generate sessions) and shows which steps are complete. It hides automatically when all four steps are done.
+
+### Open
+- **Phase type jargon unexplained.** `base`, `power`, `power_endurance`, `climbing_specific`, `performance`, `deload` are displayed as raw enum values with no descriptions. Tooltips or inline descriptions would lower the barrier for athletes unfamiliar with periodisation.
+- **No date validation between layers.** A mesocycle's dates can fall outside the programme's dates, and a programme's target date can precede its start date, without any error.
+- **Editing a mesocycle status is undiscoverable.** Marking a mesocycle as `interrupted` requires the user to find the status field in the inline editor. There is no prominent "interrupt this block" action.
+- **Multiple mesocycles per programme.** The UI shows only the active mesocycle. A user working through a multi-block programme has no overview of the full mesocycle history.

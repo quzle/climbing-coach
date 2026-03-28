@@ -23,9 +23,13 @@ sequenceDiagram
     API->>Supabase: Query active programme, active mesocycle, weekly templates, planned sessions (next 7 days)
     Supabase-->>API: Snapshot with weekly template slots, no planned sessions yet
     API-->>App: ProgrammeBuilderSnapshot
-    App-->>User: Programme page: weekly structure visible, "Generate Week Sessions" button, upcoming sessions card empty
+    App-->>User: Programme page: weekly structure visible, "Generate Week Sessions" button (disabled if no template slots), upcoming sessions card empty
 
-    User->>App: Taps "Generate Week Sessions"
+    alt No weekly template slots exist
+        Note over User,App: Button is disabled. Message shown:<br/>"Add weekly template slots below before generating sessions."<br/>User must define template slots first (see Flow 03).
+    end
+
+    User->>App: Taps "Generate Week Sessions" (enabled — template slots exist)
     App->>API: POST /api/planned-sessions/generate { week_start? }
     Note over API: week_start defaults to current Monday if omitted
 
@@ -72,12 +76,24 @@ sequenceDiagram
     API-->>App: { session } 201
     App-->>User: Session logged. Planned session marked complete in upcoming card.
 
+    alt User previews the plan before starting
+        User->>App: Taps "▸ Plan" toggle on an upcoming session
+        App-->>User: Plan content expanded inline (ai_plan_text from generated_plan)
+        User->>App: Taps "▾ Plan" to collapse
+    end
+
     alt User skips a planned session
-        Note over User,App: No "skip" button exists in the UI currently.<br/>Status can only be updated via PUT /api/planned-sessions/{id} directly.
+        User->>App: Taps "Skip" button (only shown when status = 'planned')
+        App->>API: PUT /api/planned-sessions/{id} { status: 'skipped' }
+        API->>Supabase: UPDATE planned_sessions
+        Supabase-->>API: Updated PlannedSession
+        API-->>App: { plannedSession } 200
+        App->>API: GET /api/programme (refetch)
+        App-->>User: Session removed from upcoming list
     end
 
     alt User wants to regenerate sessions
-        Note over User,App: No "regenerate" or "regenerate single session" button exists.<br/>Tapping "Generate Week Sessions" again creates duplicate planned sessions<br/>for dates that already have one — no deduplication guard.
+        Note over User,App: Tapping "Generate Week Sessions" again is safe — the service<br/>deduplicates by date+template_id and skips slots that already have a session.<br/>Only slots without an existing planned session are regenerated.
     end
 ```
 
@@ -87,21 +103,26 @@ sequenceDiagram
 
 | Stage | User action | System response | Friction / gap |
 |---|---|---|---|
-| **View programme page** | Navigates to /programme | Snapshot loaded; weekly template visible; "Generate Week Sessions" button shown | Button is visible even if no weekly template slots exist — pressing it then silently produces nothing. |
-| **Generate sessions** | Taps "Generate Week Sessions" | API calls Gemini once per template slot; sessions created and appear in upcoming card | Generation can take several seconds (one Gemini call per slot, sequential). No loading indicator beyond the browser default. If the mesocycle has 5 slots, 5 sequential API calls are made. |
-| **Review generated sessions** | Sees upcoming sessions list | Each session shown with date, session type, and status badge | The generated plan content (the actual warm-up, main set, coach notes) is not visible on the programme page. The user cannot review or approve the plan before starting it. |
-| **Start a session** | Taps "Start session" | Navigated to /session/log with plan pre-filled | Pre-fill populates the notes field with the AI plan text as a single block — there's no structured display of warm-up / main set / cool-down sections in the form. |
-| **Log the session** | Adds performance data alongside the pre-filled content | Session logged; planned session marked completed | No way to record "I modified the session significantly" — the deviation note only fires on duration variance >20%. No "modified" status is set automatically. |
-| **Session complete** | Returns to programme page | Completed session disappears from upcoming card (or shows as completed) | No session debrief or coach prompt. The link between "session done" and "talk to coach about it" is not made. |
+| **View programme page** | Navigates to /programme | Snapshot loaded; weekly template visible; "Generate Week Sessions" button — disabled with message if no template slots | ~~Button had no guard~~ — resolved. Button is now disabled with explanatory message when no template slots exist. |
+| **Generate sessions** | Taps "Generate Week Sessions" | API calls Gemini once per template slot; sessions created and appear in upcoming card | Generation can take several seconds (one Gemini call per slot, sequential). No visible progress indicator — the button shows "Generating sessions..." but the page otherwise appears static. |
+| **Review generated sessions** | Sees upcoming sessions list | Each session shown with date, type, status badge, "▸ Plan" toggle, "Skip" button, and "Start session" button | ~~Plan content hidden until session start~~ — resolved. "▸ Plan" toggle shows the full `ai_plan_text` inline without committing to start the session. |
+| **Skip a session** | Taps "Skip" button | Session status updated to 'skipped'; removed from upcoming list after snapshot refetch | ~~No skip affordance~~ — resolved. Skip button is shown for any session with status 'planned'. No reschedule affordance — skipped sessions cannot be moved to another date. |
+| **Start a session** | Taps "Start session" | Navigated to /session/log with plan pre-filled | Pre-fill injects plan text into the notes field as a single block. The structured sections (warm-up / main set / cool-down) lose their formatting in the text area. |
+| **Log the session** | Adds performance data alongside pre-filled content | Session logged; planned session marked completed | No way to flag "I changed this significantly". Duration deviation >20% appends a note, but no "modified" status is set. |
+| **Session complete** | Returns to home or programme page | Session shown in last-session card on home; planned session marked completed | No session debrief prompt. The link between "session done" and "ask the coach about it" is not made explicitly. |
 
 ---
 
 ## Gap summary
 
-- **No guard against generating when no template exists.** The "Generate Week Sessions" button is visible regardless of whether any weekly template slots exist. Pressing it with an empty template silently returns an empty array with no error message.
-- **No deduplication on regeneration.** Tapping "Generate Week Sessions" a second time for the same week creates duplicate planned sessions. There is no warning, and no existing sessions are updated or replaced.
-- **Generated plan content is hidden until session start.** The user cannot see the AI-generated plan (warm-up, main set, coach notes) from the programme page. They only see it once they've committed to starting the session. There's no "preview" step.
-- **Session plan displayed as a text block.** The `ai_plan_text` from `generated_plan` is injected into the session log's notes field as a single pre-filled string. The structured sections (goal, warm-up, main set, cool-down, coach notes) lose their formatting.
-- **No skip or reschedule affordance.** If a user can't do a planned session, there's no "skip" or "move to tomorrow" button. The planned session stays as "planned" indefinitely. Status updates require a direct API call.
-- **No way to regenerate a single session.** Regeneration is all-or-nothing for the whole week. If one day's plan is inappropriate (e.g. the AI didn't account for a recent injury), there's no way to regenerate just that session.
-- **Sequential Gemini calls, no progress feedback.** For a 5-day training week, generation makes 5 sequential calls to Gemini. There is no visible progress indicator — the page appears frozen until all calls complete.
+### Resolved
+- ~~**No guard against generating when no template exists.**~~ "Generate Week Sessions" is now disabled when `currentWeeklyTemplate.length === 0`, with an explanatory message: "Add weekly template slots below before generating sessions."
+- ~~**No deduplication on regeneration.**~~ `sessionGenerator.ts` already deduplicates by `date:template_id` key — confirmed during audit. Pressing "Generate Week Sessions" again is safe and only creates sessions for slots that don't already have one.
+- ~~**Generated plan content is hidden until session start.**~~ A "▸ Plan" toggle on each upcoming session card shows the `ai_plan_text` inline without navigating away.
+- ~~**No skip affordance.**~~ A "Skip" button now appears on any planned session with status `'planned'`. Tapping it sets status to `'skipped'` and refreshes the snapshot.
+
+### Open
+- **Session plan displayed as a text block.** The `ai_plan_text` is injected into the session log notes field as plain text. The structured sections (goal, warm-up, main set, cool-down, coach notes) lose their formatting in the textarea.
+- **No reschedule affordance.** Skipped sessions cannot be moved to another date. There is no "move to tomorrow" or "reschedule" action.
+- **No way to regenerate a single session.** If one day's plan is inappropriate, the user must skip it and manually log a different session. There is no "regenerate this session" action.
+- **Sequential Gemini calls, no progress feedback.** For a 5-day training week, generation makes 5 sequential Gemini calls. The button label changes to "Generating sessions..." but no per-slot progress is shown.

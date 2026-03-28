@@ -29,12 +29,12 @@ sequenceDiagram
     API-->>App: { data: [] }
     App-->>User: Profile page: "No tracked injury areas" + add form
 
-    User->>App: Types injury area name (e.g. "shoulder_right") and submits
+    User->>App: Selects "Shoulder (right)" from dropdown of known areas and taps Track
     App->>API: POST /api/injury-areas { area: "shoulder_right" }
     API->>Supabase: INSERT into injury_areas (or reactivate if previously archived)
     Supabase-->>API: InjuryAreaRow
     API-->>App: { data: InjuryAreaRow } 201
-    App-->>User: "shoulder_right" appears in tracked areas list
+    App-->>User: "Shoulder (right)" appears in tracked areas list
 
     Note over User,Supabase: Part 2 — Readiness check-in with injury area
 
@@ -53,7 +53,7 @@ sequenceDiagram
     Note over API: getAreaRestriction("shoulder_right") → "avoid pressing and overhead loading"
     API->>API: Generates warning: "🟡 shoulder_right low (3/5) — avoid pressing and overhead loading, monitor carefully"
     API-->>App: { checkin, warnings: ["🟡 shoulder_right low (3/5)..."] }
-    App-->>User: Warning displayed on check-in confirmation
+    App-->>User: Warning displayed on check-in confirmation. Warning also returned by GET /api/readiness and shown on home page.
 
     Note over User,Gemini: Part 3 — AI coach applies injury rules
 
@@ -93,21 +93,24 @@ sequenceDiagram
 
 | Stage | User action | System response | Friction / gap |
 |---|---|---|---|
-| **Notices pain** | Decides to track a new injury | — | There is no prompt from the app to add an injury area. The user must know to navigate to /profile and connect this to the coaching system. |
-| **Navigate to Profile** | Taps "Profile" tab | Profile page loads with current tracked areas | /profile is the last tab in the bottom nav — least discoverable position. No contextual link from the readiness form ("track a new injury area →"). |
-| **Add injury area** | Types area name and submits | Area added; appears in list | Area name is a free-text string — no autocomplete, no suggested values. The user must know valid area names (e.g. `finger_a2_left`, not just "finger") to get the right `getAreaRestriction()` mapping in the coaching rules. If they type "left shoulder", the restriction mapping won't apply. |
-| **Complete readiness check-in** | Opens readiness form on a subsequent day | Dynamic field for the tracked area appears in the form | The injury area field appears alongside the standard metrics with no contextual explanation of what the rating means for coaching. |
-| **See warnings** | Submits check-in with low area health | Warning displayed: 🟡 area low, restriction noted | Warning is shown once on submit and then disappears. It's not pinned to the home screen or visible in the chat without submitting another message. |
-| **Chat with coach** | Opens chat and asks for session advice | Coach applies dynamic injury rules without needing to be told about the injury | The user has no visibility that the injury rule is active in the coach's context. There's no "I'm currently accounting for your shoulder_right (3/5)" acknowledgement unless the coach happens to mention it. |
-| **Archive resolved injury** | Returns to /profile, archives the area | Area removed from active list; future check-ins no longer include it | No confirmation that archiving means "this won't affect coaching anymore". Historical ratings are retained but not surfaced anywhere (no trend view). |
+| **Notices pain** | Decides to track a new injury | — | There is no prompt from the app to add an injury area. The user must know to navigate to /profile or the readiness form's injury step and connect this to the coaching system. |
+| **Navigate to Profile or readiness form** | Taps "Profile" tab, or proceeds to the injury step in the daily check-in | Profile shows a dropdown of all known body parts. Readiness form's injury step also includes the same dropdown inline | ~~No entry point from readiness form~~ — resolved. The readiness form's injury area step includes an inline "Track" control using the same `KNOWN_AREAS` dropdown, so the user can add a new area without leaving the check-in. |
+| **Add injury area** | Selects area from dropdown and submits | Area added; appears in list with human-readable label | ~~Free-text with no autocomplete~~ — resolved. Both profile and readiness form use a `<select>` populated from `KNOWN_AREAS`. Only known areas can be added, ensuring `getAreaRestriction()` mappings always apply. |
+| **Complete readiness check-in** | Opens readiness form on a subsequent day | Dynamic field for the tracked area appears in the form with 1–5 health scale | The health scale labels (Cannot train / Painful / Sore / Good / Pain-free) are visible but no tooltip explains how the rating affects coaching recommendations. |
+| **See warnings** | Submits check-in with low area health | Warning displayed on submission; warning also shown on home page via `GET /api/readiness` | ~~Warnings transient~~ — resolved. Warnings are now computed server-side and returned by `GET /api/readiness`, so the home page shows them persistently whenever the user has checked in with active flags. |
+| **Chat with coach** | Opens chat and asks for session advice | Coach applies dynamic injury rules without needing to be told about the injury | The coach silently applies injury rules. There's no explicit "I'm accounting for your shoulder_right (3/5)" confirmation unless the coach happens to mention it in the response. |
+| **Archive resolved injury** | Returns to /profile, archives the area | Area removed from active list; future check-ins no longer include it | No confirmation that archiving means "this won't affect coaching anymore". Historical health ratings are retained in the database but not shown in the UI. |
 
 ---
 
 ## Gap summary
 
-- **Area name is undiscoverable.** The `getAreaRestriction()` function maps area name prefixes (`shoulder_`, `finger_`, `elbow_medial_`, etc.) to training restrictions. If the user types an unrecognised name (e.g. "left finger" instead of `finger_a2_left`), the restriction silently doesn't apply. There are no suggested area names, no autocomplete, and no error for unrecognised values.
-- **No entry point from readiness form.** The most natural moment to add a new injury area is while completing a readiness check-in ("my finger is sore today"). But the readiness form has no "add a new area to track" link — the user must leave the form, go to /profile, add the area, and return.
-- **Warnings are transient.** Active injury warnings are surfaced on check-in submission and in the chat response, but they are not persistently visible anywhere. A user who submitted their check-in an hour ago has no reminder of their injury status when they open the session log.
-- **No coaching acknowledgement.** The coach silently applies injury rules without telling the user it's doing so. A user who doesn't read the session plan carefully won't know their shoulder status influenced the recommendation.
-- **No injury history view.** Archived areas and their historical health ratings exist in the database but are not shown anywhere in the UI. A user managing a recurring injury can't see their last flare-up's timeline.
-- **Profile page is least-discoverable nav position.** The bottom nav orders tabs left-to-right: Home, Check-in, Log, Chat, History, Plan, Profile. Profile — which is the only place to manage injury areas — is last and least likely to be explored.
+### Resolved
+- ~~**Area name is undiscoverable.**~~ Both the profile page and the readiness form's injury step use a `<select>` populated from `KNOWN_AREAS`. Only known, labelled areas can be added, ensuring `getAreaRestriction()` mappings always apply correctly.
+- ~~**No entry point from readiness form.**~~ The readiness form's injury step includes an inline "Track" control (same `KNOWN_AREAS` dropdown) so the user can add a new area without leaving the check-in.
+- ~~**Warnings are transient.**~~ `GET /api/readiness` now computes and returns `warnings[]`. The home page shows warning banners persistently whenever the user has checked in with active flags.
+
+### Open
+- **No coaching acknowledgement.** The coach applies injury rules silently. A user who doesn't read the session plan carefully won't know their injury status influenced the recommendation.
+- **No injury history view.** Archived areas and historical health ratings exist in the database but are not surfaced in the UI. A user managing a recurring injury cannot see their previous flare-up's timeline.
+- **Profile page is least-discoverable nav position.** Profile is the last tab in the bottom nav. While the readiness form now provides an inline add control, managing and archiving areas still requires navigating to /profile.
