@@ -17,8 +17,8 @@ src/
 ├── components/            → React UI components
 │   ├── ui/                → shadcn auto-generated (never edit manually)
 │   ├── forms/             → Session log, readiness, programme builder forms
-│   ├── charts/            → Recharts progress visualisations
 │   ├── layout/            → Navigation, page shells, headers
+│   ├── programme/         → Programme builder editor and session planner UI
 │   └── chat/              → AI coach chat interface
 ├── services/              → All business logic (see src/services/README.md)
 │   ├── ai/                → Gemini client, prompt builder, session generator
@@ -92,34 +92,24 @@ Deployed automatically to Vercel on every push to `main`. Environment variables 
 
 ## Phase Roadmap
 
-| Phase | Scope |
-|---|---|
-| **Phase 1** (current) | Foundation: logging, readiness, AI chat |
-| **Phase 2** | Programme builder, AI session generation, planned vs actual comparison |
-| **Phase 3** | Dashboard, charts, progress intelligence, block review reports |
-# or
-pnpm dev
-# or
-bun dev
-```
+| Phase | Scope | Status |
+|---|---|---|
+| **Phase 1** | Foundation: session logging, readiness check-ins, AI coach chat, training history | Complete |
+| **Phase 2** | Programme builder, AI session generation, planned vs actual comparison, flexible injury tracking (ADR 004) | Complete |
+| **Phase 3** | Dashboard, progress charts, block review AI reports | Planned |
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+### What's implemented
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+**Phase 1 — Foundation**
+- Home dashboard with readiness summary, last session card, and quick-action navigation
+- AI coach chat powered by Gemini 2.5 Pro with full training context, markdown rendering, and reset confirmation flow
+- Session logging (bouldering, kilterboard, lead, fingerboard, strength, aerobic, mobility) with structured JSONB data capture
+- Daily readiness check-ins (fatigue, sleep, motivation, body-part health)
+- Training history view
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
-
-## Learn More
-
-To learn more about Next.js, take a look at the following resources:
-
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
-
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
-
-## Deploy on Vercel
-
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
-
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+**Phase 2 — Programme Builder**
+- Programme and mesocycle creation and management
+- Weekly template builder for structuring a mesocycle's intended sessions
+- AI-generated planned sessions via Gemini, with prefill from planned session into session log form
+- Dynamic programme context injected into AI coach prompt
+- Flexible injury area tracking (ADR 004): profile page to add/archive tracked areas, dynamic readiness form fields, dynamic AI context rules — replacing the previous hard-coded shoulder logic
