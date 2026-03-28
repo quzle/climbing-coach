@@ -100,6 +100,7 @@ export function ProgrammeBuilderEditor({
   const [isSavingProgramme, setIsSavingProgramme] = useState(false)
   const [isSavingMesocycle, setIsSavingMesocycle] = useState(false)
   const [isSavingTemplate, setIsSavingTemplate] = useState(false)
+  const [isAddingTemplate, setIsAddingTemplate] = useState(false)
   const [isGeneratingWeek, setIsGeneratingWeek] = useState(false)
 
   const selectedTemplate = useMemo(() => {
@@ -143,6 +144,19 @@ export function ProgrammeBuilderEditor({
     },
   })
 
+  const addTemplateForm = useForm<WeeklyTemplateFormValues>({
+    resolver: zodResolver(weeklyTemplateSchema),
+    defaultValues: {
+      day_of_week: 0,
+      session_label: '',
+      session_type: 'bouldering',
+      intensity: 'medium',
+      duration_mins: null,
+      primary_focus: null,
+      notes: null,
+    },
+  })
+
   async function submitProgramme(values: ProgrammeFormValues): Promise<void> {
     setError(null)
     setIsSavingProgramme(true)
@@ -182,23 +196,31 @@ export function ProgrammeBuilderEditor({
         : 'Save Programme'
 
   async function submitMesocycle(values: MesocycleFormValues): Promise<void> {
-    if (snapshot.activeMesocycle === null) return
+    if (snapshot.currentProgramme === null) return
     setError(null)
     setIsSavingMesocycle(true)
+    const isCreate = snapshot.activeMesocycle === null
     try {
-      const response = await fetch(`/api/mesocycles/${snapshot.activeMesocycle.id}`, {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(values),
-      })
+      const response = await fetch(
+        isCreate ? '/api/mesocycles' : `/api/mesocycles/${snapshot.activeMesocycle!.id}`,
+        {
+          method: isCreate ? 'POST' : 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(
+            isCreate
+              ? { ...values, programme_id: snapshot.currentProgramme.id, status: 'active' }
+              : values,
+          ),
+        },
+      )
       const json = (await response.json()) as ApiResponse<{ mesocycle: Mesocycle }>
       if (!response.ok || json.error !== null) {
-        setError(json.error ?? 'Failed to save mesocycle settings.')
+        setError(json.error ?? 'Failed to save mesocycle.')
         return
       }
       await onSaved()
     } catch {
-      setError('Failed to save mesocycle settings.')
+      setError('Failed to save mesocycle.')
     } finally {
       setIsSavingMesocycle(false)
     }
@@ -224,6 +246,30 @@ export function ProgrammeBuilderEditor({
       setError('Failed to save weekly template slot.')
     } finally {
       setIsSavingTemplate(false)
+    }
+  }
+
+  async function submitAddTemplate(values: WeeklyTemplateFormValues): Promise<void> {
+    if (snapshot.activeMesocycle === null) return
+    setError(null)
+    setIsAddingTemplate(true)
+    try {
+      const response = await fetch('/api/weekly-templates', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ ...values, mesocycle_id: snapshot.activeMesocycle.id }),
+      })
+      const json = (await response.json()) as ApiResponse<{ weeklyTemplate: WeeklyTemplate }>
+      if (!response.ok || json.error !== null) {
+        setError(json.error ?? 'Failed to add template slot.')
+        return
+      }
+      addTemplateForm.reset()
+      await onSaved()
+    } catch {
+      setError('Failed to add template slot.')
+    } finally {
+      setIsAddingTemplate(false)
     }
   }
 
@@ -326,10 +372,12 @@ export function ProgrammeBuilderEditor({
         </CardContent>
       </Card>
 
-      {snapshot.activeMesocycle !== null ? (
+      {snapshot.currentProgramme !== null ? (
         <Card>
           <CardHeader>
-            <CardTitle>Active Mesocycle</CardTitle>
+            <CardTitle>
+              {snapshot.activeMesocycle === null ? 'Add Training Block' : 'Active Mesocycle'}
+            </CardTitle>
           </CardHeader>
           <CardContent>
             <form
@@ -375,7 +423,123 @@ export function ProgrammeBuilderEditor({
               </div>
               <div>
                 <Button type="submit" className="min-h-[44px]" disabled={isSavingMesocycle}>
-                  {isSavingMesocycle ? 'Saving mesocycle...' : 'Save Mesocycle'}
+                  {snapshot.activeMesocycle === null
+                    ? isSavingMesocycle ? 'Adding block...' : 'Add Training Block'
+                    : isSavingMesocycle ? 'Saving mesocycle...' : 'Save Mesocycle'}
+                </Button>
+              </div>
+            </form>
+          </CardContent>
+        </Card>
+      ) : null}
+
+      {snapshot.activeMesocycle !== null ? (
+        <Card>
+          <CardHeader>
+            <CardTitle>Add Template Slot</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <form
+              className="grid gap-3 md:grid-cols-2"
+              onSubmit={addTemplateForm.handleSubmit((values) => void submitAddTemplate(values))}
+            >
+              <div className="space-y-1">
+                <Label htmlFor="add-template-day">Day</Label>
+                <Select
+                  value={String(addTemplateForm.watch('day_of_week'))}
+                  onValueChange={(value) => addTemplateForm.setValue('day_of_week', Number(value))}
+                >
+                  <SelectTrigger id="add-template-day" className="min-h-[44px]">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {DAY_OPTIONS.map((option) => (
+                      <SelectItem key={option.value} value={String(option.value)}>
+                        {option.label}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="space-y-1">
+                <Label htmlFor="add-template-intensity">Intensity</Label>
+                <Select
+                  value={addTemplateForm.watch('intensity')}
+                  onValueChange={(value) =>
+                    addTemplateForm.setValue('intensity', value as WeeklyTemplateFormValues['intensity'])
+                  }
+                >
+                  <SelectTrigger id="add-template-intensity" className="min-h-[44px]">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="high">High</SelectItem>
+                    <SelectItem value="medium">Medium</SelectItem>
+                    <SelectItem value="low">Low</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="space-y-1 md:col-span-2">
+                <Label htmlFor="add-template-label">Session Label</Label>
+                <Input
+                  id="add-template-label"
+                  className="min-h-[44px]"
+                  {...addTemplateForm.register('session_label')}
+                />
+              </div>
+              <div className="space-y-1">
+                <Label htmlFor="add-template-type">Session Type</Label>
+                <Select
+                  value={addTemplateForm.watch('session_type')}
+                  onValueChange={(value) =>
+                    addTemplateForm.setValue('session_type', value as WeeklyTemplateFormValues['session_type'])
+                  }
+                >
+                  <SelectTrigger id="add-template-type" className="min-h-[44px]">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="bouldering">Bouldering</SelectItem>
+                    <SelectItem value="kilterboard">Kilterboard</SelectItem>
+                    <SelectItem value="lead">Lead</SelectItem>
+                    <SelectItem value="fingerboard">Fingerboard</SelectItem>
+                    <SelectItem value="strength">Strength</SelectItem>
+                    <SelectItem value="aerobic">Aerobic</SelectItem>
+                    <SelectItem value="rest">Rest</SelectItem>
+                    <SelectItem value="mobility">Mobility</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="space-y-1">
+                <Label htmlFor="add-template-duration">Duration (mins)</Label>
+                <Input
+                  id="add-template-duration"
+                  type="number"
+                  className="min-h-[44px]"
+                  value={addTemplateForm.watch('duration_mins') ?? ''}
+                  onChange={(event) => {
+                    const next = event.target.value
+                    addTemplateForm.setValue('duration_mins', next.length > 0 ? Number(next) : null)
+                  }}
+                />
+              </div>
+              <div className="space-y-1 md:col-span-2">
+                <Label htmlFor="add-template-focus">Primary Focus</Label>
+                <Input
+                  id="add-template-focus"
+                  className="min-h-[44px]"
+                  value={addTemplateForm.watch('primary_focus') ?? ''}
+                  onChange={(event) =>
+                    addTemplateForm.setValue(
+                      'primary_focus',
+                      event.target.value.length > 0 ? event.target.value : null,
+                    )
+                  }
+                />
+              </div>
+              <div>
+                <Button type="submit" className="min-h-[44px]" disabled={isAddingTemplate}>
+                  {isAddingTemplate ? 'Adding slot...' : 'Add Slot'}
                 </Button>
               </div>
             </form>
