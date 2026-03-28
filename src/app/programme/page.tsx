@@ -201,11 +201,16 @@ export default function ProgrammePage(): React.JSX.Element {
             </CardHeader>
             <CardContent className="space-y-3 text-sm text-slate-600">
               <p>
-                Set up your training programme to unlock AI-powered session planning.
+                The AI wizard will design a full periodised training plan based on your goals,
+                current level, and availability — typically 12–24 weeks split into structured
+                mesocycle blocks.
               </p>
               <p>
-                Use the AI wizard to generate a full periodised plan in seconds.
+                You&apos;ll review and adjust the plan before anything is saved. Once confirmed,
+                you&apos;ll set up your weekly schedule for the first training block, and the AI
+                will generate session plans on demand from there.
               </p>
+              <p className="text-xs text-slate-400">Takes about 2 minutes to complete.</p>
               <Button asChild className="min-h-[44px] w-full">
                 <Link href="/programme/new">Create with AI wizard →</Link>
               </Button>
@@ -217,27 +222,27 @@ export default function ProgrammePage(): React.JSX.Element {
         {/* Has programme                                                       */}
         {/* ------------------------------------------------------------------ */}
         {!isLoading && !error && snapshot?.currentProgramme && (
-          <div className="space-y-3">
+          <div className="space-y-6">
 
             {/* Active plan */}
-            <Card>
-              <CardContent className="pt-4 pb-4">
-                <p className="mb-1 text-xs font-semibold uppercase tracking-wide text-slate-400">
-                  Active plan
-                </p>
-                <p className="text-lg font-bold text-slate-900">
-                  {snapshot.currentProgramme.name}
-                </p>
-                <p className="mt-1 text-sm text-slate-600">
-                  {snapshot.currentProgramme.goal}
-                </p>
-                <p className="mt-1 text-xs text-slate-400">
-                  {format(parseISO(snapshot.currentProgramme.start_date), 'd MMM yyyy')}
-                  {' → '}
-                  {format(parseISO(snapshot.currentProgramme.target_date), 'd MMM yyyy')}
-                </p>
-              </CardContent>
-            </Card>
+            <div>
+              <h2 className="mb-2 text-sm font-semibold uppercase tracking-wide text-slate-400">Active plan</h2>
+              <Card>
+                <CardContent className="pt-4 pb-4">
+                  <p className="text-lg font-bold text-slate-900">
+                    {snapshot.currentProgramme.name}
+                  </p>
+                  <p className="mt-1 text-sm text-slate-600">
+                    {snapshot.currentProgramme.goal}
+                  </p>
+                  <p className="mt-1 text-xs text-slate-400">
+                    {format(parseISO(snapshot.currentProgramme.start_date), 'd MMM yyyy')}
+                    {' → '}
+                    {format(parseISO(snapshot.currentProgramme.target_date), 'd MMM yyyy')}
+                  </p>
+                </CardContent>
+              </Card>
+            </div>
 
             {/* Setup-week CTA */}
             {snapshot.activeMesocycle && snapshot.currentWeeklyTemplate.length === 0 && (
@@ -259,6 +264,8 @@ export default function ProgrammePage(): React.JSX.Element {
 
             {/* Mesocycles — all blocks in chronological order */}
             {allMesocycles && allMesocycles.length > 0 && (
+              <div>
+              <h2 className="mb-2 text-sm font-semibold uppercase tracking-wide text-slate-400">Mesocycles</h2>
               <div className="space-y-2">
                 {allMesocycles.map((meso) => {
                   const isActive = meso.id === snapshot.activeMesocycle?.id
@@ -322,15 +329,15 @@ export default function ProgrammePage(): React.JSX.Element {
                   )
                 })}
               </div>
+              </div>
             )}
 
             {/* Upcoming sessions */}
             {snapshot.upcomingPlannedSessions.length > 0 && (
+              <div>
+              <h2 className="mb-2 text-sm font-semibold uppercase tracking-wide text-slate-400">Upcoming Sessions</h2>
               <Card>
-                <CardHeader>
-                  <CardTitle>Upcoming Sessions</CardTitle>
-                </CardHeader>
-                <CardContent>
+                <CardContent className="pt-4">
                   <div className="max-h-[480px] overflow-y-auto">
                     <ul className="divide-y divide-slate-100">
                       {(extraSessions ?? snapshot.upcomingPlannedSessions).map((s) => {
@@ -424,6 +431,7 @@ export default function ProgrammePage(): React.JSX.Element {
                   </div>
                 </CardContent>
               </Card>
+              </div>
             )}
           </div>
         )}

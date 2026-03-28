@@ -56,7 +56,10 @@ export async function generatePlannedSessionsForActiveMesocycle(
   fromDateStr?: string,
 ): Promise<ApiResponse<PlannedSession[]>> {
   try {
-    const fromDate = fromDateStr ? parseIsoDateUtc(fromDateStr) : todayUtcDate()
+    // Use the later of the provided start date and today — no point generating sessions in the past.
+    const requestedDate = fromDateStr ? parseIsoDateUtc(fromDateStr) : todayUtcDate()
+    const today = todayUtcDate()
+    const fromDate = requestedDate > today ? requestedDate : today
 
     // Fetch the mesocycle first so we can use planned_end as the range boundary.
     const mesocycleResult = await getActiveMesocycle()

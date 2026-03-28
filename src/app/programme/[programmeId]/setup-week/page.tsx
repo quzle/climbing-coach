@@ -297,8 +297,13 @@ export default function SetupWeekPage(): React.JSX.Element {
       }
 
       // Create planned session records for the full mesocycle (fast — no AI calls).
+      // Pass planned_start so sessions begin from the mesocycle start, not today.
       try {
-        await fetch('/api/planned-sessions/generate', { method: 'POST' })
+        await fetch('/api/planned-sessions/generate', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ week_start: mesocycle.planned_start }),
+        })
       } catch {
         // Non-fatal: redirect regardless; sessions can be retried
       }
