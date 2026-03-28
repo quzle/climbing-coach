@@ -90,13 +90,6 @@ export const wizardInputSchema = z.object({
     .string()
     .regex(/^\d{4}-\d{2}-\d{2}$/)
     .optional(),
-  available_days: z
-    .array(z.number().int().min(0).max(6))
-    .min(1, 'Select at least one training day'),
-  preferred_duration_mins: z.number().int(),
-  preferred_styles: z
-    .array(z.enum(PREFERRED_STYLES))
-    .min(1, 'Select at least one style'),
   focus: z.enum(FOCUS_OPTIONS),
   injuries: z.string().max(500).optional(),
 })
@@ -132,7 +125,7 @@ export const generatedMesocycleSchema = z.object({
   focus: z.string().max(500),
   phase_type: z.enum(PHASE_TYPES),
   duration_weeks: z.number().int().min(1).max(20),
-  weekly_templates: z.array(generatedWeeklyTemplateSchema),
+  objectives: z.string().max(300),
 })
 
 export const generatedPlanSchema = z.object({
@@ -152,6 +145,26 @@ export const generatedPlanSchema = z.object({
 export type GeneratedWeeklyTemplate = z.infer<typeof generatedWeeklyTemplateSchema>
 export type GeneratedMesocycle = z.infer<typeof generatedMesocycleSchema>
 export type GeneratedPlan = z.infer<typeof generatedPlanSchema>
+
+// =============================================================================
+// WEEKLY PLAN INPUT SCHEMA  (Phase 2 — schedule planning)
+// =============================================================================
+
+export const dayPinSchema = z.object({
+  style: z.enum(PREFERRED_STYLES),
+  day_of_week: z.number().int().min(0).max(6),
+  locked: z.boolean(),
+})
+
+export const weeklyPlanInputSchema = z.object({
+  available_days: z.array(z.number().int().min(0).max(6)).min(1, 'Select at least one training day'),
+  preferred_duration_mins: z.number().int(),
+  preferred_styles: z.array(z.enum(PREFERRED_STYLES)).min(1, 'Select at least one style'),
+  day_pins: z.array(dayPinSchema).default([]),
+})
+
+export type DayPin = z.infer<typeof dayPinSchema>
+export type WeeklyPlanInput = z.infer<typeof weeklyPlanInputSchema>
 
 // =============================================================================
 // DATE HELPERS  (shared between server routes and client UI)

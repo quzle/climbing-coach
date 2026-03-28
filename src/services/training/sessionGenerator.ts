@@ -1,18 +1,10 @@
-import { buildAthleteContext } from '@/services/ai/contextBuilder'
-import { generateSessionPlan } from '@/services/ai/geminiClient'
 import { getActiveMesocycle } from '@/services/data/mesocycleRepository'
 import {
   createPlannedSession,
   getPlannedSessionsInRange,
 } from '@/services/data/plannedSessionRepository'
 import { getWeeklyTemplateByMesocycle } from '@/services/data/weeklyTemplateRepository'
-import type {
-  ApiResponse,
-  Mesocycle,
-  PlannedSession,
-  SessionLog,
-  WeeklyTemplate,
-} from '@/types'
+import type { ApiResponse, Mesocycle, PlannedSession, WeeklyTemplate } from '@/types'
 
 /** Returns YYYY-MM-DD for a Date in UTC-safe format. */
 function toIsoDate(date: Date): string {
@@ -50,84 +42,24 @@ function nextOccurrenceOfDay(dbDayOfWeek: number, fromDate: Date): string {
 }
 
 /**
- * @description Returns the latest same-type session from the supplied history.
- * @param sessions Recent sessions, newest first
- * @param sessionType Target session type
- * @returns Most recent matching session or null
- */
-function getLatestSameTypeSession(
-  sessions: SessionLog[],
-  sessionType: string,
-): SessionLog | null {
-  return sessions.find((s) => s.session_type === sessionType) ?? null
-}
-
-/**
- * @description Builds extra generation guidance for Gemini using current
- * phase, template metadata, previous same-type session, and readiness trend.
- * @param mesocycle Active mesocycle context
- * @param template Template slot being generated
- * @param recentSessions Recent athlete sessions
- * @param readinessAvg 7-day readiness average
- * @returns Context string appended to the generation instruction
- */
-function buildAdditionalContext(
-  mesocycle: Mesocycle,
-  template: WeeklyTemplate,
-  recentSessions: SessionLog[],
-  readinessAvg: number,
-): string {
-  const lastSameType = getLatestSameTypeSession(recentSessions, template.session_type)
-
-  const lines = [
-    `Mesocycle: ${mesocycle.name}`,
-    `Phase type: ${mesocycle.phase_type}`,
-    `Mesocycle focus: ${mesocycle.focus}`,
-    `Template session label: ${template.session_label}`,
-    `Template intensity: ${template.intensity}`,
-    `Template target duration: ${template.duration_mins ?? 'unspecified'} minutes`,
-    `Template primary focus: ${template.primary_focus ?? 'not specified'}`,
-    `Current 7-day readiness average: ${readinessAvg.toFixed(2)}/5`,
-  ]
-
-  if (lastSameType !== null) {
-    lines.push(`Last ${template.session_type} session date: ${lastSameType.date}`)
-    lines.push(
-      `Last ${template.session_type} quality/rpe: ${lastSameType.quality_rating ?? 'N/A'}/5, ${lastSameType.rpe ?? 'N/A'}/10`,
-    )
-    lines.push(`Last ${template.session_type} notes: ${lastSameType.notes ?? 'none'}`)
-  } else {
-    lines.push(`No recent ${template.session_type} session found in the last 30 days.`)
-  }
-
-  lines.push(
-    'Apply progressive overload conservatively (typically +/-10-20% volume) based on readiness and previous same-type session response.',
-  )
-
-  return lines.join('\n')
-}
-
-/**
- * @description Generates planned sessions for the active mesocycle for a
- * Monday-start week. Existing planned sessions for matching date+template are
- * left untouched to prevent duplicates.
+ * @description Generates planned sessions for every weekly occurrence in the
+ * active mesocycle from `fromDate` to `activeMesocycle.planned_end`.
+ * Sessions are stored with template metadata only — AI plan text is generated
+ * lazily on first access via POST /api/planned-sessions/:id/generate-plan.
+ * Existing planned sessions for matching date+template are left untouched
+ * to prevent duplicates on re-runs.
  *
- * @param fromDateStr Optional ISO date to use as the start of the rolling window (defaults to today)
- * @returns Array of newly created planned sessions for the next 7 days
+ * @param fromDateStr Optional ISO date to start from (defaults to today)
+ * @returns Array of newly created planned sessions for the full mesocycle
  */
 export async function generatePlannedSessionsForActiveMesocycle(
   fromDateStr?: string,
 ): Promise<ApiResponse<PlannedSession[]>> {
   try {
     const fromDate = fromDateStr ? parseIsoDateUtc(fromDateStr) : todayUtcDate()
-    const rangeEnd = addDays(fromDate, 7)
 
-    const [mesocycleResult, athleteContext, existingSessionsResult] = await Promise.all([
-      getActiveMesocycle(),
-      buildAthleteContext(),
-      getPlannedSessionsInRange(toIsoDate(fromDate), rangeEnd),
-    ])
-
+    // Fetch the mesocycle first so we can use planned_end as the range boundary.
+    const mesocycleResult = await getActiveMesocycle()
     if (mesocycleResult.error !== null) {
       console.error(
         '[sessionGenerator.generatePlannedSessionsForActiveMesocycle] getActiveMesocycle:',
@@ -141,7 +73,13 @@ export async function generatePlannedSessionsForActiveMesocycle(
       return { data: [], error: null }
     }
 
-    const templatesResult = await getWeeklyTemplateByMesocycle(activeMesocycle.id)
+    // Fetch templates and existing sessions in parallel now that we have the
+    // mesocycle end date for the range query.
+    const [templatesResult, existingSessionsResult] = await Promise.all([
+      getWeeklyTemplateByMesocycle(activeMesocycle.id),
+      getPlannedSessionsInRange(toIsoDate(fromDate), activeMesocycle.planned_end),
+    ])
+
     if (templatesResult.error !== null) {
       console.error(
         '[sessionGenerator.generatePlannedSessionsForActiveMesocycle] getWeeklyTemplateByMesocycle:',
@@ -167,56 +105,50 @@ export async function generatePlannedSessionsForActiveMesocycle(
     const createdSessions: PlannedSession[] = []
 
     for (const template of templates) {
-      const plannedDate = nextOccurrenceOfDay(template.day_of_week, fromDate)
+      // Start on the first occurrence of this weekday on or after fromDate,
+      // then advance by 7 days each iteration until the mesocycle ends.
+      let cursor = parseIsoDateUtc(nextOccurrenceOfDay(template.day_of_week, fromDate))
 
-      // Skip dates outside the active mesocycle's planned window.
-      if (plannedDate > activeMesocycle.planned_end) {
-        continue
-      }
+      while (toIsoDate(cursor) <= activeMesocycle.planned_end) {
+        const plannedDate = toIsoDate(cursor)
+        const dedupeKey = `${plannedDate}:${template.id}`
 
-      const dedupeKey = `${plannedDate}:${template.id}`
-      if (existingByDateTemplate.has(dedupeKey)) {
-        continue
-      }
+        if (!existingByDateTemplate.has(dedupeKey)) {
+          // Store template metadata only — AI plan text is generated lazily
+          // on first access to avoid upfront token cost and stale context.
+          const createResult = await createPlannedSession({
+            mesocycle_id: activeMesocycle.id,
+            template_id: template.id,
+            planned_date: plannedDate,
+            session_type: template.session_type,
+            status: 'planned',
+            generation_notes: `Auto-generated for ${activeMesocycle.phase_type} phase`,
+            generated_plan: {
+              session_label: template.session_label,
+              intensity: template.intensity,
+              primary_focus: template.primary_focus,
+              duration_mins: template.duration_mins,
+            },
+          })
 
-      const additionalContext = buildAdditionalContext(
-        activeMesocycle,
-        template,
-        athleteContext.recentSessions,
-        athleteContext.weeklyReadinessAvg,
-      )
+          if (createResult.error !== null || createResult.data === null) {
+            console.error(
+              '[sessionGenerator.generatePlannedSessionsForActiveMesocycle] createPlannedSession:',
+              createResult.error,
+            )
+            return {
+              data: null,
+              error: createResult.error ?? 'Failed to create planned session',
+            }
+          }
 
-      const aiPlanText = await generateSessionPlan(template.session_type, additionalContext)
-
-      const createResult = await createPlannedSession({
-        mesocycle_id: activeMesocycle.id,
-        template_id: template.id,
-        planned_date: plannedDate,
-        session_type: template.session_type,
-        status: 'planned',
-        generation_notes: `Auto-generated for ${activeMesocycle.phase_type} phase`,
-        generated_plan: {
-          session_label: template.session_label,
-          intensity: template.intensity,
-          primary_focus: template.primary_focus,
-          duration_mins: template.duration_mins,
-          ai_plan_text: aiPlanText,
-          readiness_avg_7d: Number(athleteContext.weeklyReadinessAvg.toFixed(2)),
-        },
-      })
-
-      if (createResult.error !== null || createResult.data === null) {
-        console.error(
-          '[sessionGenerator.generatePlannedSessionsForActiveMesocycle] createPlannedSession:',
-          createResult.error,
-        )
-        return {
-          data: null,
-          error: createResult.error ?? 'Failed to create planned session',
+          createdSessions.push(createResult.data)
         }
-      }
 
-      createdSessions.push(createResult.data)
+        // Advance to the same weekday next week.
+        cursor = new Date(cursor)
+        cursor.setUTCDate(cursor.getUTCDate() + 7)
+      }
     }
 
     return { data: createdSessions, error: null }

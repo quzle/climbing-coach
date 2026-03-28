@@ -18,16 +18,15 @@ const confirmBodySchema = z.object({
 // =============================================================================
 
 /**
- * @description Receives a reviewed wizard plan and bulk-creates the programme,
- * all mesocycles, and all weekly templates in the database. Mesocycle dates are
- * computed sequentially from wizard_input.start_date and each block's
- * duration_weeks.
+ * @description Receives a reviewed wizard plan and bulk-creates the programme
+ * and all mesocycles in the database. Mesocycle dates are computed sequentially
+ * from wizard_input.start_date and each block's duration_weeks.
  *
- * @returns 201 with the newly created programme_id, or 400/500 on failure.
+ * @returns 201 with the newly created programme_id and first_mesocycle_id, or 400/500 on failure.
  */
 export async function POST(
   request: NextRequest,
-): Promise<NextResponse<ApiResponse<{ programme_id: string }>>> {
+): Promise<NextResponse<ApiResponse<{ programme_id: string; first_mesocycle_id: string }>>> {
   try {
     const body: unknown = await request.json()
     const parsed = confirmBodySchema.safeParse(body)
@@ -62,9 +61,11 @@ export async function POST(
       )
     }
 
-    // 2. Create mesocycles and weekly templates sequentially (each start date
-    //    depends on the previous block's end date)
+    // 2. Create mesocycles sequentially (each start date depends on the
+    //    previous block's end date). Track the earliest to return as first_mesocycle_id.
     let blockStart = wizard_input.start_date
+    let firstMesocycleId: string | null = null
+    let firstMesocycleStart: string | null = null
 
     for (const meso of plan.mesocycles) {
       const blockEnd = addDaysToDate(blockStart, meso.duration_weeks * 7 - 1)
@@ -91,34 +92,23 @@ export async function POST(
         )
       }
 
-      if (meso.weekly_templates.length > 0) {
-        const { error: templateError } = await supabase.from('weekly_templates').insert(
-          meso.weekly_templates.map((t) => ({
-            mesocycle_id: mesocycle.id,
-            day_of_week: t.day_of_week,
-            session_label: t.session_label,
-            session_type: t.session_type,
-            intensity: t.intensity,
-            duration_mins: t.duration_mins,
-            primary_focus: t.primary_focus ?? null,
-            notes: t.notes ?? null,
-          })),
-        )
-
-        if (templateError) {
-          console.error('[POST /api/programme/confirm] create weekly templates:', templateError)
-          return NextResponse.json(
-            { data: null, error: `Failed to create weekly templates for "${meso.name}".` },
-            { status: 500 },
-          )
-        }
+      if (firstMesocycleId === null || blockStart < (firstMesocycleStart ?? blockStart)) {
+        firstMesocycleId = mesocycle.id
+        firstMesocycleStart = blockStart
       }
 
       blockStart = addDaysToDate(blockEnd, 1)
     }
 
+    if (!firstMesocycleId) {
+      return NextResponse.json(
+        { data: null, error: 'No mesocycles were created.' },
+        { status: 500 },
+      )
+    }
+
     return NextResponse.json(
-      { data: { programme_id: programme.id }, error: null },
+      { data: { programme_id: programme.id, first_mesocycle_id: firstMesocycleId }, error: null },
       { status: 201 },
     )
   } catch (error) {

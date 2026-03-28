@@ -10,14 +10,10 @@ import { Label } from '@/components/ui/label'
 import { Badge } from '@/components/ui/badge'
 import { Textarea } from '@/components/ui/textarea'
 import {
-  DAY_LABELS,
   DURATION_WEEK_OPTIONS,
   FOCUS_LABELS,
   FOCUS_OPTIONS,
   PHASE_TYPE_LABELS,
-  PREFERRED_STYLE_LABELS,
-  PREFERRED_STYLES,
-  SESSION_DURATION_OPTIONS,
   addDaysToDate,
   computeMesocycleDates,
   wizardInputSchema,
@@ -41,9 +37,6 @@ type FormData = {
   duration_weeks: number
   peak_event_label: string
   peak_event_date: string
-  available_days: number[]
-  preferred_duration_mins: number
-  preferred_styles: string[]
   focus: string
   injuries: string
 }
@@ -123,9 +116,6 @@ function PlanReview({ plan, startDate }: { plan: GeneratedPlan; startDate: strin
 
       {plan.mesocycles.map((meso, i) => {
         const d = dates[i]!
-        const sortedTemplates = [...meso.weekly_templates].sort(
-          (a, b) => a.day_of_week - b.day_of_week,
-        )
         return (
           <Card key={i}>
             <CardHeader className="pb-2">
@@ -149,27 +139,8 @@ function PlanReview({ plan, startDate }: { plan: GeneratedPlan; startDate: strin
             </CardHeader>
             <CardContent className="pt-0">
               <p className="mb-2 text-xs text-slate-500">{meso.focus}</p>
-              {sortedTemplates.length > 0 && (
-                <ul className="divide-y divide-slate-50">
-                  {sortedTemplates.map((t, j) => (
-                    <li key={j} className="flex items-center gap-2 py-1 first:pt-0 last:pb-0">
-                      <span className="w-8 shrink-0 text-xs font-semibold text-slate-500">
-                        {DAY_LABELS[t.day_of_week] ?? `D${t.day_of_week}`}
-                      </span>
-                      <span className="flex-1 truncate text-xs text-slate-700">
-                        {t.session_label}
-                      </span>
-                      <span className="shrink-0 capitalize text-xs text-slate-400">
-                        {t.intensity}
-                      </span>
-                      {t.duration_mins && (
-                        <span className="shrink-0 text-xs text-slate-400">
-                          {t.duration_mins}m
-                        </span>
-                      )}
-                    </li>
-                  ))}
-                </ul>
+              {meso.objectives && (
+                <p className="mt-1 text-xs text-slate-600 italic">{meso.objectives}</p>
               )}
             </CardContent>
           </Card>
@@ -197,30 +168,9 @@ export default function ProgrammeWizardPage(): React.JSX.Element {
     duration_weeks: 12,
     peak_event_label: '',
     peak_event_date: '',
-    available_days: [],
-    preferred_duration_mins: 90,
-    preferred_styles: [],
     focus: 'general',
     injuries: '',
   })
-
-  function toggleDay(day: number) {
-    setForm((prev) => ({
-      ...prev,
-      available_days: prev.available_days.includes(day)
-        ? prev.available_days.filter((d) => d !== day)
-        : [...prev.available_days, day],
-    }))
-  }
-
-  function toggleStyle(style: string) {
-    setForm((prev) => ({
-      ...prev,
-      preferred_styles: prev.preferred_styles.includes(style)
-        ? prev.preferred_styles.filter((s) => s !== style)
-        : [...prev.preferred_styles, style],
-    }))
-  }
 
   async function handleGenerate() {
     setFieldErrors({})
@@ -232,9 +182,6 @@ export default function ProgrammeWizardPage(): React.JSX.Element {
       duration_weeks: form.duration_weeks,
       peak_event_label: form.peak_event_label || undefined,
       peak_event_date: form.peak_event_date || undefined,
-      available_days: form.available_days,
-      preferred_duration_mins: form.preferred_duration_mins,
-      preferred_styles: form.preferred_styles as WizardInput['preferred_styles'],
       focus: form.focus as WizardInput['focus'],
       injuries: form.injuries || undefined,
     }
@@ -283,9 +230,6 @@ export default function ProgrammeWizardPage(): React.JSX.Element {
       duration_weeks: form.duration_weeks,
       peak_event_label: form.peak_event_label || undefined,
       peak_event_date: form.peak_event_date || undefined,
-      available_days: form.available_days,
-      preferred_duration_mins: form.preferred_duration_mins,
-      preferred_styles: form.preferred_styles as WizardInput['preferred_styles'],
       focus: form.focus as WizardInput['focus'],
       injuries: form.injuries || undefined,
     }
@@ -296,15 +240,15 @@ export default function ProgrammeWizardPage(): React.JSX.Element {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ wizard_input: wizardInput, plan }),
       })
-      const json = (await res.json()) as ApiResponse<{ programme_id: string }>
+      const json = (await res.json()) as ApiResponse<{ programme_id: string; first_mesocycle_id: string }>
 
-      if (!res.ok || json.error) {
+      if (!res.ok || json.error || !json.data) {
         setConfirmError(json.error ?? 'Failed to create plan.')
         setWizardState({ step: 'review', plan })
         return
       }
 
-      router.push('/programme')
+      router.push(`/programme/${json.data.programme_id}/setup-week`)
     } catch {
       setConfirmError('Network error. Please try again.')
       setWizardState({ step: 'review', plan })
@@ -465,56 +409,6 @@ export default function ProgrammeWizardPage(): React.JSX.Element {
                 onChange={(e) => setForm((p) => ({ ...p, peak_event_date: e.target.value }))}
               />
             </div>
-          </div>
-
-          {/* Available days */}
-          <div>
-            <SectionLabel>Training days</SectionLabel>
-            <div className="flex flex-wrap gap-2">
-              {[0, 1, 2, 3, 4, 5, 6].map((day) => (
-                <ToggleButton
-                  key={day}
-                  active={form.available_days.includes(day)}
-                  onClick={() => toggleDay(day)}
-                >
-                  {DAY_LABELS[day]}
-                </ToggleButton>
-              ))}
-            </div>
-            <FieldError message={fieldErrors.available_days} />
-          </div>
-
-          {/* Session duration */}
-          <div>
-            <SectionLabel>Typical session length</SectionLabel>
-            <div className="flex flex-wrap gap-2">
-              {SESSION_DURATION_OPTIONS.map((d) => (
-                <ToggleButton
-                  key={d}
-                  active={form.preferred_duration_mins === d}
-                  onClick={() => setForm((p) => ({ ...p, preferred_duration_mins: d }))}
-                >
-                  {d} min
-                </ToggleButton>
-              ))}
-            </div>
-          </div>
-
-          {/* Preferred styles */}
-          <div>
-            <SectionLabel>Preferred training styles</SectionLabel>
-            <div className="flex flex-wrap gap-2">
-              {PREFERRED_STYLES.map((style) => (
-                <ToggleButton
-                  key={style}
-                  active={form.preferred_styles.includes(style)}
-                  onClick={() => toggleStyle(style)}
-                >
-                  {PREFERRED_STYLE_LABELS[style] ?? style}
-                </ToggleButton>
-              ))}
-            </div>
-            <FieldError message={fieldErrors.preferred_styles} />
           </div>
 
           {/* Focus */}

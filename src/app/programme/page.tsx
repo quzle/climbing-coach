@@ -7,27 +7,35 @@ import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Skeleton } from '@/components/ui/skeleton'
-import { ProgrammeBuilderEditor } from '@/components/programme/programme-builder-editor'
 import { ProseMarkdown } from '@/components/ui/prose-markdown'
-import type { ApiResponse, ProgrammeBuilderSnapshot, WeeklyTemplate } from '@/types'
+import type { ApiResponse, Mesocycle, PlannedSession, ProgrammeBuilderSnapshot } from '@/types'
 
-const DAY_LABELS: Record<number, string> = {
-  0: 'Mon',
-  1: 'Tue',
-  2: 'Wed',
-  3: 'Thu',
-  4: 'Fri',
-  5: 'Sat',
-  6: 'Sun',
+// =============================================================================
+// CONSTANTS
+// =============================================================================
+
+const PHASE_TYPE_LABELS: Record<string, string> = {
+  base: 'Base',
+  power: 'Power',
+  power_endurance: 'Power Endurance',
+  climbing_specific: 'Climbing Specific',
+  performance: 'Performance',
+  deload: 'Deload',
 }
 
-/**
- * @description Computes a "Week X of Y" label for the active mesocycle based
- * on today's date relative to the planned start and end dates.
- * @param plannedStart ISO date string for the mesocycle start
- * @param plannedEnd ISO date string for the mesocycle end
- * @returns Formatted week label e.g. "Week 3 of 5"
- */
+const PHASE_PILL_CLASSES: Record<string, string> = {
+  base: 'bg-blue-100 text-blue-700',
+  power: 'bg-orange-100 text-orange-800',
+  power_endurance: 'bg-purple-100 text-purple-700',
+  climbing_specific: 'bg-emerald-100 text-emerald-700',
+  performance: 'bg-amber-100 text-amber-700',
+  deload: 'bg-slate-100 text-slate-500',
+}
+
+// =============================================================================
+// HELPERS
+// =============================================================================
+
 function getMesocycleWeekLabel(plannedStart: string, plannedEnd: string): string {
   const today = new Date()
   const start = parseISO(plannedStart)
@@ -38,22 +46,38 @@ function getMesocycleWeekLabel(plannedStart: string, plannedEnd: string): string
   return `Week ${clampedWeek} of ${totalWeeks}`
 }
 
-function sortedTemplates(templates: WeeklyTemplate[]): WeeklyTemplate[] {
-  return [...templates].sort((a, b) => a.day_of_week - b.day_of_week)
+function PhasePill({ phaseType, muted = false }: { phaseType: string; muted?: boolean }) {
+  const label = PHASE_TYPE_LABELS[phaseType] ?? phaseType
+  const classes = muted
+    ? 'bg-slate-100 text-slate-400'
+    : (PHASE_PILL_CLASSES[phaseType] ?? 'bg-slate-100 text-slate-600')
+  return (
+    <span className={`shrink-0 rounded-full px-2.5 py-0.5 text-xs font-medium ${classes}`}>
+      {label}
+    </span>
+  )
 }
 
+// =============================================================================
+// PAGE
+// =============================================================================
+
 /**
- * @description Training plan overview page. Fetches the programme builder
- * snapshot and renders the active programme, mesocycle, weekly template, and
- * upcoming planned sessions in a read-only summary view.
- * @returns The programme page React element.
+ * @description Training plan overview page. Single-column layout showing the
+ * active programme, all mesocycles in chronological order (active expanded and
+ * highlighted, completed/future collapsed), and upcoming planned sessions.
  */
 export default function ProgrammePage(): React.JSX.Element {
   const [snapshot, setSnapshot] = useState<ProgrammeBuilderSnapshot | null>(null)
+  const [allMesocycles, setAllMesocycles] = useState<Mesocycle[] | null>(null)
   const [isLoading, setIsLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [expandedSessionId, setExpandedSessionId] = useState<string | null>(null)
   const [isSkipping, setIsSkipping] = useState<string | null>(null)
+  const [extraSessions, setExtraSessions] = useState<PlannedSession[] | null>(null)
+  const [isLoadingMore, setIsLoadingMore] = useState(false)
+  const [generatingPlanId, setGeneratingPlanId] = useState<string | null>(null)
+  const [planCache, setPlanCache] = useState<Record<string, string>>({})
 
   async function loadSnapshot(): Promise<void> {
     try {
@@ -65,10 +89,54 @@ export default function ProgrammePage(): React.JSX.Element {
       }
       setError(null)
       setSnapshot(json.data)
+
+      // Fetch all mesocycles once we have the programme ID.
+      if (json.data?.currentProgramme) {
+        const mesoRes = await fetch(
+          `/api/mesocycles?programme_id=${json.data.currentProgramme.id}`,
+        )
+        const mesoJson = (await mesoRes.json()) as ApiResponse<{ mesocycles: Mesocycle[] }>
+        if (mesoRes.ok && !mesoJson.error && mesoJson.data) {
+          setAllMesocycles(mesoJson.data.mesocycles)
+        }
+      }
     } catch {
       setError('Failed to load programme.')
     } finally {
       setIsLoading(false)
+    }
+  }
+
+  async function generatePlan(sessionId: string): Promise<void> {
+    setGeneratingPlanId(sessionId)
+    try {
+      const res = await fetch(`/api/planned-sessions/${sessionId}/generate-plan`, {
+        method: 'POST',
+      })
+      const json = (await res.json()) as ApiResponse<{ ai_plan_text: string }>
+      if (res.ok && json.data) {
+        setPlanCache((prev) => ({ ...prev, [sessionId]: json.data!.ai_plan_text }))
+        setExpandedSessionId(sessionId)
+      }
+    } catch {
+      // Silently fail — user can retry by tapping again
+    } finally {
+      setGeneratingPlanId(null)
+    }
+  }
+
+  async function loadMoreSessions(): Promise<void> {
+    setIsLoadingMore(true)
+    try {
+      const today = new Date().toISOString().split('T')[0]!
+      const res = await fetch(`/api/planned-sessions?start_date=${today}&end_date=2099-12-31`)
+      const json = (await res.json()) as ApiResponse<{ plannedSessions: PlannedSession[] }>
+      if (!res.ok || json.error || !json.data) return
+      setExtraSessions(json.data.plannedSessions)
+    } catch {
+      // Silently fail — snapshot sessions remain visible
+    } finally {
+      setIsLoadingMore(false)
     }
   }
 
@@ -99,175 +167,192 @@ export default function ProgrammePage(): React.JSX.Element {
 
   return (
     <div className="min-h-screen bg-slate-50">
-      <div className="mx-auto max-w-6xl px-4 py-6 pb-24">
+      <div className="mx-auto max-w-2xl px-4 py-6 pb-24">
         <h1 className="mb-6 text-2xl font-bold text-slate-900">Training Plan</h1>
 
+        {/* ------------------------------------------------------------------ */}
+        {/* Loading                                                             */}
+        {/* ------------------------------------------------------------------ */}
         {isLoading && (
           <div className="space-y-4">
-            <Skeleton className="h-28 w-full rounded-xl" />
-            <Skeleton className="h-28 w-full rounded-xl" />
-            <Skeleton className="h-40 w-full rounded-xl" />
+            <Skeleton className="h-24 w-full rounded-xl" />
+            <Skeleton className="h-32 w-full rounded-xl" />
+            <Skeleton className="h-20 w-full rounded-xl" />
+            <Skeleton className="h-20 w-full rounded-xl" />
           </div>
         )}
 
+        {/* ------------------------------------------------------------------ */}
+        {/* Error                                                               */}
+        {/* ------------------------------------------------------------------ */}
         {!isLoading && error && (
           <p className="text-sm text-red-600" role="alert">
             {error}
           </p>
         )}
 
-        {!isLoading && !error && !snapshot?.currentProgramme && snapshot !== null && (
-          <div className="grid gap-4 lg:grid-cols-[minmax(0,0.8fr)_minmax(0,1.2fr)]">
+        {/* ------------------------------------------------------------------ */}
+        {/* No programme                                                        */}
+        {/* ------------------------------------------------------------------ */}
+        {!isLoading && !error && snapshot !== null && !snapshot.currentProgramme && (
+          <Card>
+            <CardHeader>
+              <CardTitle>Start Your Programme</CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-3 text-sm text-slate-600">
+              <p>
+                Set up your training programme to unlock AI-powered session planning.
+              </p>
+              <p>
+                Use the AI wizard to generate a full periodised plan in seconds.
+              </p>
+              <Button asChild className="min-h-[44px] w-full">
+                <Link href="/programme/new">Create with AI wizard →</Link>
+              </Button>
+            </CardContent>
+          </Card>
+        )}
+
+        {/* ------------------------------------------------------------------ */}
+        {/* Has programme                                                       */}
+        {/* ------------------------------------------------------------------ */}
+        {!isLoading && !error && snapshot?.currentProgramme && (
+          <div className="space-y-3">
+
+            {/* Active plan */}
             <Card>
-              <CardHeader>
-                <CardTitle>Start Your Programme</CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-3 text-sm text-slate-600">
-                <p>
-                  Set up your training programme to unlock AI-powered session planning.
+              <CardContent className="pt-4 pb-4">
+                <p className="mb-1 text-xs font-semibold uppercase tracking-wide text-slate-400">
+                  Active plan
                 </p>
-                <p>
-                  Use the AI wizard to generate a full periodised plan in seconds, or build it
-                  manually block by block.
+                <p className="text-lg font-bold text-slate-900">
+                  {snapshot.currentProgramme.name}
                 </p>
-                <Button asChild className="min-h-[44px] w-full">
-                  <Link href="/programme/new">Create with AI wizard →</Link>
-                </Button>
+                <p className="mt-1 text-sm text-slate-600">
+                  {snapshot.currentProgramme.goal}
+                </p>
+                <p className="mt-1 text-xs text-slate-400">
+                  {format(parseISO(snapshot.currentProgramme.start_date), 'd MMM yyyy')}
+                  {' → '}
+                  {format(parseISO(snapshot.currentProgramme.target_date), 'd MMM yyyy')}
+                </p>
               </CardContent>
             </Card>
 
-            <ProgrammeBuilderEditor snapshot={snapshot} onSaved={loadSnapshot} />
-          </div>
-        )}
-
-        {!isLoading && !error && snapshot?.currentProgramme && (
-          <div className="grid gap-4 lg:grid-cols-2">
-            <div className="space-y-4">
-              {/* Setup step indicator — hidden once all 4 steps complete */}
-              {snapshot.upcomingPlannedSessions.length === 0 && (() => {
-                const steps = [
-                  { label: 'Create programme', done: snapshot.currentProgramme !== null },
-                  { label: 'Add a training block', done: snapshot.activeMesocycle !== null },
-                  { label: 'Define weekly structure', done: snapshot.currentWeeklyTemplate.length > 0 },
-                  { label: 'Generate sessions', done: snapshot.upcomingPlannedSessions.length > 0 },
-                ]
-                const firstIncomplete = steps.findIndex((s) => !s.done)
-                return (
-                  <Card>
-                    <CardHeader>
-                      <CardTitle>Getting started</CardTitle>
-                    </CardHeader>
-                    <CardContent>
-                      <ul className="space-y-2 text-sm">
-                        {steps.map((step, i) => {
-                          const isActive = i === firstIncomplete
-                          const className = step.done
-                            ? 'text-emerald-600 font-medium'
-                            : isActive
-                              ? 'text-slate-900 font-semibold'
-                              : 'text-slate-400'
-                          const indicator = step.done ? '✓' : String(i + 1)
-                          return (
-                            <li key={step.label} className={`flex items-center gap-2 ${className}`}>
-                              <span className="w-4 shrink-0 text-center">{indicator}</span>
-                              <span>{step.label}</span>
-                            </li>
-                          )
-                        })}
-                      </ul>
-                    </CardContent>
-                  </Card>
-                )
-              })()}
-
-              {/* Programme overview */}
-              <Card>
-                <CardHeader>
-                  <CardTitle>{snapshot.currentProgramme.name}</CardTitle>
-                </CardHeader>
-                <CardContent className="space-y-1 text-sm text-slate-600">
-                  <p className="text-xs text-slate-400">
-                    {format(parseISO(snapshot.currentProgramme.start_date), 'd MMM yyyy')}
-                    {' → '}
-                    {format(parseISO(snapshot.currentProgramme.target_date), 'd MMM yyyy')}
+            {/* Setup-week CTA */}
+            {snapshot.activeMesocycle && snapshot.currentWeeklyTemplate.length === 0 && (
+              <Card className="border-blue-200 bg-blue-50">
+                <CardContent className="pt-4 pb-4 space-y-3 text-sm text-blue-800">
+                  <p className="font-semibold text-blue-900">Set up your training week</p>
+                  <p>
+                    Your training block is ready. Define your weekly schedule so the AI coach
+                    can generate personalised session plans.
                   </p>
-                  <p>{snapshot.currentProgramme.goal}</p>
+                  <Button asChild className="min-h-[44px] w-full">
+                    <Link href={`/programme/${snapshot.currentProgramme.id}/setup-week`}>
+                      Set up weekly plan →
+                    </Link>
+                  </Button>
                 </CardContent>
               </Card>
+            )}
 
-              {/* Active mesocycle */}
-              {snapshot.activeMesocycle && (
-                <Card>
-                  <CardHeader>
-                    <div className="flex items-center justify-between gap-2">
-                      <CardTitle>{snapshot.activeMesocycle.name}</CardTitle>
-                      <Badge variant="secondary" className="capitalize text-xs">
-                        {snapshot.activeMesocycle.phase_type}
-                      </Badge>
-                    </div>
-                  </CardHeader>
-                  <CardContent className="space-y-1 text-sm text-slate-600">
-                    <p className="font-medium text-slate-800">
-                      {getMesocycleWeekLabel(
-                        snapshot.activeMesocycle.planned_start,
-                        snapshot.activeMesocycle.planned_end,
-                      )}
-                    </p>
-                    <p>{snapshot.activeMesocycle.focus}</p>
-                    <p className="text-xs text-slate-400">
-                      {format(parseISO(snapshot.activeMesocycle.planned_start), 'd MMM')}
-                      {' – '}
-                      {format(parseISO(snapshot.activeMesocycle.planned_end), 'd MMM yyyy')}
-                    </p>
-                  </CardContent>
-                </Card>
-              )}
+            {/* Mesocycles — all blocks in chronological order */}
+            {allMesocycles && allMesocycles.length > 0 && (
+              <div className="space-y-2">
+                {allMesocycles.map((meso) => {
+                  const isActive = meso.id === snapshot.activeMesocycle?.id
+                  const isCompleted = meso.status === 'completed'
 
-              {/* Weekly template */}
-              {snapshot.currentWeeklyTemplate.length > 0 && (
-                <Card>
-                  <CardHeader>
-                    <CardTitle>Weekly Structure</CardTitle>
-                  </CardHeader>
-                  <CardContent>
-                    <ul className="divide-y divide-slate-100">
-                      {sortedTemplates(snapshot.currentWeeklyTemplate).map((t) => (
-                        <li
-                          key={t.id}
-                          className="flex items-start gap-3 py-2 first:pt-0 last:pb-0"
-                        >
-                          <span className="w-9 shrink-0 pt-0.5 text-xs font-semibold text-slate-500">
-                            {DAY_LABELS[t.day_of_week] ?? `Day ${t.day_of_week}`}
-                          </span>
-                          <div className="min-w-0 flex-1">
-                            <p className="text-sm font-medium leading-snug text-slate-800">
-                              {t.session_label}
-                            </p>
-                            {t.primary_focus && (
-                              <p className="text-xs text-slate-500">{t.primary_focus}</p>
-                            )}
+                  if (isActive) {
+                    return (
+                      <Card key={meso.id} className="border-2 border-blue-500 shadow-sm">
+                        <CardContent className="pt-4 pb-4">
+                          <div className="mb-2 flex items-start justify-between gap-2">
+                            <div className="min-w-0">
+                              <p className="mb-0.5 text-xs font-semibold uppercase tracking-wide text-blue-500">
+                                Current block
+                              </p>
+                              <p className="font-semibold text-slate-900 leading-snug">
+                                {meso.name}
+                              </p>
+                            </div>
+                            <PhasePill phaseType={meso.phase_type} />
                           </div>
-                          <span className="shrink-0 capitalize text-xs text-slate-400">
-                            {t.intensity}
-                          </span>
-                        </li>
-                      ))}
-                    </ul>
-                  </CardContent>
-                </Card>
-              )}
+                          <p className="text-sm font-medium text-slate-700">
+                            {getMesocycleWeekLabel(meso.planned_start, meso.planned_end)}
+                          </p>
+                          <p className="mt-1 text-sm text-slate-600">{meso.focus}</p>
+                          <p className="mt-2 text-xs text-slate-400">
+                            {format(parseISO(meso.planned_start), 'd MMM')}
+                            {' – '}
+                            {format(parseISO(meso.planned_end), 'd MMM yyyy')}
+                          </p>
+                        </CardContent>
+                      </Card>
+                    )
+                  }
 
-              {/* Upcoming planned sessions */}
-              {snapshot.upcomingPlannedSessions.length > 0 && (
-                <Card>
-                  <CardHeader>
-                    <CardTitle>Upcoming Sessions</CardTitle>
-                  </CardHeader>
-                  <CardContent>
+                  return (
+                    <Card
+                      key={meso.id}
+                      className={isCompleted ? 'border-slate-100 bg-slate-50' : 'border-slate-200'}
+                    >
+                      <CardContent className="py-3">
+                        <div className="flex items-center gap-3">
+                          {isCompleted && (
+                            <span className="shrink-0 text-sm text-emerald-500">✓</span>
+                          )}
+                          <span
+                            className={`min-w-0 flex-1 truncate text-sm font-medium ${
+                              isCompleted ? 'text-slate-400' : 'text-slate-600'
+                            }`}
+                          >
+                            {meso.name}
+                          </span>
+                          <PhasePill phaseType={meso.phase_type} muted={isCompleted} />
+                          <span className="shrink-0 text-xs text-slate-400">
+                            {format(parseISO(meso.planned_start), 'd MMM')}
+                            {' – '}
+                            {format(parseISO(meso.planned_end), 'd MMM')}
+                          </span>
+                        </div>
+                      </CardContent>
+                    </Card>
+                  )
+                })}
+              </div>
+            )}
+
+            {/* Upcoming sessions */}
+            {snapshot.upcomingPlannedSessions.length > 0 && (
+              <Card>
+                <CardHeader>
+                  <CardTitle>Upcoming Sessions</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="max-h-[480px] overflow-y-auto">
                     <ul className="divide-y divide-slate-100">
-                      {snapshot.upcomingPlannedSessions.map((s) => {
-                        const plan = s.generated_plan as { ai_plan_text?: string } | null
+                      {(extraSessions ?? snapshot.upcomingPlannedSessions).map((s) => {
+                        const storedPlanText = (
+                          s.generated_plan as { ai_plan_text?: string } | null
+                        )?.ai_plan_text
+                        const planText = planCache[s.id] ?? storedPlanText
                         const isExpanded = expandedSessionId === s.id
+                        const isGenerating = generatingPlanId === s.id
+
+                        function handlePlanClick() {
+                          if (isExpanded) {
+                            setExpandedSessionId(null)
+                            return
+                          }
+                          if (planText) {
+                            setExpandedSessionId(s.id)
+                          } else {
+                            void generatePlan(s.id)
+                          }
+                        }
+
                         return (
                           <li key={s.id} className="py-2 first:pt-0 last:pb-0">
                             <div className="flex items-center gap-3">
@@ -280,16 +365,15 @@ export default function ProgrammePage(): React.JSX.Element {
                               <Badge variant="outline" className="capitalize text-xs">
                                 {s.status}
                               </Badge>
-                              {s.generated_plan !== null && (
+                              {s.mesocycle_id !== null && (
                                 <Button
                                   variant="ghost"
                                   size="sm"
                                   className="min-h-[44px]"
-                                  onClick={() =>
-                                    setExpandedSessionId(isExpanded ? null : s.id)
-                                  }
+                                  disabled={isGenerating}
+                                  onClick={handlePlanClick}
                                 >
-                                  {isExpanded ? '▾ Plan' : '▸ Plan'}
+                                  {isGenerating ? '…' : isExpanded ? '▾ Plan' : '▸ Plan'}
                                 </Button>
                               )}
                               {s.status === 'planned' && (
@@ -310,24 +394,37 @@ export default function ProgrammePage(): React.JSX.Element {
                               </Button>
                             </div>
                             {isExpanded && (
-                              <div className="px-0 pb-2 text-xs text-slate-600">
-                                {plan?.ai_plan_text
-                                  ? <ProseMarkdown>{plan.ai_plan_text}</ProseMarkdown>
-                                  : 'No plan content available.'}
+                              <div className="pb-2 text-xs text-slate-600">
+                                {planText ? (
+                                  <ProseMarkdown>{planText}</ProseMarkdown>
+                                ) : (
+                                  'No plan content available.'
+                                )}
                               </div>
                             )}
                           </li>
                         )
                       })}
                     </ul>
-                  </CardContent>
-                </Card>
-              )}
-            </div>
-
-            <div className="space-y-4">
-              <ProgrammeBuilderEditor snapshot={snapshot} onSaved={loadSnapshot} />
-            </div>
+                  </div>
+                  <div className="mt-3 border-t border-slate-100 pt-3">
+                    {extraSessions !== null ? (
+                      <p className="text-center text-xs text-slate-400">All sessions loaded</p>
+                    ) : (
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        className="w-full text-slate-500"
+                        disabled={isLoadingMore}
+                        onClick={() => void loadMoreSessions()}
+                      >
+                        {isLoadingMore ? 'Loading…' : 'Load all sessions'}
+                      </Button>
+                    )}
+                  </div>
+                </CardContent>
+              </Card>
+            )}
           </div>
         )}
       </div>

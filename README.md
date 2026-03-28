@@ -108,8 +108,11 @@ Deployed automatically to Vercel on every push to `main`. Environment variables 
 - Training history view
 
 **Phase 2 — Programme Builder**
-- Programme and mesocycle creation and management
-- Weekly template builder for structuring a mesocycle's intended sessions
-- AI-generated planned sessions via Gemini, with prefill from planned session into session log form
+- AI programme creation wizard: describe your goal → Gemini generates a full periodised plan (mesocycle blocks with objectives) → review and confirm in one flow
+- Per-mesocycle weekly schedule setup: tap-to-place session board with day preferences and lock mechanic, AI-suggested slot placement via `generate-weekly`
+- Planned sessions auto-created for the full mesocycle immediately after weekly setup (no AI calls at creation time — fast)
+- Lazy AI session plan generation: Gemini is called only when the user taps "▸ Plan" on an upcoming session; context is maximally fresh at that point; result is cached to avoid redundant calls
+- Session plan prefill: tapping "Start session" on a planned session pre-populates the log form with the AI-generated plan
+- Load-more on the programme page: default view shows 7-day window; "Load all sessions" fetches the full mesocycle
 - Dynamic programme context injected into AI coach prompt
 - Flexible injury area tracking (ADR 004): profile page to add/archive tracked areas, dynamic readiness form fields, dynamic AI context rules — replacing the previous hard-coded shoulder logic

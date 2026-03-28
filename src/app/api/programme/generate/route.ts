@@ -29,17 +29,7 @@ JSON schema (all fields required unless marked nullable):
       "focus": "string (≤200 chars — what this block trains)",
       "phase_type": "base" | "power" | "power_endurance" | "climbing_specific" | "performance" | "deload",
       "duration_weeks": integer (1–8 per block; deload = 1),
-      "weekly_templates": [
-        {
-          "day_of_week": integer 0–6 (0=Mon, 6=Sun),
-          "session_label": "string (≤60 chars)",
-          "session_type": "bouldering" | "kilterboard" | "lead" | "fingerboard" | "strength" | "aerobic" | "rest" | "mobility",
-          "intensity": "high" | "medium" | "low",
-          "duration_mins": integer 30–180,
-          "primary_focus": "string | null (≤100 chars)",
-          "notes": "string | null (≤200 chars)"
-        }
-      ]
+      "objectives": "string (≤200 chars — 1-2 sentences: what the athlete gains from this block)"
     }
   ]
 }
@@ -47,7 +37,6 @@ JSON schema (all fields required unless marked nullable):
 Hard rules:
 - mesocycles must be in chronological order (first block first)
 - sum of all mesocycle duration_weeks must equal the requested total exactly
-- weekly_templates must only use days from the available_days list
 - intensity progression: base = low/medium; power = medium/high; deload = all low
 - include a 1-week deload every 3–4 hard weeks`
 
@@ -55,16 +44,7 @@ Hard rules:
 // PROMPT BUILDER
 // =============================================================================
 
-const DAY_LABELS: Record<number, string> = {
-  0: 'Mon', 1: 'Tue', 2: 'Wed', 3: 'Thu', 4: 'Fri', 5: 'Sat', 6: 'Sun',
-}
-
 function buildWizardUserMessage(input: WizardInput, historyText: string): string {
-  const dayNames = input.available_days
-    .sort((a, b) => a - b)
-    .map((d) => DAY_LABELS[d] ?? String(d))
-    .join(', ')
-
   const peakLine =
     input.peak_event_label && input.peak_event_date
       ? `Target event: ${input.peak_event_label} on ${input.peak_event_date}`
@@ -87,10 +67,6 @@ PARAMETERS:
 - Start date: ${input.start_date}
 - Total duration: ${input.duration_weeks} weeks (duration_weeks must sum to exactly ${input.duration_weeks})
 - ${peakLine}
-- Available days: ${dayNames} (numeric: ${input.available_days.sort((a, b) => a - b).join(', ')})
-- Sessions per week: ${input.available_days.length}
-- Preferred session duration: ${input.preferred_duration_mins} min
-- Preferred styles: ${input.preferred_styles.join(', ')}
 - Primary focus: ${input.focus}
 - ${injuriesLine}
 

@@ -40,26 +40,63 @@ export async function getMesocyclesByProgramme(
 }
 
 /**
- * @description Fetches the currently active mesocycle based on date range.
- * @returns Active mesocycle row, or null if none covers today
+ * @description Fetches the currently active mesocycle.
+ * Primary: a mesocycle whose date range contains today.
+ * Fallback 1: the next upcoming mesocycle (planned_start > today).
+ * Fallback 2: the most recently started mesocycle (covers the case where
+ *   all mesocycles are in the past, e.g. during testing with old data).
+ * @returns Best-match mesocycle row, or null if none exist
  */
 export async function getActiveMesocycle(): Promise<ApiResponse<Mesocycle | null>> {
   try {
     const supabase = await createClient()
-    const { data, error } = await supabase
+
+    // Primary: strictly active today
+    const { data: active, error: activeError } = await supabase
       .from('mesocycles')
       .select('*')
       .lte('planned_start', today())
       .gte('planned_end', today())
       .order('planned_start', { ascending: false })
+      .limit(1)
       .maybeSingle()
 
-    if (error) {
-      console.error('[mesocycleRepository.getActiveMesocycle]', error)
+    if (activeError) {
+      console.error('[mesocycleRepository.getActiveMesocycle]', activeError)
+      return { data: null, error: 'Failed to fetch active mesocycle' }
+    }
+    if (active) return { data: active, error: null }
+
+    // Fallback 1: next upcoming mesocycle
+    const { data: upcoming, error: upcomingError } = await supabase
+      .from('mesocycles')
+      .select('*')
+      .gt('planned_start', today())
+      .order('planned_start', { ascending: true })
+      .limit(1)
+      .maybeSingle()
+
+    if (upcomingError) {
+      console.error('[mesocycleRepository.getActiveMesocycle fallback-upcoming]', upcomingError)
+      return { data: null, error: 'Failed to fetch active mesocycle' }
+    }
+    if (upcoming) return { data: upcoming, error: null }
+
+    // Fallback 2: most recently started (all mesocycles in the past)
+    const { data: recent, error: recentError } = await supabase
+      .from('mesocycles')
+      .select('*')
+      .lte('planned_start', today())
+      .order('planned_start', { ascending: false })
+      .limit(1)
+      .maybeSingle()
+
+    if (recentError) {
+      console.error('[mesocycleRepository.getActiveMesocycle fallback-recent]', recentError)
       return { data: null, error: 'Failed to fetch active mesocycle' }
     }
 
-    return { data, error: null }
+    return { data: recent, error: null }
   } catch (err) {
     console.error('[mesocycleRepository.getActiveMesocycle] unexpected error', err)
     return { data: null, error: 'An unexpected error occurred' }

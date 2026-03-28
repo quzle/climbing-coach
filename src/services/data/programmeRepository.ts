@@ -64,8 +64,10 @@ export async function getProgrammeById(
 }
 
 /**
- * @description Fetches the programme active today based on its date range.
- * @returns Active programme row, or null if none covers today
+ * @description Fetches the most recently created programme.
+ * Programmes do not expire — the most recently created one is always the
+ * current one, regardless of start_date or target_date.
+ * @returns Most recent programme row, or null if none exists
  */
 export async function getActiveProgramme(): Promise<ApiResponse<Programme | null>> {
   try {
@@ -73,9 +75,8 @@ export async function getActiveProgramme(): Promise<ApiResponse<Programme | null
     const { data, error } = await supabase
       .from('programmes')
       .select('*')
-      .lte('start_date', today())
-      .gte('target_date', today())
-      .order('start_date', { ascending: false })
+      .order('created_at', { ascending: false })
+      .limit(1)
       .maybeSingle()
 
     if (error) {
