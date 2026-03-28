@@ -19,52 +19,34 @@ function toIsoDate(date: Date): string {
   return date.toISOString().split('T')[0]!
 }
 
-/** Returns today's date as a YYYY-MM-DD string in UTC. */
-function todayUtc(): string {
-  const now = new Date()
-  return toIsoDate(new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate())))
-}
-
 /** Parses an ISO date (YYYY-MM-DD) to a UTC Date at midnight. */
 function parseIsoDateUtc(dateString: string): Date {
   const [year, month, day] = dateString.split('-').map(Number)
   return new Date(Date.UTC(year!, (month ?? 1) - 1, day ?? 1))
 }
 
-/**
- * @description Normalises a date string to the Monday of that week.
- * @param dateString Optional ISO date string
- * @returns ISO date for Monday of the given/current week
- */
-function getWeekStartMonday(dateString?: string): string {
-  const date = dateString
-    ? parseIsoDateUtc(dateString)
-    : new Date(
-        Date.UTC(
-          new Date().getUTCFullYear(),
-          new Date().getUTCMonth(),
-          new Date().getUTCDate(),
-        ),
-      )
-  const jsDay = date.getUTCDay()
-  const mondayOffset = jsDay === 0 ? -6 : 1 - jsDay
-  date.setUTCDate(date.getUTCDate() + mondayOffset)
-  return toIsoDate(date)
+/** Returns today as a UTC midnight Date object. */
+function todayUtcDate(): Date {
+  const now = new Date()
+  return new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate()))
+}
+
+/** Returns an ISO date string n days after the given UTC Date. */
+function addDays(date: Date, days: number): string {
+  const result = new Date(date)
+  result.setUTCDate(result.getUTCDate() + days)
+  return toIsoDate(result)
 }
 
 /**
- * @description Converts weekly_templates.day_of_week to a concrete ISO date
- * within the specified Monday-start week.
- * @param weekStartMonday ISO date of week start (Monday)
- * @param dayOfWeek DB day (0=Mon ... 6=Sun)
- * @returns Planned date in YYYY-MM-DD format
+ * @description Returns the next date on or after `fromDate` whose day of week
+ * matches `dbDayOfWeek` (0=Mon … 6=Sun).
  */
-function resolvePlannedDate(weekStartMonday: string, dayOfWeek: number): string {
-  const safeDay = Math.min(Math.max(dayOfWeek, 0), 6)
-  const offsetDays = safeDay
-  const plannedDate = parseIsoDateUtc(weekStartMonday)
-  plannedDate.setUTCDate(plannedDate.getUTCDate() + offsetDays)
-  return toIsoDate(plannedDate)
+function nextOccurrenceOfDay(dbDayOfWeek: number, fromDate: Date): string {
+  // DB: 0=Mon…6=Sun  →  JS getUTCDay(): 0=Sun…6=Sat
+  const targetJsDay = (dbDayOfWeek + 1) % 7
+  const daysUntil = (targetJsDay - fromDate.getUTCDay() + 7) % 7
+  return addDays(fromDate, daysUntil)
 }
 
 /**
@@ -130,20 +112,20 @@ function buildAdditionalContext(
  * Monday-start week. Existing planned sessions for matching date+template are
  * left untouched to prevent duplicates.
  *
- * @param weekStartDate Optional ISO date to control which week is generated
- * @returns Array of newly created planned sessions for the target week
+ * @param fromDateStr Optional ISO date to use as the start of the rolling window (defaults to today)
+ * @returns Array of newly created planned sessions for the next 7 days
  */
 export async function generatePlannedSessionsForActiveMesocycle(
-  weekStartDate?: string,
+  fromDateStr?: string,
 ): Promise<ApiResponse<PlannedSession[]>> {
   try {
-    const normalizedWeekStart = getWeekStartMonday(weekStartDate)
-    const weekEnd = resolvePlannedDate(normalizedWeekStart, 7)
+    const fromDate = fromDateStr ? parseIsoDateUtc(fromDateStr) : todayUtcDate()
+    const rangeEnd = addDays(fromDate, 7)
 
     const [mesocycleResult, athleteContext, existingSessionsResult] = await Promise.all([
       getActiveMesocycle(),
       buildAthleteContext(),
-      getPlannedSessionsInRange(normalizedWeekStart, weekEnd),
+      getPlannedSessionsInRange(toIsoDate(fromDate), rangeEnd),
     ])
 
     if (mesocycleResult.error !== null) {
@@ -184,15 +166,8 @@ export async function generatePlannedSessionsForActiveMesocycle(
 
     const createdSessions: PlannedSession[] = []
 
-    const today = todayUtc()
-
     for (const template of templates) {
-      const plannedDate = resolvePlannedDate(normalizedWeekStart, template.day_of_week)
-
-      // Skip dates in the past — sessions must be today or later.
-      if (plannedDate < today) {
-        continue
-      }
+      const plannedDate = nextOccurrenceOfDay(template.day_of_week, fromDate)
 
       // Skip dates outside the active mesocycle's planned window.
       if (plannedDate > activeMesocycle.planned_end) {
