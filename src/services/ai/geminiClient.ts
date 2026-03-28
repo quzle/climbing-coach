@@ -1,7 +1,7 @@
 import { GoogleGenerativeAI } from '@google/generative-ai'
 import { createClient } from '@/lib/supabase/server'
 import { buildAthleteContext } from '@/services/ai/contextBuilder'
-import { buildSystemPrompt } from '@/services/ai/promptBuilder'
+import { buildSystemPrompt, buildSessionPlanSystemPrompt } from '@/services/ai/promptBuilder'
 import type { ChatMessage, ChatMessageInsert } from '@/types'
 
 // =============================================================================
@@ -190,27 +190,21 @@ export async function generateSessionPlan(
 ): Promise<string> {
   try {
     const context = await buildAthleteContext()
-    const systemPrompt = buildSystemPrompt(context)
+    const systemPrompt = buildSessionPlanSystemPrompt(context)
 
     const genAI = getGeminiClient()
     const model = genAI.getGenerativeModel({
       model: MODEL_NAME,
       systemInstruction: systemPrompt,
       generationConfig: {
-        maxOutputTokens: MAX_OUTPUT_TOKENS,
-        temperature: TEMPERATURE,
+        maxOutputTokens: 1000,
+        temperature: 0.3,
       },
     })
 
     const generationInstruction = [
-      `Generate a detailed training session plan for a ${sessionType} session.`,
-      'Consider the current programme phase, recent training load, and today\'s readiness.',
-      'Format the response as a structured plan with:',
-      '- Session goal (one sentence)',
-      '- Warm-up (5-10 minutes)',
-      '- Main session (with specific sets, reps, grades or protocols as appropriate for the session type)',
-      '- Cool-down',
-      '- Coach notes (key focus points for this session)',
+      `Generate a ${sessionType} session plan.`,
+      'Output only the plan in the specified format. No introduction or closing remarks.',
       additionalContext ?? '',
     ]
       .filter(Boolean)

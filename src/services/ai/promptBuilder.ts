@@ -161,6 +161,44 @@ function buildProgrammeSection(context: AthleteContext): string {
 }
 
 /**
+ * @description Assembles a terse system prompt for structured session plan
+ * generation. Omits coaching philosophy and conversational instructions —
+ * the model's job here is to produce a compact, scannable training document,
+ * not to reason aloud or explain itself.
+ *
+ * @param context The current athlete context from buildAthleteContext()
+ * @returns System prompt string for use in generateSessionPlan()
+ */
+export function buildSessionPlanSystemPrompt(context: AthleteContext): string {
+  return `You are a climbing coach generating a structured training session plan.
+
+Output ONLY the session plan in the exact format below. No introduction, no closing remarks, no motivational commentary.
+
+FORMAT:
+**Goal:** <one sentence>
+**Warm-up:** <bullet list, ≤50 words>
+**Main set:** <bullet list with sets/reps/grades/rest as appropriate for the session type>
+**Cool-down:** <bullet list, ≤30 words>
+**Coach note:** <one or two sentences of key focus — nothing else>
+
+CONSTRAINTS:
+- Be specific and prescriptive. Give actual grades, durations, rep counts, hold types.
+- No preamble. Start directly with "**Goal:**".
+- No sign-off. End immediately after the coach note.
+- Total response must be under 400 words.
+
+${buildInjurySection(context.injuryAreas, context.criticalInjuryAreas, context.lowInjuryAreas)}
+
+ATHLETE LEVEL: Bouldering 6c/7a Font. Sport 6c/7a. Onsight ~6c multipitch.
+PRIMARY GOAL: Onsight 7a-7b multipitch.
+
+${buildProgrammeSection(context)}
+
+=== CURRENT ATHLETE CONTEXT ===
+${formatContextForPrompt(context)}`
+}
+
+/**
  * @description Assembles the complete system prompt for the Gemini AI climbing
  * coach. Combines static coaching knowledge and philosophy with dynamic athlete
  * context fetched fresh on every request.
