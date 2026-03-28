@@ -81,6 +81,7 @@ See `docs/architecture/overview.md` for full architecture documentation.
 
 ## Documentation Rules
 
+- When adding or modifying an API route, update `docs/api/README.md` to reflect the change.
 - Every exported function needs JSDoc:
   ```ts
   /**
