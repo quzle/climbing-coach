@@ -127,9 +127,12 @@ export default function ProgrammePage(): React.JSX.Element {
                   Set up your training programme to unlock AI-powered session planning.
                 </p>
                 <p>
-                  Build your macrocycle, define training blocks, and let your coach generate
-                  personalised sessions based on your goals and readiness.
+                  Use the AI wizard to generate a full periodised plan in seconds, or build it
+                  manually block by block.
                 </p>
+                <Button asChild className="min-h-[44px] w-full">
+                  <Link href="/programme/new">Create with AI wizard →</Link>
+                </Button>
               </CardContent>
             </Card>
 
