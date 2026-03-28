@@ -19,6 +19,12 @@ function toIsoDate(date: Date): string {
   return date.toISOString().split('T')[0]!
 }
 
+/** Returns today's date as a YYYY-MM-DD string in UTC. */
+function todayUtc(): string {
+  const now = new Date()
+  return toIsoDate(new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate())))
+}
+
 /** Parses an ISO date (YYYY-MM-DD) to a UTC Date at midnight. */
 function parseIsoDateUtc(dateString: string): Date {
   const [year, month, day] = dateString.split('-').map(Number)
@@ -178,8 +184,21 @@ export async function generatePlannedSessionsForActiveMesocycle(
 
     const createdSessions: PlannedSession[] = []
 
+    const today = todayUtc()
+
     for (const template of templates) {
       const plannedDate = resolvePlannedDate(normalizedWeekStart, template.day_of_week)
+
+      // Skip dates in the past — sessions must be today or later.
+      if (plannedDate < today) {
+        continue
+      }
+
+      // Skip dates outside the active mesocycle's planned window.
+      if (plannedDate > activeMesocycle.planned_end) {
+        continue
+      }
+
       const dedupeKey = `${plannedDate}:${template.id}`
       if (existingByDateTemplate.has(dedupeKey)) {
         continue
