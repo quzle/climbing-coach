@@ -51,6 +51,8 @@ export default function ProgrammePage(): React.JSX.Element {
   const [snapshot, setSnapshot] = useState<ProgrammeBuilderSnapshot | null>(null)
   const [isLoading, setIsLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
+  const [expandedSessionId, setExpandedSessionId] = useState<string | null>(null)
+  const [isSkipping, setIsSkipping] = useState<string | null>(null)
 
   async function loadSnapshot(): Promise<void> {
     try {
@@ -66,6 +68,27 @@ export default function ProgrammePage(): React.JSX.Element {
       setError('Failed to load programme.')
     } finally {
       setIsLoading(false)
+    }
+  }
+
+  async function skipSession(id: string): Promise<void> {
+    setIsSkipping(id)
+    try {
+      const res = await fetch(`/api/planned-sessions/${id}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ status: 'skipped' }),
+      })
+      const json = (await res.json()) as ApiResponse<unknown>
+      if (!res.ok || json.error) {
+        setError(json.error ?? 'Failed to skip session.')
+        return
+      }
+      await loadSnapshot()
+    } catch {
+      setError('Failed to skip session.')
+    } finally {
+      setIsSkipping(null)
     }
   }
 
@@ -100,12 +123,11 @@ export default function ProgrammePage(): React.JSX.Element {
               </CardHeader>
               <CardContent className="space-y-3 text-sm text-slate-600">
                 <p>
-                  Phase 2C is now live in-app. Create your macrocycle here, then add
-                  mesocycles and weekly structure without leaving the planner.
+                  Set up your training programme to unlock AI-powered session planning.
                 </p>
                 <p>
-                  Once a programme exists, this page becomes your planning workspace for
-                  edits, session generation, and week-ahead review.
+                  Build your macrocycle, define training blocks, and let your coach generate
+                  personalised sessions based on your goals and readiness.
                 </p>
               </CardContent>
             </Card>
@@ -117,6 +139,43 @@ export default function ProgrammePage(): React.JSX.Element {
         {!isLoading && !error && snapshot?.currentProgramme && (
           <div className="grid gap-4 lg:grid-cols-2">
             <div className="space-y-4">
+              {/* Setup step indicator — hidden once all 4 steps complete */}
+              {snapshot.upcomingPlannedSessions.length === 0 && (() => {
+                const steps = [
+                  { label: 'Create programme', done: snapshot.currentProgramme !== null },
+                  { label: 'Add a training block', done: snapshot.activeMesocycle !== null },
+                  { label: 'Define weekly structure', done: snapshot.currentWeeklyTemplate.length > 0 },
+                  { label: 'Generate sessions', done: snapshot.upcomingPlannedSessions.length > 0 },
+                ]
+                const firstIncomplete = steps.findIndex((s) => !s.done)
+                return (
+                  <Card>
+                    <CardHeader>
+                      <CardTitle>Getting started</CardTitle>
+                    </CardHeader>
+                    <CardContent>
+                      <ul className="space-y-2 text-sm">
+                        {steps.map((step, i) => {
+                          const isActive = i === firstIncomplete
+                          const className = step.done
+                            ? 'text-emerald-600 font-medium'
+                            : isActive
+                              ? 'text-slate-900 font-semibold'
+                              : 'text-slate-400'
+                          const indicator = step.done ? '✓' : String(i + 1)
+                          return (
+                            <li key={step.label} className={`flex items-center gap-2 ${className}`}>
+                              <span className="w-4 shrink-0 text-center">{indicator}</span>
+                              <span>{step.label}</span>
+                            </li>
+                          )
+                        })}
+                      </ul>
+                    </CardContent>
+                  </Card>
+                )
+              })()}
+
               {/* Programme overview */}
               <Card>
                 <CardHeader>
@@ -202,27 +261,58 @@ export default function ProgrammePage(): React.JSX.Element {
                   </CardHeader>
                   <CardContent>
                     <ul className="divide-y divide-slate-100">
-                      {snapshot.upcomingPlannedSessions.map((s) => (
-                        <li
-                          key={s.id}
-                          className="flex items-center gap-3 py-2 first:pt-0 last:pb-0"
-                        >
-                          <span className="w-24 shrink-0 text-sm text-slate-500">
-                            {format(parseISO(s.planned_date), 'EEE d MMM')}
-                          </span>
-                          <span className="flex-1 text-sm font-medium capitalize text-slate-800">
-                            {s.session_type}
-                          </span>
-                          <Badge variant="outline" className="capitalize text-xs">
-                            {s.status}
-                          </Badge>
-                          <Button asChild size="sm" className="min-h-[44px]">
-                            <Link href={`/session/log?planned_session_id=${s.id}`}>
-                              Start session
-                            </Link>
-                          </Button>
-                        </li>
-                      ))}
+                      {snapshot.upcomingPlannedSessions.map((s) => {
+                        const plan = s.generated_plan as { ai_plan_text?: string } | null
+                        const isExpanded = expandedSessionId === s.id
+                        return (
+                          <li key={s.id} className="py-2 first:pt-0 last:pb-0">
+                            <div className="flex items-center gap-3">
+                              <span className="w-24 shrink-0 text-sm text-slate-500">
+                                {format(parseISO(s.planned_date), 'EEE d MMM')}
+                              </span>
+                              <span className="flex-1 text-sm font-medium capitalize text-slate-800">
+                                {s.session_type}
+                              </span>
+                              <Badge variant="outline" className="capitalize text-xs">
+                                {s.status}
+                              </Badge>
+                              {s.generated_plan !== null && (
+                                <Button
+                                  variant="ghost"
+                                  size="sm"
+                                  className="min-h-[44px]"
+                                  onClick={() =>
+                                    setExpandedSessionId(isExpanded ? null : s.id)
+                                  }
+                                >
+                                  {isExpanded ? '▾ Plan' : '▸ Plan'}
+                                </Button>
+                              )}
+                              {s.status === 'planned' && (
+                                <Button
+                                  variant="ghost"
+                                  size="sm"
+                                  className="min-h-[44px] text-slate-500"
+                                  disabled={isSkipping === s.id}
+                                  onClick={() => void skipSession(s.id)}
+                                >
+                                  Skip
+                                </Button>
+                              )}
+                              <Button asChild size="sm" className="min-h-[44px]">
+                                <Link href={`/session/log?planned_session_id=${s.id}`}>
+                                  Start session
+                                </Link>
+                              </Button>
+                            </div>
+                            {isExpanded && (
+                              <div className="px-0 pb-2 text-xs text-slate-600 whitespace-pre-wrap">
+                                {plan?.ai_plan_text ?? 'No plan content available.'}
+                              </div>
+                            )}
+                          </li>
+                        )
+                      })}
                     </ul>
                   </CardContent>
                 </Card>

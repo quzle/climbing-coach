@@ -9,7 +9,9 @@ import {
   getAverageReadiness,
   hasCheckedInToday,
 } from '@/services/data/readinessRepository'
-import { buildAthleteContext } from '@/services/ai/contextBuilder'
+import { buildAthleteContext, computeWarnings, parseInjuryAreaHealth } from '@/services/ai/contextBuilder'
+import { getLastSessionDate } from '@/services/data/sessionRepository'
+import { getActiveInjuryAreas } from '@/services/data/injuryAreasRepository'
 import { POST, GET } from './route'
 
 // =============================================================================
@@ -26,6 +28,16 @@ jest.mock('@/services/data/readinessRepository', () => ({
 
 jest.mock('@/services/ai/contextBuilder', () => ({
   buildAthleteContext: jest.fn().mockResolvedValue({ warnings: [] }),
+  computeWarnings: jest.fn().mockReturnValue([]),
+  parseInjuryAreaHealth: jest.fn().mockReturnValue([]),
+}))
+
+jest.mock('@/services/data/sessionRepository', () => ({
+  getLastSessionDate: jest.fn(),
+}))
+
+jest.mock('@/services/data/injuryAreasRepository', () => ({
+  getActiveInjuryAreas: jest.fn(),
 }))
 
 // =============================================================================
@@ -38,6 +50,10 @@ const mockGetRecentCheckins = getRecentCheckins as jest.Mock
 const mockGetAverageReadiness = getAverageReadiness as jest.Mock
 const mockHasCheckedInToday = hasCheckedInToday as jest.Mock
 const mockBuildAthleteContext = buildAthleteContext as jest.Mock
+const mockComputeWarnings = computeWarnings as jest.Mock
+const mockParseInjuryAreaHealth = parseInjuryAreaHealth as jest.Mock
+const mockGetLastSessionDate = getLastSessionDate as jest.Mock
+const mockGetActiveInjuryAreas = getActiveInjuryAreas as jest.Mock
 
 // =============================================================================
 // FIXTURES
@@ -73,6 +89,10 @@ beforeEach(() => {
   mockGetRecentCheckins.mockResolvedValue({ data: [], error: null })
   mockGetAverageReadiness.mockResolvedValue({ data: 3.5, error: null })
   mockBuildAthleteContext.mockResolvedValue({ warnings: [] })
+  mockGetLastSessionDate.mockResolvedValue({ data: null, error: null })
+  mockGetActiveInjuryAreas.mockResolvedValue({ data: [], error: null })
+  mockComputeWarnings.mockReturnValue([])
+  mockParseInjuryAreaHealth.mockReturnValue([])
 })
 
 // =============================================================================
@@ -219,6 +239,45 @@ describe('GET /api/readiness', () => {
     expect(response.status).toBe(200)
     expect(body.data.checkins).toHaveLength(2)
     expect(body.data.hasCheckedInToday).toBe(true)
+  })
+
+  it('includes warnings array in response', async () => {
+    mockGetTodaysCheckin.mockResolvedValue({ data: mockCheckin, error: null })
+    mockComputeWarnings.mockReturnValue(['🟡 Finger health low (3/5)'])
+
+    const response = await GET(new NextRequest('http://localhost:3000/api/readiness'))
+    const body = await response.json()
+
+    expect(response.status).toBe(200)
+    expect(body.data.warnings).toEqual(['🟡 Finger health low (3/5)'])
+  })
+
+  it('returns empty warnings array when no check-in today', async () => {
+    mockGetTodaysCheckin.mockResolvedValue({ data: null, error: null })
+
+    const response = await GET(new NextRequest('http://localhost:3000/api/readiness'))
+    const body = await response.json()
+
+    expect(body.data.warnings).toEqual([])
+    expect(mockComputeWarnings).not.toHaveBeenCalled()
+  })
+
+  it('calls getLastSessionDate and getActiveInjuryAreas', async () => {
+    await GET(new NextRequest('http://localhost:3000/api/readiness'))
+
+    expect(mockGetLastSessionDate).toHaveBeenCalled()
+    expect(mockGetActiveInjuryAreas).toHaveBeenCalled()
+  })
+
+  it('continues with warnings=[] when getLastSessionDate errors', async () => {
+    mockGetLastSessionDate.mockResolvedValue({ data: null, error: 'DB error' })
+    mockGetTodaysCheckin.mockResolvedValue({ data: mockCheckin, error: null })
+
+    const response = await GET(new NextRequest('http://localhost:3000/api/readiness'))
+    const body = await response.json()
+
+    expect(response.status).toBe(200)
+    expect(body.data).toBeDefined()
   })
 
   it('defaults to 7 days when no days param provided', async () => {

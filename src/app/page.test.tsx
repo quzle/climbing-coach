@@ -27,6 +27,7 @@ function mockReadinessOk(overrides: Partial<{
   hasCheckedInToday: boolean
   weeklyAvg: number
   todaysCheckin: Record<string, unknown> | null
+  warnings: string[]
 }> = {}) {
   return {
     ok: true,
@@ -36,8 +37,19 @@ function mockReadinessOk(overrides: Partial<{
         hasCheckedInToday: false,
         weeklyAvg: 0,
         todaysCheckin: null,
+        warnings: [],
         ...overrides,
       },
+      error: null,
+    }),
+  }
+}
+
+function mockPlannedSessionsOk(plannedSessions: unknown[] = []) {
+  return {
+    ok: true,
+    json: jest.fn().mockResolvedValue({
+      data: { plannedSessions },
       error: null,
     }),
   }
@@ -53,10 +65,15 @@ function mockSessionsOk(sessions: unknown[] = []) {
   }
 }
 
-function mockFetchResponses(readinessResp: unknown, sessionsResp: unknown) {
+function mockFetchResponses(
+  readinessResp: unknown,
+  sessionsResp: unknown,
+  plannedResp: unknown = mockPlannedSessionsOk(),
+) {
   ;(global.fetch as jest.Mock).mockImplementation((url: string) => {
     if ((url as string).includes('/api/readiness')) return Promise.resolve(readinessResp)
     if ((url as string).includes('/api/sessions')) return Promise.resolve(sessionsResp)
+    if ((url as string).includes('/api/planned-sessions')) return Promise.resolve(plannedResp)
     return Promise.reject(new Error(`Unexpected fetch: ${url as string}`))
   })
 }
@@ -68,6 +85,17 @@ const mockSession = {
   duration_mins: 90,
   quality_rating: 4,
   notes: null,
+}
+
+const mockPlannedSession = {
+  id: 'plan-1',
+  session_type: 'bouldering',
+  planned_date: '2026-03-28',
+  mesocycle_id: 'meso-1',
+  week_number: 1,
+  day_of_week: 6,
+  notes: null,
+  created_at: '2026-03-01T00:00:00Z',
 }
 
 const mockCheckin = {
@@ -182,5 +210,60 @@ describe('Home dashboard', () => {
 
     // Should not throw — falls back to empty state
     await waitFor(() => expect(screen.getByText('No check-in today')).toBeInTheDocument())
+  })
+
+  it('shows today\'s session card when a planned session exists', async () => {
+    mockFetchResponses(
+      mockReadinessOk(),
+      mockSessionsOk(),
+      mockPlannedSessionsOk([mockPlannedSession]),
+    )
+    render(<Home />)
+
+    await waitFor(() => expect(screen.getByText("Today's Session")).toBeInTheDocument())
+    await waitFor(() => expect(screen.getByText('Bouldering')).toBeInTheDocument())
+    await waitFor(() =>
+      expect(screen.getByRole('link', { name: /start session/i })).toHaveAttribute(
+        'href',
+        '/session/log?planned_session_id=plan-1',
+      ),
+    )
+  })
+
+  it('does not show today\'s session card when no planned session', async () => {
+    mockFetchResponses(mockReadinessOk(), mockSessionsOk(), mockPlannedSessionsOk([]))
+    render(<Home />)
+
+    await waitFor(() => expect(screen.queryByText("Today's Session")).not.toBeInTheDocument())
+  })
+
+  it('shows warnings when checked in today and warnings are present', async () => {
+    mockFetchResponses(
+      mockReadinessOk({
+        hasCheckedInToday: true,
+        todaysCheckin: mockCheckin,
+        warnings: ['🟡 Finger health low (3/5)'],
+      }),
+      mockSessionsOk(),
+    )
+    render(<Home />)
+
+    await waitFor(() =>
+      expect(screen.getByText('🟡 Finger health low (3/5)')).toBeInTheDocument(),
+    )
+  })
+
+  it('does not show warnings when not checked in today', async () => {
+    mockFetchResponses(
+      mockReadinessOk({
+        hasCheckedInToday: false,
+        warnings: ['🟡 Finger health low (3/5)'],
+      }),
+      mockSessionsOk(),
+    )
+    render(<Home />)
+
+    await waitFor(() => expect(screen.getByText('No check-in today')).toBeInTheDocument())
+    expect(screen.queryByText('🟡 Finger health low (3/5)')).not.toBeInTheDocument()
   })
 })

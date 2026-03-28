@@ -108,7 +108,7 @@ export function parseInjuryAreaHealth(raw: unknown): InjuryAreaHealth[] {
  * @param injuryAreas Current health ratings for all tracked injury areas
  * @returns Array of warning strings, empty if no warnings apply
  */
-function computeWarnings(
+export function computeWarnings(
   todaysReadiness: ReadinessCheckin | null,
   weeklyAvg: number,
   daysSinceLastSession: number,

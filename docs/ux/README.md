@@ -4,6 +4,22 @@ Descriptive documents of the application's current user-facing flows. Each file 
 
 These documents describe the app **as it is built today**, not as it should be designed. Their purpose is to make current flows explicit so that gaps are visible when planning UX improvements and new features.
 
+## Addressed gaps
+
+The following gaps from the initial audit have been resolved in code:
+
+| Gap | Fix |
+|---|---|
+| Developer copy ("Phase 2C is now live") in programme empty state | Replaced with user-facing copy in `programme/page.tsx` |
+| No "today" view on home page | Added today's planned session card and active warnings to `page.tsx`; `GET /api/readiness` now returns `warnings[]` |
+| Generate sessions button had no guard when no template exists | Button disabled + explanatory message added in `programme-builder-editor.tsx` |
+| Generated plan content hidden until session starts | Expandable plan preview added to upcoming sessions list in `programme/page.tsx` |
+| No skip affordance for planned sessions | Skip button added to upcoming sessions list in `programme/page.tsx` |
+| Invisible dependency chain for programme setup | "Getting started" step indicator card added to `programme/page.tsx` |
+| Warnings transient (only shown on submission) | Warnings now returned by `GET /api/readiness` and shown persistently on home page |
+
+Gaps that were found to be already implemented: deduplication on session regeneration (`sessionGenerator.ts`), injury area autocomplete (`InjuryAreaSelector.tsx`), inline add-area flow in readiness form.
+
 ## Flows
 
 | File | Flow | Key question answered |

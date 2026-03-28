@@ -7,7 +7,9 @@ import {
   getAverageReadiness,
   hasCheckedInToday,
 } from '@/services/data/readinessRepository'
-import { buildAthleteContext } from '@/services/ai/contextBuilder'
+import { buildAthleteContext, computeWarnings, parseInjuryAreaHealth } from '@/services/ai/contextBuilder'
+import { getLastSessionDate } from '@/services/data/sessionRepository'
+import { getActiveInjuryAreas } from '@/services/data/injuryAreasRepository'
 import type { ApiResponse, InjuryAreaHealth, ReadinessCheckin } from '@/types'
 
 const injuryAreaHealthItemSchema = z.object({
@@ -141,6 +143,7 @@ export async function GET(
       todaysCheckin: ReadinessCheckin | null
       hasCheckedInToday: boolean
       weeklyAvg: number
+      warnings: string[]
     }>
   >
 > {
@@ -148,10 +151,12 @@ export async function GET(
     const days = Number(request.nextUrl.searchParams.get('days') ?? '7')
     const safeDays = Math.min(Math.max(days, 1), 90)
 
-    const [checkinsResult, todayResult, avgResult] = await Promise.all([
+    const [checkinsResult, todayResult, avgResult, lastSessionResult, activeInjuryAreasResult] = await Promise.all([
       getRecentCheckins(safeDays),
       getTodaysCheckin(),
       getAverageReadiness(7),
+      getLastSessionDate(),
+      getActiveInjuryAreas(),
     ])
 
     if (checkinsResult.error) {
@@ -163,6 +168,20 @@ export async function GET(
     if (avgResult.error) {
       console.error('[GET /api/readiness] getAverageReadiness:', avgResult.error)
     }
+    if (lastSessionResult.error) {
+      console.error('[GET /api/readiness] getLastSessionDate:', lastSessionResult.error)
+    }
+    if (activeInjuryAreasResult.error) {
+      console.error('[GET /api/readiness] getActiveInjuryAreas:', activeInjuryAreasResult.error)
+    }
+
+    const daysSinceLastSession = lastSessionResult.data
+      ? Math.floor((Date.now() - new Date(lastSessionResult.data).getTime()) / 86400000)
+      : 999
+    const injuryAreas = parseInjuryAreaHealth(todayResult.data?.injury_area_health ?? null)
+    const warnings = todayResult.data
+      ? computeWarnings(todayResult.data, avgResult.data ?? 0, daysSinceLastSession, injuryAreas)
+      : []
 
     return NextResponse.json({
       data: {
@@ -170,6 +189,7 @@ export async function GET(
         todaysCheckin: todayResult.data ?? null,
         hasCheckedInToday: todayResult.data !== null,
         weeklyAvg: avgResult.data ?? 0,
+        warnings,
       },
       error: null,
     })

@@ -264,10 +264,15 @@ export function ProgrammeBuilderEditor({
             type="button"
             className="min-h-[44px]"
             onClick={() => void generateWeekSessions()}
-            disabled={isGeneratingWeek}
+            disabled={isGeneratingWeek || snapshot.currentWeeklyTemplate.length === 0}
           >
             {isGeneratingWeek ? 'Generating sessions...' : 'Generate Week Sessions'}
           </Button>
+          {snapshot.currentWeeklyTemplate.length === 0 && (
+            <p className="text-sm text-slate-500">
+              Add weekly template slots below before generating sessions.
+            </p>
+          )}
           {error !== null ? (
             <p className="text-sm text-red-600" role="alert">
               {error}

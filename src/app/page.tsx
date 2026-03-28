@@ -6,7 +6,7 @@ import { format, parseISO } from 'date-fns'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Skeleton } from '@/components/ui/skeleton'
-import type { ApiResponse, ReadinessCheckin, SessionLog, SessionType } from '@/types'
+import type { ApiResponse, PlannedSession, ReadinessCheckin, SessionLog, SessionType } from '@/types'
 
 // =============================================================================
 // TYPES
@@ -16,6 +16,7 @@ type ReadinessData = {
   todaysCheckin: ReadinessCheckin | null
   hasCheckedInToday: boolean
   weeklyAvg: number
+  warnings: string[]
 }
 
 type SessionsData = {
@@ -48,13 +49,17 @@ const SESSION_TYPE_LABELS: Partial<Record<SessionType, string>> = {
 export default function Home(): React.JSX.Element {
   const [readiness, setReadiness] = useState<ReadinessData | null>(null)
   const [recentSession, setRecentSession] = useState<SessionLog | null>(null)
+  const [todaysPlan, setTodaysPlan] = useState<PlannedSession | null>(null)
   const [isLoading, setIsLoading] = useState(true)
 
   useEffect(() => {
     async function load(): Promise<void> {
-      const [readinessRes, sessionsRes] = await Promise.allSettled([
+      const [readinessRes, sessionsRes, plannedRes] = await Promise.allSettled([
         fetch('/api/readiness').then((r) => r.json() as Promise<ApiResponse<ReadinessData>>),
         fetch('/api/sessions?days=7').then((r) => r.json() as Promise<ApiResponse<SessionsData>>),
+        fetch('/api/planned-sessions?upcoming_days=1').then(
+          (r) => r.json() as Promise<ApiResponse<{ plannedSessions: PlannedSession[] }>>,
+        ),
       ])
 
       if (readinessRes.status === 'fulfilled' && readinessRes.value.data) {
@@ -63,6 +68,10 @@ export default function Home(): React.JSX.Element {
       if (sessionsRes.status === 'fulfilled' && sessionsRes.value.data) {
         const all = sessionsRes.value.data.sessions
         setRecentSession(all.length > 0 ? (all[0] ?? null) : null)
+      }
+      if (plannedRes.status === 'fulfilled' && plannedRes.value.data) {
+        const plans = plannedRes.value.data.plannedSessions
+        setTodaysPlan(plans.length > 0 ? (plans[0] ?? null) : null)
       }
 
       setIsLoading(false)
@@ -111,6 +120,40 @@ export default function Home(): React.JSX.Element {
             )}
           </CardContent>
         </Card>
+
+        {/* Warnings */}
+        {readiness?.hasCheckedInToday && (readiness.warnings?.length ?? 0) > 0 && (
+          <div className="space-y-1">
+            {readiness.warnings.map((warning, i) => (
+              <p key={i} className="text-amber-700 bg-amber-50 rounded p-2 text-sm">
+                {warning}
+              </p>
+            ))}
+          </div>
+        )}
+
+        {/* Today's session card */}
+        {todaysPlan !== null && (
+          <Card>
+            <CardHeader className="pb-2">
+              <CardTitle className="text-base">Today&apos;s Session</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="space-y-3">
+                <p className="text-sm font-medium text-slate-800">
+                  {SESSION_TYPE_LABELS[todaysPlan.session_type as SessionType] ??
+                    todaysPlan.session_type.charAt(0).toUpperCase() +
+                      todaysPlan.session_type.slice(1)}
+                </p>
+                <Button asChild size="sm" className="min-h-[44px]">
+                  <Link href={`/session/log?planned_session_id=${todaysPlan.id}`}>
+                    Start session
+                  </Link>
+                </Button>
+              </div>
+            </CardContent>
+          </Card>
+        )}
 
         {/* Recent session card */}
         <Card>
