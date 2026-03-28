@@ -101,7 +101,7 @@ export function ProgrammeBuilderEditor({
   const [isSavingMesocycle, setIsSavingMesocycle] = useState(false)
   const [isSavingTemplate, setIsSavingTemplate] = useState(false)
   const [isAddingTemplate, setIsAddingTemplate] = useState(false)
-  const [isGeneratingWeek, setIsGeneratingWeek] = useState(false)
+
 
   const selectedTemplate = useMemo(() => {
     return snapshot.currentWeeklyTemplate[0] ?? null
@@ -273,28 +273,6 @@ export function ProgrammeBuilderEditor({
     }
   }
 
-  async function generateWeekSessions(): Promise<void> {
-    setError(null)
-    setIsGeneratingWeek(true)
-    try {
-      const response = await fetch('/api/planned-sessions/generate', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({}),
-      })
-      const json = (await response.json()) as ApiResponse<unknown>
-      if (!response.ok || json.error !== null) {
-        setError(json.error ?? 'Failed to generate this week\'s sessions.')
-        return
-      }
-      await onSaved()
-    } catch {
-      setError('Failed to generate this week\'s sessions.')
-    } finally {
-      setIsGeneratingWeek(false)
-    }
-  }
-
   return (
     <div className="space-y-4">
       <Card>
@@ -306,19 +284,6 @@ export function ProgrammeBuilderEditor({
             Edit macrocycle settings, active block details, and your weekly template.
             This editor is optimized for desktop planning sessions.
           </p>
-          <Button
-            type="button"
-            className="min-h-[44px]"
-            onClick={() => void generateWeekSessions()}
-            disabled={isGeneratingWeek || snapshot.currentWeeklyTemplate.length === 0}
-          >
-            {isGeneratingWeek ? 'Generating sessions...' : 'Generate Week Sessions'}
-          </Button>
-          {snapshot.currentWeeklyTemplate.length === 0 && (
-            <p className="text-sm text-slate-500">
-              Add weekly template slots below before generating sessions.
-            </p>
-          )}
           {error !== null ? (
             <p className="text-sm text-red-600" role="alert">
               {error}

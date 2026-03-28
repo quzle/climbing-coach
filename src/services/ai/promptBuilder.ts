@@ -85,6 +85,34 @@ function buildMesocycleWeekLabel(startDate: string, endDate: string): string | n
 }
 
 /**
+ * @description Builds the athlete grade/level section from the athlete_profile stored
+ * on the active programme. Falls back to generic text when no profile is available.
+ */
+function buildAthleteGradeSection(context: AthleteContext): string {
+  const profile = context.currentProgramme?.athlete_profile as Record<string, string | null> | null | undefined
+  if (!profile) {
+    return 'ATHLETE LEVEL: Not specified — ask the athlete to create a programme with the wizard to capture grade data.'
+  }
+
+  const parts: string[] = []
+  if (profile.current_grade_bouldering) parts.push(`Bouldering: ${profile.current_grade_bouldering}`)
+  if (profile.current_grade_sport) parts.push(`Sport/Lead: ${profile.current_grade_sport}`)
+  if (profile.current_grade_onsight) parts.push(`Onsight: ${profile.current_grade_onsight}`)
+
+  const levelLine = parts.length > 0 ? parts.join(' | ') : 'Not specified'
+  const goalLine = profile.goal_grade ? `Goal: ${profile.goal_grade}` : null
+  const strengthsLine = profile.strengths ? `Strengths: ${profile.strengths}` : null
+  const weaknessesLine = profile.weaknesses ? `Weaknesses: ${profile.weaknesses}` : null
+
+  const lines = [`ATHLETE LEVEL: ${levelLine}`]
+  if (goalLine) lines.push(goalLine)
+  if (strengthsLine) lines.push(strengthsLine)
+  if (weaknessesLine) lines.push(weaknessesLine)
+
+  return lines.join('\n')
+}
+
+/**
  * @description Builds the current programme section dynamically from live programme data.
  * @param context The current athlete context
  * @returns Multi-line programme state section for the system prompt
@@ -189,8 +217,7 @@ CONSTRAINTS:
 
 ${buildInjurySection(context.injuryAreas, context.criticalInjuryAreas, context.lowInjuryAreas)}
 
-ATHLETE LEVEL: Bouldering 6c/7a Font. Sport 6c/7a. Onsight ~6c multipitch.
-PRIMARY GOAL: Onsight 7a-7b multipitch.
+${buildAthleteGradeSection(context)}
 
 ${buildProgrammeSection(context)}
 
@@ -255,13 +282,7 @@ You communicate like a knowledgeable friend: direct, practical, occasionally enc
 
 === ATHLETE PROFILE ===
 
-Level: Bouldering 6c/7a Font. Sport 6c/7a. Onsight ~6c multipitch.
-Goal: Onsight 7a–7b multipitch (limestone and granite). Target season: Autumn 2025.
-
-Key limiters:
-  - Power on overhanging terrain
-  - Power-endurance at onsight grade (sustained 7a)
-  - Route reading and mental composure under pressure
+${buildAthleteGradeSection(context)}
 
 Injury areas and current health are in the CURRENT ATHLETE CONTEXT block.
 ALWAYS check active warnings and injury health before recommending any session.

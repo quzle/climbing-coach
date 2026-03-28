@@ -292,15 +292,88 @@ Partial update — all fields optional, at least one required.
 
 ### `GET /api/programme`
 
-Aggregated planning snapshot — returns the active programme, its mesocycles, the active mesocycle's weekly template, and upcoming planned sessions in a single round-trip. Used by the programme builder page.
+Aggregated planning snapshot — returns the active programme, the active mesocycle, the active mesocycle's weekly template, and the next 7 days of planned sessions in a single round-trip. Used by the programme page.
 
 **Response** `200`
 
 ```ts
-{ data: ProgrammeBuilderSnapshot }
+{
+  data: {
+    currentProgramme:         Programme | null
+    activeMesocycle:          Mesocycle | null
+    currentWeeklyTemplate:    WeeklyTemplate[]
+    upcomingPlannedSessions:  PlannedSession[]  // next 7 days
+  }
+}
 ```
 
-`ProgrammeBuilderSnapshot` shape: `{ programme, mesocycles, weeklyTemplate, upcomingPlannedSessions }`.
+---
+
+### `POST /api/programme/generate`
+
+AI wizard — step 1. Accepts a training goal description and generates a periodised programme plan (mesocycle blocks with names, phase types, durations, focus, and objectives). Does **not** write to the database; the generated plan is returned for review.
+
+**Request body**
+
+```ts
+{
+  goal:                      string    // 1–300 chars; e.g. "Onsight 7b by October"
+  start_date:                string    // YYYY-MM-DD
+  duration_weeks:            number    // 4–52
+  focus:                     string    // "power" | "endurance" | "technique" | "general"
+  strengths:                 string    // 1–500 chars; what the athlete is good at
+  weaknesses:                string    // 1–500 chars; areas to develop
+  current_grade_bouldering?: string    // e.g. "7a Font"; optional
+  current_grade_sport?:      string    // e.g. "6c+"; optional
+  current_grade_onsight?:    string    // e.g. "6c"; optional
+  goal_grade?:               string    // e.g. "7b onsight"; optional
+  peak_event_label?:         string    // optional event name, max 100 chars
+  injuries?:                 string    // optional free-text injury notes, max 500 chars
+  additional_context?:       string    // optional free-text, max 1000 chars
+}
+```
+
+**Response** `200`
+
+```ts
+{
+  data: {
+    programme: {
+      name:  string
+      goal:  string
+      notes: string | null
+    }
+    mesocycles: {
+      name:           string
+      focus:          string
+      phase_type:     PhaseType
+      duration_weeks: number
+      objectives:     string    // human-readable objectives for review UI
+    }[]
+  }
+}
+```
+
+---
+
+### `POST /api/programme/confirm`
+
+AI wizard — step 2. Persists the reviewed plan: creates the programme row and all mesocycle rows with computed dates. Stores `strengths`, `weaknesses`, `additional_context`, and grade fields in the `athlete_profile` JSONB column on the programme. Returns the new programme ID and the first mesocycle ID so the client can navigate to weekly schedule setup.
+
+**Request body**
+
+```ts
+{
+  wizard_input: { /* same shape as POST /api/programme/generate request body */ }
+  plan:         { /* same shape as POST /api/programme/generate response data */ }
+}
+```
+
+**Response** `201`
+
+```ts
+{ data: { programme_id: string; first_mesocycle_id: string } }
+```
 
 ---
 
@@ -375,6 +448,60 @@ Partial update — all fields optional, at least one required.
 
 ```ts
 { data: { mesocycle: Mesocycle } }
+```
+
+---
+
+### `POST /api/mesocycles/[id]/generate-weekly`
+
+Weekly setup wizard — step 1. Accepts athlete preferences (available days, session duration, preferred styles, optional day pins) and generates a suggested weekly session schedule for the mesocycle using Gemini. Does **not** write to the database; the generated slots are returned for the tap-to-place review board.
+
+**Request body**
+
+```ts
+{
+  available_days:        number[]  // 0 (Mon) – 6 (Sun); at least one required
+  preferred_duration_mins: number // e.g. 90
+  preferred_styles:      string[] // subset of session types; at least one required
+  day_pins:              {        // optional day preferences per style
+    style:       string
+    day_of_week: number
+    locked:      boolean          // true = AI must not move this slot
+  }[]
+}
+```
+
+**Response** `200`
+
+```ts
+{
+  data: {
+    session_label:  string
+    session_type:   SessionType
+    intensity:      Intensity
+    day_of_week:    number
+    duration_mins:  number | null
+    primary_focus:  string | null
+  }[]
+}
+```
+
+---
+
+### `POST /api/mesocycles/[id]/confirm-weekly`
+
+Weekly setup wizard — step 2. Replaces all existing weekly templates for the mesocycle with the confirmed slot arrangement. Idempotent — safe to call multiple times (delete-then-insert).
+
+**Request body**
+
+```ts
+{ slots: GeneratedWeeklyTemplate[] } // same shape as generate-weekly response
+```
+
+**Response** `201`
+
+```ts
+{ data: { count: number } } // number of template rows created
 ```
 
 ---
@@ -506,21 +633,44 @@ Create a planned session row manually.
 
 ### `POST /api/planned-sessions/generate`
 
-Generate planned sessions for the active mesocycle using the AI coach. Creates one planned session per weekly template slot in the target week, using Gemini to produce session content.
+Create planned session records for every weekly occurrence in the active mesocycle from today to its `planned_end`. One record per template slot per week is created; existing records for the same `date:template_id` pair are skipped (idempotent).
 
-**Request body** (all optional)
+Sessions are stored with template metadata only (`session_label`, `intensity`, `primary_focus`, `duration_mins`). No AI calls are made here — AI plan text is generated lazily on first access via `POST /api/planned-sessions/[id]/generate-plan`.
 
-```ts
-{
-  week_start: string // YYYY-MM-DD; Monday of the target week; defaults to current week
-}
-```
+**Request body:** none required.
 
 **Response** `200`
 
 ```ts
-{ data: { plannedSessions: PlannedSession[] } }
+{ data: { plannedSessions: PlannedSession[] } } // newly created rows only
 ```
+
+---
+
+### `POST /api/planned-sessions/[id]/generate-plan`
+
+Generate and cache an AI session plan for a single planned session. Calls Gemini with the freshest available athlete context (readiness, recent sessions, programme phase) at the moment of the call.
+
+Idempotent — if `generated_plan.ai_plan_text` already exists the cached value is returned without calling Gemini again.
+
+The session must have an associated `mesocycle_id` and `template_id`; standalone manually-created sessions without these return `422`.
+
+**Request body:** none.
+
+**Response** `200`
+
+```ts
+{ data: { ai_plan_text: string } }
+```
+
+**Status codes**
+
+| Code | Meaning |
+|---|---|
+| `200` | Plan generated (or returned from cache) |
+| `404` | Planned session not found |
+| `422` | Session has no mesocycle or template association |
+| `500` | Gemini or database error |
 
 ---
 
