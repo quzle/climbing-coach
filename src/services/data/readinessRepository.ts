@@ -344,6 +344,33 @@ export async function getAverageReadiness(
  * @param days Number of days to include in the series
  * @returns Array of { date, score } objects ordered oldest first
  */
+/**
+ * @description Deletes today's readiness check-in by date. Used to allow the
+ * athlete to reset and resubmit their check-in on the same day.
+ * @returns The deleted check-in row, or an error if none exists.
+ */
+export async function deleteTodaysCheckin(): Promise<ApiResponse<ReadinessCheckin>> {
+  try {
+    const supabase = await createClient()
+    const { data, error } = await supabase
+      .from('readiness_checkins')
+      .delete()
+      .eq('date', today())
+      .select()
+      .single()
+
+    if (error) {
+      console.error('[readinessRepository.deleteTodaysCheckin]', error)
+      return { data: null, error: 'Failed to delete today\'s check-in' }
+    }
+
+    return { data, error: null }
+  } catch (err) {
+    console.error('[readinessRepository.deleteTodaysCheckin] unexpected error', err)
+    return { data: null, error: 'An unexpected error occurred' }
+  }
+}
+
 export async function getReadinessTrend(
   days: number,
 ): Promise<ApiResponse<{ date: string; score: number }[]>> {

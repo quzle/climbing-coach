@@ -51,32 +51,44 @@ export default function Home(): React.JSX.Element {
   const [recentSession, setRecentSession] = useState<SessionLog | null>(null)
   const [todaysPlan, setTodaysPlan] = useState<PlannedSession | null>(null)
   const [isLoading, setIsLoading] = useState(true)
+  const [isResetting, setIsResetting] = useState(false)
+
+  async function loadAll(): Promise<void> {
+    const [readinessRes, sessionsRes, plannedRes] = await Promise.allSettled([
+      fetch('/api/readiness').then((r) => r.json() as Promise<ApiResponse<ReadinessData>>),
+      fetch('/api/sessions?days=7').then((r) => r.json() as Promise<ApiResponse<SessionsData>>),
+      fetch('/api/planned-sessions?upcoming_days=1').then(
+        (r) => r.json() as Promise<ApiResponse<{ plannedSessions: PlannedSession[] }>>,
+      ),
+    ])
+
+    if (readinessRes.status === 'fulfilled' && readinessRes.value.data) {
+      setReadiness(readinessRes.value.data)
+    }
+    if (sessionsRes.status === 'fulfilled' && sessionsRes.value.data) {
+      const all = sessionsRes.value.data.sessions
+      setRecentSession(all.length > 0 ? (all[0] ?? null) : null)
+    }
+    if (plannedRes.status === 'fulfilled' && plannedRes.value.data) {
+      const plans = plannedRes.value.data.plannedSessions
+      setTodaysPlan(plans.length > 0 ? (plans[0] ?? null) : null)
+    }
+
+    setIsLoading(false)
+  }
+
+  async function resetCheckin(): Promise<void> {
+    setIsResetting(true)
+    try {
+      await fetch('/api/readiness', { method: 'DELETE' })
+      await loadAll()
+    } finally {
+      setIsResetting(false)
+    }
+  }
 
   useEffect(() => {
-    async function load(): Promise<void> {
-      const [readinessRes, sessionsRes, plannedRes] = await Promise.allSettled([
-        fetch('/api/readiness').then((r) => r.json() as Promise<ApiResponse<ReadinessData>>),
-        fetch('/api/sessions?days=7').then((r) => r.json() as Promise<ApiResponse<SessionsData>>),
-        fetch('/api/planned-sessions?upcoming_days=1').then(
-          (r) => r.json() as Promise<ApiResponse<{ plannedSessions: PlannedSession[] }>>,
-        ),
-      ])
-
-      if (readinessRes.status === 'fulfilled' && readinessRes.value.data) {
-        setReadiness(readinessRes.value.data)
-      }
-      if (sessionsRes.status === 'fulfilled' && sessionsRes.value.data) {
-        const all = sessionsRes.value.data.sessions
-        setRecentSession(all.length > 0 ? (all[0] ?? null) : null)
-      }
-      if (plannedRes.status === 'fulfilled' && plannedRes.value.data) {
-        const plans = plannedRes.value.data.plannedSessions
-        setTodaysPlan(plans.length > 0 ? (plans[0] ?? null) : null)
-      }
-
-      setIsLoading(false)
-    }
-    void load()
+    void loadAll()
   }, [])
 
   return (
@@ -100,15 +112,26 @@ export default function Home(): React.JSX.Element {
                 <Skeleton className="h-4 w-48" />
               </div>
             ) : readiness?.hasCheckedInToday && readiness.todaysCheckin ? (
-              <div className="space-y-1">
-                <p className="text-sm text-slate-700">
-                  Weekly avg: <span className="font-semibold">{readiness.weeklyAvg.toFixed(1)} / 5</span>
-                </p>
-                <p className="text-xs text-slate-500">
-                  Sleep {readiness.todaysCheckin.sleep_quality} · Fatigue{' '}
-                  {readiness.todaysCheckin.fatigue} · Fingers{' '}
-                  {readiness.todaysCheckin.finger_health}
-                </p>
+              <div className="space-y-3">
+                <div className="space-y-1">
+                  <p className="text-sm text-slate-700">
+                    Weekly avg: <span className="font-semibold">{readiness.weeklyAvg.toFixed(1)} / 5</span>
+                  </p>
+                  <p className="text-xs text-slate-500">
+                    Sleep {readiness.todaysCheckin.sleep_quality} · Fatigue{' '}
+                    {readiness.todaysCheckin.fatigue} · Fingers{' '}
+                    {readiness.todaysCheckin.finger_health}
+                  </p>
+                </div>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="min-h-[44px]"
+                  disabled={isResetting}
+                  onClick={() => void resetCheckin()}
+                >
+                  {isResetting ? 'Resetting…' : 'Reset check-in'}
+                </Button>
               </div>
             ) : (
               <div>
@@ -185,27 +208,6 @@ export default function Home(): React.JSX.Element {
           </CardContent>
         </Card>
 
-        {/* Quick actions */}
-        <div className="grid grid-cols-3 gap-3">
-          <Button asChild variant="outline" className="min-h-[44px] flex-col h-auto py-3 gap-1">
-            <Link href="/session/log">
-              <span className="text-lg">💪</span>
-              <span className="text-xs">Log Session</span>
-            </Link>
-          </Button>
-          <Button asChild variant="outline" className="min-h-[44px] flex-col h-auto py-3 gap-1">
-            <Link href="/readiness">
-              <span className="text-lg">📋</span>
-              <span className="text-xs">Check-in</span>
-            </Link>
-          </Button>
-          <Button asChild variant="outline" className="min-h-[44px] flex-col h-auto py-3 gap-1">
-            <Link href="/chat">
-              <span className="text-lg">💬</span>
-              <span className="text-xs">Ask Coach</span>
-            </Link>
-          </Button>
-        </div>
       </div>
     </div>
   )

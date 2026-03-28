@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { z } from 'zod'
 import {
   createCheckin,
+  deleteTodaysCheckin,
   getTodaysCheckin,
   getRecentCheckins,
   getAverageReadiness,
@@ -120,6 +121,30 @@ export async function POST(
     console.error('[POST /api/readiness]', error)
     return NextResponse.json(
       { data: null, error: 'Failed to save check-in. Please try again.' },
+      { status: 500 },
+    )
+  }
+}
+
+/**
+ * @description Deletes today's readiness check-in, allowing the athlete to
+ * resubmit. Returns 404 if no check-in exists for today.
+ */
+export async function DELETE(): Promise<NextResponse<ApiResponse<{ deleted: true }>>> {
+  try {
+    const result = await deleteTodaysCheckin()
+    if (result.error !== null) {
+      console.error('[DELETE /api/readiness]', result.error)
+      return NextResponse.json(
+        { data: null, error: 'No check-in found for today.' },
+        { status: 404 },
+      )
+    }
+    return NextResponse.json({ data: { deleted: true }, error: null })
+  } catch (error) {
+    console.error('[DELETE /api/readiness]', error)
+    return NextResponse.json(
+      { data: null, error: 'Failed to delete check-in.' },
       { status: 500 },
     )
   }
