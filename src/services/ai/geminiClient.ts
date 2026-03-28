@@ -25,17 +25,18 @@ const MODEL_NAME = 'gemini-3.1-flash-lite-preview'
 const MAX_HISTORY_MESSAGES = 20
 
 /**
- * @description Maximum tokens in the AI response.
- * 2048 is sufficient for detailed coaching advice without excessive API cost.
+ * @description Maximum tokens in the AI chat response.
+ * 1024 is sufficient for concise coaching advice. The system prompt enforces
+ * brevity; this is a hard ceiling, not a target.
  */
-const MAX_OUTPUT_TOKENS = 2048
+const MAX_OUTPUT_TOKENS = 1024
 
 /**
  * @description Controls AI response variability (0.0–1.0).
- * 0.7 balances consistency with natural conversational variation.
+ * 0.5 reduces verbose drift while keeping responses natural.
  * Lower = more predictable, higher = more creative.
  */
-const TEMPERATURE = 0.7
+const TEMPERATURE = 0.5
 
 // =============================================================================
 // PRIVATE HELPERS
