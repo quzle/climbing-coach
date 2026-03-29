@@ -15,6 +15,10 @@ import { POST, GET } from './route'
 // MODULE MOCKS
 // =============================================================================
 
+jest.mock('@/lib/auth', () => ({
+  requireAuth: jest.fn().mockResolvedValue({ userId: 'user-1', errorResponse: null }),
+}))
+
 jest.mock('@/services/data/sessionRepository', () => ({
   createSession: jest.fn(),
   getRecentSessions: jest.fn(),
@@ -140,6 +144,7 @@ describe('POST /api/sessions', () => {
 
     expect(response.status).toBe(201)
     expect(mockCreateSession).toHaveBeenCalledWith(
+      'user-1',
       expect.objectContaining({ injury_flags: [] }),
     )
   })
@@ -170,7 +175,7 @@ describe('GET /api/sessions', () => {
   it('filters by type when type param provided', async () => {
     await GET(new NextRequest('http://localhost:3000/api/sessions?type=bouldering'))
 
-    expect(mockGetSessionsByType).toHaveBeenCalledWith('bouldering', expect.any(Number))
+    expect(mockGetSessionsByType).toHaveBeenCalledWith('user-1', 'bouldering', expect.any(Number))
     expect(mockGetRecentSessions).not.toHaveBeenCalled()
   })
 
@@ -183,12 +188,12 @@ describe('GET /api/sessions', () => {
   it('defaults to 30 days when no days param', async () => {
     await GET(new NextRequest('http://localhost:3000/api/sessions'))
 
-    expect(mockGetRecentSessions).toHaveBeenCalledWith(30)
+    expect(mockGetRecentSessions).toHaveBeenCalledWith('user-1', 30)
   })
 
   it('clamps days param to maximum of 365', async () => {
     await GET(new NextRequest('http://localhost:3000/api/sessions?days=400'))
 
-    expect(mockGetRecentSessions).toHaveBeenCalledWith(365)
+    expect(mockGetRecentSessions).toHaveBeenCalledWith('user-1', 365)
   })
 })

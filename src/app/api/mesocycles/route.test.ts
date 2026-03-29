@@ -5,6 +5,10 @@ import { NextRequest } from 'next/server'
 import { createMesocycle, getMesocyclesByProgramme } from '@/services/data/mesocycleRepository'
 import { GET, POST } from './route'
 
+jest.mock('@/lib/auth', () => ({
+  requireAuth: jest.fn().mockResolvedValue({ userId: 'user-1', errorResponse: null }),
+}))
+
 jest.mock('@/services/data/mesocycleRepository', () => ({
   getMesocyclesByProgramme: jest.fn(),
   createMesocycle: jest.fn(),
@@ -43,7 +47,7 @@ describe('GET /api/mesocycles', () => {
     )
 
     expect(response.status).toBe(200)
-    expect(mockGetMesocyclesByProgramme).toHaveBeenCalledWith(mesocycle.programme_id)
+    expect(mockGetMesocyclesByProgramme).toHaveBeenCalledWith('user-1', mesocycle.programme_id)
   })
 
   it('returns 400 when programme_id is missing', async () => {

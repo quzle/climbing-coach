@@ -71,7 +71,7 @@ describe('getActiveInjuryAreas', () => {
     ]
     mockChain.order.mockResolvedValue({ data: areas, error: null })
 
-    const result = await getActiveInjuryAreas()
+    const result = await getActiveInjuryAreas('user-1')
 
     expect(result.data).toEqual(areas)
     expect(result.error).toBeNull()
@@ -85,7 +85,7 @@ describe('getActiveInjuryAreas', () => {
   it('returns an empty array when no injury areas are tracked', async () => {
     mockChain.order.mockResolvedValue({ data: [], error: null })
 
-    const result = await getActiveInjuryAreas()
+    const result = await getActiveInjuryAreas('user-1')
 
     expect(result.data).toEqual([])
     expect(result.error).toBeNull()
@@ -97,7 +97,7 @@ describe('getActiveInjuryAreas', () => {
       error: { message: 'DB error' },
     })
 
-    const result = await getActiveInjuryAreas()
+    const result = await getActiveInjuryAreas('user-1')
 
     expect(result.data).toBeNull()
     expect(result.error).toBe('Failed to fetch injury areas')
@@ -106,7 +106,7 @@ describe('getActiveInjuryAreas', () => {
   it('returns an error string when createClient throws', async () => {
     ;(createClient as jest.Mock).mockRejectedValue(new Error('connect failed'))
 
-    const result = await getActiveInjuryAreas()
+    const result = await getActiveInjuryAreas('user-1')
 
     expect(result.data).toBeNull()
     expect(result.error).toBe('An unexpected error occurred')
@@ -128,14 +128,14 @@ describe('addInjuryArea', () => {
     const newArea = makeInjuryAreaRow({ area: 'shoulder_left' })
     mockChain.single.mockResolvedValue({ data: newArea, error: null })
 
-    const result = await addInjuryArea('shoulder_left')
+    const result = await addInjuryArea('user-1', 'shoulder_left')
 
     expect(result.data).toEqual(newArea)
     expect(result.error).toBeNull()
     expect(mockFrom).toHaveBeenCalledWith('injury_areas')
     expect(mockChain.upsert).toHaveBeenCalledWith(
       expect.objectContaining({ area: 'shoulder_left', is_active: true }),
-      { onConflict: 'area' },
+      { onConflict: 'user_id,area' },
     )
   })
 
@@ -147,7 +147,7 @@ describe('addInjuryArea', () => {
     })
     mockChain.single.mockResolvedValue({ data: reactivated, error: null })
 
-    const result = await addInjuryArea('finger_a2_right')
+    const result = await addInjuryArea('user-1', 'finger_a2_right')
 
     expect(result.data?.is_active).toBe(true)
     expect(result.data?.archived_at).toBeNull()
@@ -159,7 +159,7 @@ describe('addInjuryArea', () => {
       error: { message: 'unique violation' },
     })
 
-    const result = await addInjuryArea('shoulder_left')
+    const result = await addInjuryArea('user-1', 'shoulder_left')
 
     expect(result.data).toBeNull()
     expect(result.error).toBe('Failed to add injury area')
@@ -185,7 +185,7 @@ describe('archiveInjuryArea', () => {
     })
     mockChain.single.mockResolvedValue({ data: archived, error: null })
 
-    const result = await archiveInjuryArea('shoulder_left')
+    const result = await archiveInjuryArea('user-1', 'shoulder_left')
 
     expect(result.data?.is_active).toBe(false)
     expect(result.data?.archived_at).not.toBeNull()
@@ -202,7 +202,7 @@ describe('archiveInjuryArea', () => {
       error: { message: 'not found' },
     })
 
-    const result = await archiveInjuryArea('shoulder_left')
+    const result = await archiveInjuryArea('user-1', 'shoulder_left')
 
     expect(result.data).toBeNull()
     expect(result.error).toBe('Failed to archive injury area')
@@ -211,7 +211,7 @@ describe('archiveInjuryArea', () => {
   it('returns an error string when createClient throws', async () => {
     ;(createClient as jest.Mock).mockRejectedValue(new Error('connect failed'))
 
-    const result = await archiveInjuryArea('shoulder_left')
+    const result = await archiveInjuryArea('user-1', 'shoulder_left')
 
     expect(result.data).toBeNull()
     expect(result.error).toBe('An unexpected error occurred')

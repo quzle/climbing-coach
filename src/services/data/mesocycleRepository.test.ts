@@ -62,7 +62,7 @@ describe('mesocycleRepository', () => {
     const mesocycles = [makeMesocycle()]
     mockChain.order.mockResolvedValue({ data: mesocycles, error: null })
 
-    const result = await getMesocyclesByProgramme('programme-1')
+    const result = await getMesocyclesByProgramme('user-1', 'programme-1')
 
     expect(mockChain.eq).toHaveBeenCalledWith('programme_id', 'programme-1')
     expect(result.data).toEqual(mesocycles)
@@ -72,7 +72,7 @@ describe('mesocycleRepository', () => {
     const mesocycle = makeMesocycle()
     mockChain.maybeSingle.mockResolvedValue({ data: mesocycle, error: null })
 
-    const result = await getActiveMesocycle()
+    const result = await getActiveMesocycle('user-1')
 
     expect(mockChain.lte).toHaveBeenCalled()
     expect(mockChain.gte).toHaveBeenCalled()
@@ -83,7 +83,7 @@ describe('mesocycleRepository', () => {
     const mesocycle = makeMesocycle()
     mockChain.single.mockResolvedValue({ data: mesocycle, error: null })
 
-    const result = await getMesocycleById('mesocycle-1')
+    const result = await getMesocycleById('user-1', 'mesocycle-1')
 
     expect(mockChain.eq).toHaveBeenCalledWith('id', 'mesocycle-1')
     expect(result.data).toEqual(mesocycle)
@@ -101,9 +101,9 @@ describe('mesocycleRepository', () => {
     const mesocycle = makeMesocycle()
     mockChain.single.mockResolvedValue({ data: mesocycle, error: null })
 
-    const result = await createMesocycle(input)
+    const result = await createMesocycle('user-1', input)
 
-    expect(mockChain.insert).toHaveBeenCalledWith(input)
+    expect(mockChain.insert).toHaveBeenCalledWith({ ...input, user_id: 'user-1' })
     expect(result.data).toEqual(mesocycle)
   })
 
@@ -112,7 +112,7 @@ describe('mesocycleRepository', () => {
     const mesocycle = makeMesocycle({ status: 'completed' })
     mockChain.single.mockResolvedValue({ data: mesocycle, error: null })
 
-    const result = await updateMesocycle('mesocycle-1', updates)
+    const result = await updateMesocycle('user-1', 'mesocycle-1', updates)
 
     expect(mockChain.update).toHaveBeenCalledWith(updates)
     expect(result.data?.status).toBe('completed')
@@ -122,7 +122,7 @@ describe('mesocycleRepository', () => {
     const mesocycle = makeMesocycle()
     mockChain.single.mockResolvedValue({ data: mesocycle, error: null })
 
-    const result = await deleteMesocycle('mesocycle-1')
+    const result = await deleteMesocycle('user-1', 'mesocycle-1')
 
     expect(mockChain.delete).toHaveBeenCalled()
     expect(mockChain.eq).toHaveBeenCalledWith('id', 'mesocycle-1')

@@ -5,6 +5,10 @@ import { NextRequest } from 'next/server'
 import { createProgramme, getProgrammes } from '@/services/data/programmeRepository'
 import { GET, POST } from './route'
 
+jest.mock('@/lib/auth', () => ({
+  requireAuth: jest.fn().mockResolvedValue({ userId: 'user-1', errorResponse: null }),
+}))
+
 jest.mock('@/services/data/programmeRepository', () => ({
   getProgrammes: jest.fn(),
   createProgramme: jest.fn(),

@@ -18,6 +18,10 @@ import { POST, GET } from './route'
 // MODULE MOCKS
 // =============================================================================
 
+jest.mock('@/lib/auth', () => ({
+  requireAuth: jest.fn().mockResolvedValue({ userId: 'user-1', errorResponse: null }),
+}))
+
 jest.mock('@/services/data/readinessRepository', () => ({
   createCheckin: jest.fn(),
   getTodaysCheckin: jest.fn(),
@@ -219,6 +223,7 @@ describe('POST /api/readiness', () => {
     await POST(makePostRequest(bodyWithInjury))
 
     expect(mockCreateCheckin).toHaveBeenCalledWith(
+      'user-1',
       expect.not.objectContaining({ injury_area_health: expect.anything() }),
       [{ area: 'shoulder_left', health: 3, notes: null }],
     )
@@ -283,12 +288,12 @@ describe('GET /api/readiness', () => {
   it('defaults to 7 days when no days param provided', async () => {
     await GET(new NextRequest('http://localhost:3000/api/readiness'))
 
-    expect(mockGetRecentCheckins).toHaveBeenCalledWith(7)
+    expect(mockGetRecentCheckins).toHaveBeenCalledWith('user-1', 7)
   })
 
   it('clamps days param to maximum of 90', async () => {
     await GET(new NextRequest('http://localhost:3000/api/readiness?days=200'))
 
-    expect(mockGetRecentCheckins).toHaveBeenCalledWith(90)
+    expect(mockGetRecentCheckins).toHaveBeenCalledWith('user-1', 90)
   })
 })

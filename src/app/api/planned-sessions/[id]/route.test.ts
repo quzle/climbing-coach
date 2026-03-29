@@ -9,6 +9,10 @@ import {
 } from '@/services/data/plannedSessionRepository'
 import { DELETE, GET, PUT } from './route'
 
+jest.mock('@/lib/auth', () => ({
+  requireAuth: jest.fn().mockResolvedValue({ userId: 'user-1', errorResponse: null }),
+}))
+
 jest.mock('@/services/data/plannedSessionRepository', () => ({
   getPlannedSessionById: jest.fn(),
   updatePlannedSession: jest.fn(),
@@ -46,7 +50,7 @@ describe('GET /api/planned-sessions/:id', () => {
     })
 
     expect(response.status).toBe(200)
-    expect(mockGetPlannedSessionById).toHaveBeenCalledWith(id)
+    expect(mockGetPlannedSessionById).toHaveBeenCalledWith('user-1', id)
   })
 })
 
@@ -60,7 +64,7 @@ describe('PUT /api/planned-sessions/:id', () => {
 
     const response = await PUT(request, { params: Promise.resolve({ id }) })
     expect(response.status).toBe(200)
-    expect(mockUpdatePlannedSession).toHaveBeenCalledWith(id, { status: 'completed' })
+    expect(mockUpdatePlannedSession).toHaveBeenCalledWith('user-1', id, { status: 'completed' })
   })
 })
 
@@ -71,6 +75,6 @@ describe('DELETE /api/planned-sessions/:id', () => {
     })
 
     expect(response.status).toBe(200)
-    expect(mockDeletePlannedSession).toHaveBeenCalledWith(id)
+    expect(mockDeletePlannedSession).toHaveBeenCalledWith('user-1', id)
   })
 })

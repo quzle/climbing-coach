@@ -48,7 +48,7 @@ describe('ChatMessage', () => {
 
   it('applies slate background to assistant message bubbles', () => {
     render(<ChatMessage message={makeMessage({ role: 'assistant', content: 'Coach msg' })} />)
-    const bubble = screen.getByText('Coach msg').closest('div')
+    const bubble = screen.getByText('Coach msg').closest('[class*="bg-slate"]')
     expect(bubble).toHaveClass('bg-slate-100')
   })
 

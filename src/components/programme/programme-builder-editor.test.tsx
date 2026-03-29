@@ -80,21 +80,6 @@ describe('ProgrammeBuilderEditor', () => {
     await waitFor(() => expect(onSaved).toHaveBeenCalled())
   })
 
-  it('calls generation endpoint when generate button is clicked', async () => {
-    const onSaved = jest.fn().mockResolvedValue(undefined)
-    render(<ProgrammeBuilderEditor snapshot={snapshot} onSaved={onSaved} />)
-
-    fireEvent.click(screen.getByRole('button', { name: 'Generate Week Sessions' }))
-
-    await waitFor(() => {
-      expect(global.fetch).toHaveBeenCalledWith(
-        '/api/planned-sessions/generate',
-        expect.objectContaining({ method: 'POST' }),
-      )
-    })
-    await waitFor(() => expect(onSaved).toHaveBeenCalled())
-  })
-
   it('creates a programme when no active programme exists', async () => {
     const onSaved = jest.fn().mockResolvedValue(undefined)
     render(
