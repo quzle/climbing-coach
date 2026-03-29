@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { z } from 'zod'
 import { getProgrammeById, updateProgramme } from '@/services/data/programmeRepository'
+import { requireAuth } from '@/lib/auth'
 import type { ApiResponse, Programme } from '@/types'
 
 const paramsSchema = z.object({ id: z.string().uuid() })
@@ -26,6 +27,9 @@ export async function GET(
   context: { params: Promise<{ id: string }> },
 ): Promise<NextResponse<ApiResponse<{ programme: Programme }>>> {
   try {
+    const { userId, errorResponse } = await requireAuth()
+    if (errorResponse) return errorResponse
+
     const rawParams = await context.params
     const parsedParams = paramsSchema.safeParse(rawParams)
 
@@ -33,7 +37,7 @@ export async function GET(
       return NextResponse.json({ data: null, error: 'Invalid programme id.' }, { status: 400 })
     }
 
-    const result = await getProgrammeById(parsedParams.data.id)
+    const result = await getProgrammeById(userId, parsedParams.data.id)
     if (result.error !== null || result.data === null) {
       return NextResponse.json({ data: null, error: 'Failed to load programme.' }, { status: 500 })
     }
@@ -54,6 +58,9 @@ export async function PUT(
   context: { params: Promise<{ id: string }> },
 ): Promise<NextResponse<ApiResponse<{ programme: Programme }>>> {
   try {
+    const { userId, errorResponse } = await requireAuth()
+    if (errorResponse) return errorResponse
+
     const rawParams = await context.params
     const parsedParams = paramsSchema.safeParse(rawParams)
     if (!parsedParams.success) {
@@ -70,7 +77,7 @@ export async function PUT(
       )
     }
 
-    const result = await updateProgramme(parsedParams.data.id, parsedBody.data)
+    const result = await updateProgramme(userId, parsedParams.data.id, parsedBody.data)
     if (result.error !== null || result.data === null) {
       return NextResponse.json(
         { data: null, error: 'Failed to update programme.' },

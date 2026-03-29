@@ -21,6 +21,7 @@ export type Database = {
           created_at: string | null
           id: string
           role: string
+          user_id: string | null
         }
         Insert: {
           content: string
@@ -28,6 +29,7 @@ export type Database = {
           created_at?: string | null
           id?: string
           role: string
+          user_id?: string | null
         }
         Update: {
           content?: string
@@ -35,6 +37,7 @@ export type Database = {
           created_at?: string | null
           id?: string
           role?: string
+          user_id?: string | null
         }
         Relationships: []
       }
@@ -52,6 +55,7 @@ export type Database = {
           planned_start: string
           programme_id: string | null
           status: string
+          user_id: string | null
         }
         Insert: {
           actual_end?: string | null
@@ -66,6 +70,7 @@ export type Database = {
           planned_start: string
           programme_id?: string | null
           status?: string
+          user_id?: string | null
         }
         Update: {
           actual_end?: string | null
@@ -80,6 +85,7 @@ export type Database = {
           planned_start?: string
           programme_id?: string | null
           status?: string
+          user_id?: string | null
         }
         Relationships: [
           {
@@ -102,6 +108,7 @@ export type Database = {
           session_type: string
           status: string
           template_id: string | null
+          user_id: string | null
         }
         Insert: {
           created_at?: string | null
@@ -113,6 +120,7 @@ export type Database = {
           session_type: string
           status?: string
           template_id?: string | null
+          user_id?: string | null
         }
         Update: {
           created_at?: string | null
@@ -124,6 +132,7 @@ export type Database = {
           session_type?: string
           status?: string
           template_id?: string | null
+          user_id?: string | null
         }
         Relationships: [
           {
@@ -152,6 +161,7 @@ export type Database = {
           notes: string | null
           start_date: string
           target_date: string
+          user_id: string | null
         }
         Insert: {
           athlete_profile?: Json | null
@@ -162,6 +172,7 @@ export type Database = {
           notes?: string | null
           start_date: string
           target_date: string
+          user_id?: string | null
         }
         Update: {
           athlete_profile?: Json | null
@@ -172,6 +183,7 @@ export type Database = {
           notes?: string | null
           start_date?: string
           target_date?: string
+          user_id?: string | null
         }
         Relationships: []
       }
@@ -182,6 +194,7 @@ export type Database = {
           is_active: boolean
           added_at: string
           archived_at: string | null
+          user_id: string | null
         }
         Insert: {
           id?: string
@@ -189,6 +202,7 @@ export type Database = {
           is_active?: boolean
           added_at?: string
           archived_at?: string | null
+          user_id?: string | null
         }
         Update: {
           id?: string
@@ -196,6 +210,7 @@ export type Database = {
           is_active?: boolean
           added_at?: string
           archived_at?: string | null
+          user_id?: string | null
         }
         Relationships: []
       }
@@ -212,6 +227,7 @@ export type Database = {
           notes: string | null
           readiness_score: number | null
           sleep_quality: number
+          user_id: string | null
         }
         Insert: {
           created_at?: string | null
@@ -225,6 +241,7 @@ export type Database = {
           notes?: string | null
           readiness_score?: number | null
           sleep_quality: number
+          user_id?: string | null
         }
         Update: {
           created_at?: string | null
@@ -238,6 +255,7 @@ export type Database = {
           notes?: string | null
           readiness_score?: number | null
           sleep_quality?: number
+          user_id?: string | null
         }
         Relationships: []
       }
@@ -256,6 +274,7 @@ export type Database = {
           rpe: number | null
           session_type: string
           injury_flags: Json | null
+          user_id: string | null
         }
         Insert: {
           created_at?: string | null
@@ -271,6 +290,7 @@ export type Database = {
           quality_rating?: number | null
           rpe?: number | null
           session_type: string
+          user_id?: string | null
         }
         Update: {
           created_at?: string | null
@@ -286,6 +306,7 @@ export type Database = {
           quality_rating?: number | null
           rpe?: number | null
           session_type?: string
+          user_id?: string | null
         }
         Relationships: [
           {
@@ -308,6 +329,7 @@ export type Database = {
           primary_focus: string | null
           session_label: string
           session_type: string
+          user_id: string | null
         }
         Insert: {
           day_of_week: number
@@ -319,6 +341,7 @@ export type Database = {
           primary_focus?: string | null
           session_label: string
           session_type: string
+          user_id?: string | null
         }
         Update: {
           day_of_week?: number
@@ -330,6 +353,7 @@ export type Database = {
           primary_focus?: string | null
           session_label?: string
           session_type?: string
+          user_id?: string | null
         }
         Relationships: [
           {

@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
+import { requireAuth } from '@/lib/auth'
 import type { ApiResponse, ChatMessage } from '@/types'
 
 /**
@@ -14,6 +15,9 @@ export async function GET(
   request: NextRequest,
 ): Promise<NextResponse<ApiResponse<{ messages: ChatMessage[] }>>> {
   try {
+    const { userId, errorResponse } = await requireAuth()
+    if (errorResponse) return errorResponse
+
     const limit = Number(request.nextUrl.searchParams.get('limit') ?? '20')
     const safeLimit = Math.min(Math.max(limit, 1), 50)
 
@@ -21,6 +25,7 @@ export async function GET(
     const { data, error } = await supabase
       .from('chat_messages')
       .select('*')
+      .eq('user_id', userId)
       .order('created_at', { ascending: false })
       .limit(safeLimit)
 

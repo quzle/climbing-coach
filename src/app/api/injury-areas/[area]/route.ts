@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server'
 import { archiveInjuryArea } from '@/services/data/injuryAreasRepository'
+import { requireAuth } from '@/lib/auth'
 import type { ApiResponse, InjuryAreaRow } from '@/types'
 
 /**
@@ -17,7 +18,10 @@ export async function DELETE(
 ): Promise<NextResponse<ApiResponse<InjuryAreaRow>>> {
   const { area } = await params
   try {
-    const result = await archiveInjuryArea(area)
+    const { userId, errorResponse } = await requireAuth()
+    if (errorResponse) return errorResponse
+
+    const result = await archiveInjuryArea(userId, area)
     if (result.error) {
       console.error('[DELETE /api/injury-areas/[area]]', result.error)
       return NextResponse.json(

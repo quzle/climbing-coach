@@ -12,17 +12,20 @@ import type { ApiResponse, ProgrammeBuilderSnapshot } from '@/types'
  * It returns the active programme, all mesocycles within that programme, the
  * active mesocycle's weekly template, and upcoming planned sessions.
  *
+ * @param userId Authenticated user's UUID
  * @returns ProgrammeBuilderSnapshot with safe empty/null fallbacks
  */
-export async function getProgrammeBuilderSnapshot(): Promise<
+export async function getProgrammeBuilderSnapshot(
+  userId: string,
+): Promise<
   ApiResponse<ProgrammeBuilderSnapshot>
 > {
   try {
     const [activeProgrammeResult, activeMesocycleResult, upcomingSessionsResult] =
       await Promise.all([
-        getActiveProgramme(),
-        getActiveMesocycle(),
-        getUpcomingPlannedSessions(7),
+        getActiveProgramme(userId),
+        getActiveMesocycle(userId),
+        getUpcomingPlannedSessions(userId, 7),
       ])
 
     if (activeProgrammeResult.error !== null) {
@@ -49,10 +52,10 @@ export async function getProgrammeBuilderSnapshot(): Promise<
 
     const [mesocyclesResult, templateResult] = await Promise.all([
       currentProgramme !== null
-        ? getMesocyclesByProgramme(currentProgramme.id)
+        ? getMesocyclesByProgramme(userId, currentProgramme.id)
         : Promise.resolve({ data: [], error: null }),
       activeMesocycle !== null
-        ? getWeeklyTemplateByMesocycle(activeMesocycle.id)
+        ? getWeeklyTemplateByMesocycle(userId, activeMesocycle.id)
         : Promise.resolve({ data: [], error: null }),
     ])
 

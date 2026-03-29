@@ -188,9 +188,12 @@ export function computeWarnings(
  * This includes the current programme, active mesocycle, weekly template for
  * that mesocycle, and upcoming planned sessions for the next 7 days.
  *
+ * @param userId Authenticated user's UUID
  * @returns Planning-related subset of AthleteContext with safe fallbacks
  */
-export async function buildProgrammeContext(): Promise<
+export async function buildProgrammeContext(
+  userId: string,
+): Promise<
   Pick<
     AthleteContext,
     'currentProgramme' | 'activeMesocycle' | 'currentWeeklyTemplate' | 'upcomingPlannedSessions'
@@ -198,9 +201,9 @@ export async function buildProgrammeContext(): Promise<
 > {
   const [activeProgrammeResult, activeMesocycleResult, upcomingPlannedSessionsResult] =
     await Promise.all([
-      getActiveProgramme(),
-      getActiveMesocycle(),
-      getUpcomingPlannedSessions(7),
+      getActiveProgramme(userId),
+      getActiveMesocycle(userId),
+      getUpcomingPlannedSessions(userId, 7),
     ])
 
   if (activeProgrammeResult.error !== null) {
@@ -224,7 +227,7 @@ export async function buildProgrammeContext(): Promise<
 
   let currentWeeklyTemplate: WeeklyTemplate[] = []
   if (activeMesocycle !== null) {
-    const weeklyTemplateResult = await getWeeklyTemplateByMesocycle(activeMesocycle.id)
+    const weeklyTemplateResult = await getWeeklyTemplateByMesocycle(userId, activeMesocycle.id)
     if (weeklyTemplateResult.error !== null) {
       console.error(
         '[contextBuilder.buildProgrammeContext] getWeeklyTemplateByMesocycle failed:',
@@ -251,10 +254,11 @@ export async function buildProgrammeContext(): Promise<
  * (null, 0, empty array) so the AI coach can still function with partial context.
  * Errors are logged server-side with enough detail to reproduce the failure.
  *
+ * @param userId Authenticated user's UUID
  * @returns AthleteContext with all fields populated, using fallbacks for any
  *   fields whose data fetch failed
  */
-export async function buildAthleteContext(): Promise<AthleteContext> {
+export async function buildAthleteContext(userId: string): Promise<AthleteContext> {
   const [
     todaysCheckinResult,
     recentCheckinsResult,
@@ -265,14 +269,14 @@ export async function buildAthleteContext(): Promise<AthleteContext> {
     activeInjuryAreasResult,
     programmeContext,
   ] = await Promise.all([
-    getTodaysCheckin(),
-    getRecentCheckins(14),
-    getAverageReadiness(7),
-    getRecentSessions(30),
-    getSessionCountThisWeek(),
-    getLastSessionDate(),
-    getActiveInjuryAreas(),
-    buildProgrammeContext(),
+    getTodaysCheckin(userId),
+    getRecentCheckins(userId, 14),
+    getAverageReadiness(userId, 7),
+    getRecentSessions(userId, 30),
+    getSessionCountThisWeek(userId),
+    getLastSessionDate(userId),
+    getActiveInjuryAreas(userId),
+    buildProgrammeContext(userId),
   ])
 
   // Extract data, logging any errors and falling back to safe defaults

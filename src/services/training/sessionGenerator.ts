@@ -53,6 +53,7 @@ function nextOccurrenceOfDay(dbDayOfWeek: number, fromDate: Date): string {
  * @returns Array of newly created planned sessions for the full mesocycle
  */
 export async function generatePlannedSessionsForActiveMesocycle(
+  userId: string,
   fromDateStr?: string,
 ): Promise<ApiResponse<PlannedSession[]>> {
   try {
@@ -62,7 +63,7 @@ export async function generatePlannedSessionsForActiveMesocycle(
     const fromDate = requestedDate > today ? requestedDate : today
 
     // Fetch the mesocycle first so we can use planned_end as the range boundary.
-    const mesocycleResult = await getActiveMesocycle()
+    const mesocycleResult = await getActiveMesocycle(userId)
     if (mesocycleResult.error !== null) {
       console.error(
         '[sessionGenerator.generatePlannedSessionsForActiveMesocycle] getActiveMesocycle:',
@@ -79,8 +80,8 @@ export async function generatePlannedSessionsForActiveMesocycle(
     // Fetch templates and existing sessions in parallel now that we have the
     // mesocycle end date for the range query.
     const [templatesResult, existingSessionsResult] = await Promise.all([
-      getWeeklyTemplateByMesocycle(activeMesocycle.id),
-      getPlannedSessionsInRange(toIsoDate(fromDate), activeMesocycle.planned_end),
+      getWeeklyTemplateByMesocycle(userId, activeMesocycle.id),
+      getPlannedSessionsInRange(userId, toIsoDate(fromDate), activeMesocycle.planned_end),
     ])
 
     if (templatesResult.error !== null) {
@@ -119,7 +120,7 @@ export async function generatePlannedSessionsForActiveMesocycle(
         if (!existingByDateTemplate.has(dedupeKey)) {
           // Store template metadata only — AI plan text is generated lazily
           // on first access to avoid upfront token cost and stale context.
-          const createResult = await createPlannedSession({
+          const createResult = await createPlannedSession(userId, {
             mesocycle_id: activeMesocycle.id,
             template_id: template.id,
             planned_date: plannedDate,

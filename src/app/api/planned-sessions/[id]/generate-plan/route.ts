@@ -5,6 +5,7 @@ import { generateSessionPlan } from '@/services/ai/geminiClient'
 import { getMesocycleById } from '@/services/data/mesocycleRepository'
 import { getPlannedSessionById, updatePlannedSession } from '@/services/data/plannedSessionRepository'
 import { getWeeklyTemplateById } from '@/services/data/weeklyTemplateRepository'
+import { requireAuth } from '@/lib/auth'
 import type { Json } from '@/lib/database.types'
 import type { ApiResponse, Mesocycle, PlannedSession, SessionLog, WeeklyTemplate } from '@/types'
 
@@ -80,6 +81,9 @@ export async function POST(
   context: { params: Promise<{ id: string }> },
 ): Promise<NextResponse<ApiResponse<{ ai_plan_text: string }>>> {
   try {
+    const { userId, errorResponse } = await requireAuth()
+    if (errorResponse) return errorResponse
+
     const parsedParams = paramsSchema.safeParse(await context.params)
     if (!parsedParams.success) {
       return NextResponse.json(
@@ -91,7 +95,7 @@ export async function POST(
     const sessionId = parsedParams.data.id
 
     // Fetch the planned session.
-    const sessionResult = await getPlannedSessionById(sessionId)
+    const sessionResult = await getPlannedSessionById(userId, sessionId)
     if (sessionResult.error !== null || sessionResult.data === null) {
       return NextResponse.json(
         { data: null, error: 'Planned session not found.' },
@@ -117,9 +121,9 @@ export async function POST(
 
     // Fetch mesocycle, template, and athlete context in parallel.
     const [mesocycleResult, templateResult, athleteContext] = await Promise.all([
-      getMesocycleById(session.mesocycle_id),
-      getWeeklyTemplateById(session.template_id),
-      buildAthleteContext(),
+      getMesocycleById(userId, session.mesocycle_id),
+      getWeeklyTemplateById(userId, session.template_id),
+      buildAthleteContext(userId),
     ])
 
     if (mesocycleResult.error !== null || mesocycleResult.data === null) {
@@ -145,7 +149,7 @@ export async function POST(
       athleteContext.weeklyReadinessAvg,
     )
 
-    const aiPlanText = await generateSessionPlan(template.session_type, additionalContext)
+    const aiPlanText = await generateSessionPlan(userId, template.session_type, additionalContext)
 
     // Merge ai_plan_text into the existing metadata and persist.
     const updatedPlan: GeneratedPlanMetadata = {
@@ -154,7 +158,7 @@ export async function POST(
       readiness_avg_7d: Number(athleteContext.weeklyReadinessAvg.toFixed(2)),
     }
 
-    const updateResult = await updatePlannedSession(sessionId, {
+    const updateResult = await updatePlannedSession(userId, sessionId, {
       generated_plan: updatedPlan as unknown as Json,
     })
 

@@ -8,10 +8,12 @@ import type {
 
 /**
  * @description Fetches all weekly template rows for a mesocycle ordered by day_of_week.
+ * @param userId Authenticated user's UUID
  * @param mesocycleId Parent mesocycle UUID
  * @returns Weekly template rows ordered Monday-to-Sunday
  */
 export async function getWeeklyTemplateByMesocycle(
+  userId: string,
   mesocycleId: string,
 ): Promise<ApiResponse<WeeklyTemplate[]>> {
   try {
@@ -19,6 +21,7 @@ export async function getWeeklyTemplateByMesocycle(
     const { data, error } = await supabase
       .from('weekly_templates')
       .select('*')
+      .eq('user_id', userId)
       .eq('mesocycle_id', mesocycleId)
       .order('day_of_week', { ascending: true })
 
@@ -39,10 +42,12 @@ export async function getWeeklyTemplateByMesocycle(
 
 /**
  * @description Fetches a single weekly template row by UUID.
+ * @param userId Authenticated user's UUID
  * @param id Weekly template UUID
  * @returns Matching weekly template row
  */
 export async function getWeeklyTemplateById(
+  userId: string,
   id: string,
 ): Promise<ApiResponse<WeeklyTemplate>> {
   try {
@@ -50,6 +55,7 @@ export async function getWeeklyTemplateById(
     const { data, error } = await supabase
       .from('weekly_templates')
       .select('*')
+      .eq('user_id', userId)
       .eq('id', id)
       .single()
 
@@ -67,17 +73,19 @@ export async function getWeeklyTemplateById(
 
 /**
  * @description Creates a new weekly template row.
+ * @param userId Authenticated user's UUID
  * @param input Weekly template insert payload
  * @returns Newly created weekly template row
  */
 export async function createWeeklyTemplate(
+  userId: string,
   input: WeeklyTemplateInsert,
 ): Promise<ApiResponse<WeeklyTemplate>> {
   try {
     const supabase = await createClient()
     const { data, error } = await supabase
       .from('weekly_templates')
-      .insert(input)
+      .insert({ ...input, user_id: userId })
       .select()
       .single()
 
@@ -95,11 +103,13 @@ export async function createWeeklyTemplate(
 
 /**
  * @description Updates an existing weekly template row.
+ * @param userId Authenticated user's UUID
  * @param id Weekly template UUID
  * @param updates Partial weekly template fields to update
  * @returns Updated weekly template row
  */
 export async function updateWeeklyTemplate(
+  userId: string,
   id: string,
   updates: WeeklyTemplateUpdate,
 ): Promise<ApiResponse<WeeklyTemplate>> {
@@ -108,6 +118,7 @@ export async function updateWeeklyTemplate(
     const { data, error } = await supabase
       .from('weekly_templates')
       .update(updates)
+      .eq('user_id', userId)
       .eq('id', id)
       .select()
       .single()
@@ -126,10 +137,12 @@ export async function updateWeeklyTemplate(
 
 /**
  * @description Deletes a weekly template row by UUID.
+ * @param userId Authenticated user's UUID
  * @param id Weekly template UUID
  * @returns Deleted weekly template row
  */
 export async function deleteWeeklyTemplate(
+  userId: string,
   id: string,
 ): Promise<ApiResponse<WeeklyTemplate>> {
   try {
@@ -137,6 +150,7 @@ export async function deleteWeeklyTemplate(
     const { data, error } = await supabase
       .from('weekly_templates')
       .delete()
+      .eq('user_id', userId)
       .eq('id', id)
       .select()
       .single()

@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { z } from 'zod'
 import { sendChatMessage } from '@/services/ai/geminiClient'
+import { requireAuth } from '@/lib/auth'
 import type { ApiResponse, ChatMessage } from '@/types'
 
 const chatRequestSchema = z.object({
@@ -32,6 +33,9 @@ export async function POST(
   request: NextRequest,
 ): Promise<NextResponse<ApiResponse<{ response: string; warnings: string[] }>>> {
   try {
+    const { userId, errorResponse } = await requireAuth()
+    if (errorResponse) return errorResponse
+
     const body: unknown = await request.json()
     const parsed = chatRequestSchema.safeParse(body)
 
@@ -41,7 +45,7 @@ export async function POST(
     }
 
     const validated = parsed.data
-    const result = await sendChatMessage(validated.message, validated.history as ChatMessage[])
+    const result = await sendChatMessage(userId, validated.message, validated.history as ChatMessage[])
 
     return NextResponse.json({
       data: {

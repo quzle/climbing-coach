@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server'
 import { getProgrammeBuilderSnapshot } from '@/services/training/programmeService'
+import { requireAuth } from '@/lib/auth'
 import type { ApiResponse, ProgrammeBuilderSnapshot } from '@/types'
 
 /**
@@ -13,7 +14,10 @@ export async function GET(): Promise<
   NextResponse<ApiResponse<ProgrammeBuilderSnapshot>>
 > {
   try {
-    const result = await getProgrammeBuilderSnapshot()
+    const { userId, errorResponse } = await requireAuth()
+    if (errorResponse) return errorResponse
+
+    const result = await getProgrammeBuilderSnapshot(userId)
 
     if (result.error !== null) {
       return NextResponse.json(

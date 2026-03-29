@@ -5,6 +5,7 @@ import {
   getPlannedSessionsInRange,
   getUpcomingPlannedSessions,
 } from '@/services/data/plannedSessionRepository'
+import { requireAuth } from '@/lib/auth'
 import type { Json } from '@/lib/database.types'
 import type { ApiResponse, PlannedSession, SessionStatus } from '@/types'
 
@@ -51,6 +52,9 @@ export async function GET(
   request: NextRequest,
 ): Promise<NextResponse<ApiResponse<{ plannedSessions: PlannedSession[] }>>> {
   try {
+    const { userId, errorResponse } = await requireAuth()
+    if (errorResponse) return errorResponse
+
     const parsed = querySchema.safeParse({
       start_date: request.nextUrl.searchParams.get('start_date') ?? undefined,
       end_date: request.nextUrl.searchParams.get('end_date') ?? undefined,
@@ -66,8 +70,8 @@ export async function GET(
 
     const result =
       start_date !== undefined && end_date !== undefined
-        ? await getPlannedSessionsInRange(start_date, end_date)
-        : await getUpcomingPlannedSessions(upcoming_days ?? 7)
+        ? await getPlannedSessionsInRange(userId, start_date, end_date)
+        : await getUpcomingPlannedSessions(userId, upcoming_days ?? 7)
 
     if (result.error !== null) {
       console.error('[GET /api/planned-sessions]', result.error)
@@ -95,13 +99,16 @@ export async function POST(
   request: NextRequest,
 ): Promise<NextResponse<ApiResponse<{ plannedSession: PlannedSession }>>> {
   try {
+    const { userId, errorResponse } = await requireAuth()
+    if (errorResponse) return errorResponse
+
     const parsed = createPlannedSessionSchema.safeParse(await request.json())
     if (!parsed.success) {
       const messages = parsed.error.issues.map((issue) => issue.message).join(', ')
       return NextResponse.json({ data: null, error: `Invalid request: ${messages}` }, { status: 400 })
     }
 
-    const result = await createPlannedSession({
+    const result = await createPlannedSession(userId, {
       ...parsed.data,
       mesocycle_id: parsed.data.mesocycle_id ?? null,
       template_id: parsed.data.template_id ?? null,

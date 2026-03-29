@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { z } from 'zod'
 import { createProgramme, getProgrammes } from '@/services/data/programmeRepository'
+import { requireAuth } from '@/lib/auth'
 import type { ApiResponse, Programme } from '@/types'
 
 const createProgrammeSchema = z.object({
@@ -19,7 +20,10 @@ export async function GET(): Promise<
   NextResponse<ApiResponse<{ programmes: Programme[] }>>
 > {
   try {
-    const result = await getProgrammes()
+    const { userId, errorResponse } = await requireAuth()
+    if (errorResponse) return errorResponse
+
+    const result = await getProgrammes(userId)
     if (result.error !== null) {
       console.error('[GET /api/programmes]', result.error)
       return NextResponse.json(
@@ -49,6 +53,9 @@ export async function POST(
   request: NextRequest,
 ): Promise<NextResponse<ApiResponse<{ programme: Programme }>>> {
   try {
+    const { userId, errorResponse } = await requireAuth()
+    if (errorResponse) return errorResponse
+
     const body: unknown = await request.json()
     const parsed = createProgrammeSchema.safeParse(body)
 
@@ -60,7 +67,7 @@ export async function POST(
       )
     }
 
-    const result = await createProgramme({
+    const result = await createProgramme(userId, {
       ...parsed.data,
       notes: parsed.data.notes ?? null,
     })

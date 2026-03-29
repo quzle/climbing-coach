@@ -4,6 +4,7 @@ import {
   createWeeklyTemplate,
   getWeeklyTemplateByMesocycle,
 } from '@/services/data/weeklyTemplateRepository'
+import { requireAuth } from '@/lib/auth'
 import type { ApiResponse, WeeklyTemplate } from '@/types'
 
 const querySchema = z.object({ mesocycle_id: z.string().uuid() })
@@ -36,6 +37,9 @@ export async function GET(
   request: NextRequest,
 ): Promise<NextResponse<ApiResponse<{ weeklyTemplates: WeeklyTemplate[] }>>> {
   try {
+    const { userId, errorResponse } = await requireAuth()
+    if (errorResponse) return errorResponse
+
     const parsed = querySchema.safeParse({
       mesocycle_id: request.nextUrl.searchParams.get('mesocycle_id'),
     })
@@ -47,7 +51,7 @@ export async function GET(
       )
     }
 
-    const result = await getWeeklyTemplateByMesocycle(parsed.data.mesocycle_id)
+    const result = await getWeeklyTemplateByMesocycle(userId, parsed.data.mesocycle_id)
     if (result.error !== null) {
       console.error('[GET /api/weekly-templates]', result.error)
       return NextResponse.json(
@@ -74,6 +78,9 @@ export async function POST(
   request: NextRequest,
 ): Promise<NextResponse<ApiResponse<{ weeklyTemplate: WeeklyTemplate }>>> {
   try {
+    const { userId, errorResponse } = await requireAuth()
+    if (errorResponse) return errorResponse
+
     const parsed = createWeeklyTemplateSchema.safeParse(await request.json())
 
     if (!parsed.success) {
@@ -84,7 +91,7 @@ export async function POST(
       )
     }
 
-    const result = await createWeeklyTemplate({
+    const result = await createWeeklyTemplate(userId, {
       ...parsed.data,
       duration_mins: parsed.data.duration_mins ?? null,
       primary_focus: parsed.data.primary_focus ?? null,
