@@ -12,6 +12,10 @@ import { GET, POST } from './route'
 // MODULE MOCKS
 // =============================================================================
 
+jest.mock('@/lib/auth', () => ({
+  requireAuth: jest.fn().mockResolvedValue({ userId: 'user-1', errorResponse: null }),
+}))
+
 jest.mock('@/services/data/injuryAreasRepository', () => ({
   getActiveInjuryAreas: jest.fn(),
   addInjuryArea: jest.fn(),
@@ -102,7 +106,7 @@ describe('POST /api/injury-areas', () => {
   it('calls addInjuryArea with the validated area name', async () => {
     await POST(makePostRequest({ area: 'wrist_right' }))
 
-    expect(mockAddInjuryArea).toHaveBeenCalledWith('wrist_right')
+    expect(mockAddInjuryArea).toHaveBeenCalledWith('user-1', 'wrist_right')
   })
 
   it('returns 400 when area field is missing', async () => {

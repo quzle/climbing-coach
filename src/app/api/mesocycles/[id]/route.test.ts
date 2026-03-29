@@ -5,6 +5,10 @@ import { NextRequest } from 'next/server'
 import { getMesocycleById, updateMesocycle } from '@/services/data/mesocycleRepository'
 import { GET, PUT } from './route'
 
+jest.mock('@/lib/auth', () => ({
+  requireAuth: jest.fn().mockResolvedValue({ userId: 'user-1', errorResponse: null }),
+}))
+
 jest.mock('@/services/data/mesocycleRepository', () => ({
   getMesocycleById: jest.fn(),
   updateMesocycle: jest.fn(),
@@ -54,6 +58,6 @@ describe('PUT /api/mesocycles/:id', () => {
 
     const response = await PUT(request, { params: Promise.resolve({ id }) })
     expect(response.status).toBe(200)
-    expect(mockUpdateMesocycle).toHaveBeenCalledWith(id, { focus: 'Updated focus' })
+    expect(mockUpdateMesocycle).toHaveBeenCalledWith('user-1', id, { focus: 'Updated focus' })
   })
 })

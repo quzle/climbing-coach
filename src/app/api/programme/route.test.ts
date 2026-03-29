@@ -4,6 +4,10 @@
 import { getProgrammeBuilderSnapshot } from '@/services/training/programmeService'
 import { GET } from './route'
 
+jest.mock('@/lib/auth', () => ({
+  requireAuth: jest.fn().mockResolvedValue({ userId: 'user-1', errorResponse: null }),
+}))
+
 jest.mock('@/services/training/programmeService', () => ({
   getProgrammeBuilderSnapshot: jest.fn(),
 }))

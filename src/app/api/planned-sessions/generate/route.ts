@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { z } from 'zod'
 import { generatePlannedSessionsForActiveMesocycle } from '@/services/training/sessionGenerator'
+import { requireAuth } from '@/lib/auth'
 import type { ApiResponse, PlannedSession } from '@/types'
 
 const requestSchema = z
@@ -21,6 +22,9 @@ export async function POST(
   request: NextRequest,
 ): Promise<NextResponse<ApiResponse<{ plannedSessions: PlannedSession[] }>>> {
   try {
+    const { userId, errorResponse } = await requireAuth()
+    if (errorResponse) return errorResponse
+
     const body: unknown = await request.json().catch(() => ({}))
     const parsed = requestSchema.safeParse(body)
 
@@ -33,7 +37,7 @@ export async function POST(
     }
 
     const weekStart = parsed.data?.week_start
-    const result = await generatePlannedSessionsForActiveMesocycle(weekStart)
+    const result = await generatePlannedSessionsForActiveMesocycle(userId, weekStart)
 
     if (result.error !== null) {
       console.error('[POST /api/planned-sessions/generate]', result.error)

@@ -83,9 +83,19 @@ const mockSnapshot = {
 // =============================================================================
 
 function mockFetchOk(data: unknown = mockSnapshot): void {
-  ;(global.fetch as jest.Mock).mockResolvedValue({
-    ok: true,
-    json: jest.fn().mockResolvedValue({ data, error: null }),
+  ;(global.fetch as jest.Mock).mockImplementation((url: string) => {
+    if (typeof url === 'string' && url.includes('/api/mesocycles')) {
+      const snap = data as typeof mockSnapshot
+      const mesocycles = snap.activeMesocycle ? [snap.activeMesocycle] : []
+      return Promise.resolve({
+        ok: true,
+        json: jest.fn().mockResolvedValue({ data: { mesocycles }, error: null }),
+      })
+    }
+    return Promise.resolve({
+      ok: true,
+      json: jest.fn().mockResolvedValue({ data, error: null }),
+    })
   })
 }
 
@@ -131,18 +141,14 @@ describe('ProgrammePage', () => {
     expect(screen.getByText('power')).toBeInTheDocument()
   })
 
-  it('renders weekly template rows sorted by day_of_week', async () => {
+  it('renders mesocycle blocks in the list', async () => {
     mockFetchOk()
     render(<ProgrammePage />)
     await waitFor(() => {
-      expect(screen.getByText('Fingerboard — Limit Hangs')).toBeInTheDocument()
+      expect(screen.getByText('Power & Finger Strength')).toBeInTheDocument()
     })
-    expect(screen.getByText('Bouldering — Hard Problems')).toBeInTheDocument()
-    // Mon (day 1) should appear before Wed (day 3) in the DOM
-    const allText = screen.getAllByRole('listitem')
-    const monIdx = allText.findIndex((el) => el.textContent?.includes('Mon'))
-    const wedIdx = allText.findIndex((el) => el.textContent?.includes('Wed'))
-    expect(monIdx).toBeLessThan(wedIdx)
+    // Active mesocycle is marked as current block
+    expect(screen.getByText('Current block')).toBeInTheDocument()
   })
 
   it('renders upcoming planned sessions section', async () => {
@@ -180,12 +186,12 @@ describe('ProgrammePage', () => {
     expect(screen.queryByText('16-Week Peak 2026')).not.toBeInTheDocument()
   })
 
-  it('shows builder editor instead of obsolete setup CTA in empty state', async () => {
+  it('shows AI wizard CTA in empty state', async () => {
     mockFetchOk({ ...mockSnapshot, currentProgramme: null })
     render(<ProgrammePage />)
 
-    expect(await screen.findByText('Programme Builder')).toBeInTheDocument()
-    expect(screen.getByRole('button', { name: /create programme/i })).toBeInTheDocument()
+    expect(await screen.findByText('Start Your Programme')).toBeInTheDocument()
+    expect(screen.getByRole('link', { name: /create with ai wizard/i })).toBeInTheDocument()
   })
 
   it('shows error message when API returns an error', async () => {

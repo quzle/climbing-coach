@@ -152,7 +152,7 @@ beforeEach(() => {
   mockGetPlannedSessionsInRange.mockResolvedValue({ data: [], error: null })
   mockBuildAthleteContext.mockResolvedValue(makeAthleteContext())
   mockGenerateSessionPlan.mockResolvedValue('AI session plan')
-  mockCreatePlannedSession.mockImplementation(async (payload: Partial<PlannedSession>) => ({
+  mockCreatePlannedSession.mockImplementation(async (_userId: string, payload: Partial<PlannedSession>) => ({
     data: makePlannedSession({
       id: `planned-${payload.template_id}`,
       planned_date: payload.planned_date,
@@ -165,12 +165,13 @@ beforeEach(() => {
 
 describe('generatePlannedSessionsForActiveMesocycle', () => {
   it('creates planned sessions for template days in the requested week', async () => {
-    const result = await generatePlannedSessionsForActiveMesocycle('2026-03-31')
+    const result = await generatePlannedSessionsForActiveMesocycle('user-1', '2026-03-31')
 
     expect(result.error).toBeNull()
     expect(result.data).toHaveLength(2)
     expect(mockGenerateSessionPlan).toHaveBeenCalledTimes(2)
     expect(mockCreatePlannedSession).toHaveBeenCalledWith(
+      'user-1',
       expect.objectContaining({
         planned_date: '2026-03-30',
         template_id: 'template-1',
@@ -178,6 +179,7 @@ describe('generatePlannedSessionsForActiveMesocycle', () => {
       }),
     )
     expect(mockCreatePlannedSession).toHaveBeenCalledWith(
+      'user-1',
       expect.objectContaining({
         planned_date: '2026-04-01',
         template_id: 'template-2',
@@ -189,7 +191,7 @@ describe('generatePlannedSessionsForActiveMesocycle', () => {
   it('returns empty data when no active mesocycle exists', async () => {
     mockGetActiveMesocycle.mockResolvedValue({ data: null, error: null })
 
-    const result = await generatePlannedSessionsForActiveMesocycle('2026-03-31')
+    const result = await generatePlannedSessionsForActiveMesocycle('user-1', '2026-03-31')
 
     expect(result.error).toBeNull()
     expect(result.data).toEqual([])
@@ -208,12 +210,13 @@ describe('generatePlannedSessionsForActiveMesocycle', () => {
       error: null,
     })
 
-    const result = await generatePlannedSessionsForActiveMesocycle('2026-03-31')
+    const result = await generatePlannedSessionsForActiveMesocycle('user-1', '2026-03-31')
 
     expect(result.error).toBeNull()
     expect(result.data).toHaveLength(1)
     expect(mockCreatePlannedSession).toHaveBeenCalledTimes(1)
     expect(mockCreatePlannedSession).toHaveBeenCalledWith(
+      'user-1',
       expect.objectContaining({
         planned_date: '2026-04-01',
         template_id: 'template-2',
@@ -227,7 +230,7 @@ describe('generatePlannedSessionsForActiveMesocycle', () => {
       error: 'Insert failed',
     })
 
-    const result = await generatePlannedSessionsForActiveMesocycle('2026-03-31')
+    const result = await generatePlannedSessionsForActiveMesocycle('user-1', '2026-03-31')
 
     expect(result.data).toBeNull()
     expect(result.error).toBe('Insert failed')

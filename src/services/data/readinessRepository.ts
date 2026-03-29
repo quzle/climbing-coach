@@ -116,9 +116,12 @@ function daysAgoDate(days: number): string {
  * Returns `data: null` (not an error) when no check-in exists yet — callers
  * should treat a null result as "not checked in today" rather than a failure.
  *
+ * @param userId Authenticated user's UUID
  * @returns The check-in record for today, or null if none exists
  */
-export async function getTodaysCheckin(): Promise<
+export async function getTodaysCheckin(
+  userId: string,
+): Promise<
   ApiResponse<ReadinessCheckin | null>
 > {
   try {
@@ -126,6 +129,7 @@ export async function getTodaysCheckin(): Promise<
     const { data, error } = await supabase
       .from('readiness_checkins')
       .select('*')
+      .eq('user_id', userId)
       .eq('date', today())
       .maybeSingle()
 
@@ -145,10 +149,12 @@ export async function getTodaysCheckin(): Promise<
  * @description Fetches readiness check-ins for the last n days, ordered
  * most recent first. Today is always included in the range.
  *
+ * @param userId Authenticated user's UUID
  * @param days Number of days to look back (e.g. 7, 14, 30)
  * @returns Array of check-ins ordered by date descending
  */
 export async function getRecentCheckins(
+  userId: string,
   days: number,
 ): Promise<ApiResponse<ReadinessCheckin[]>> {
   try {
@@ -156,6 +162,7 @@ export async function getRecentCheckins(
     const { data, error } = await supabase
       .from('readiness_checkins')
       .select('*')
+      .eq('user_id', userId)
       .gte('date', daysAgoDate(days))
       .lte('date', today())
       .order('date', { ascending: false })
@@ -177,11 +184,13 @@ export async function getRecentCheckins(
  * computes the composite readiness_score before inserting — callers should
  * not pass readiness_score in the input payload.
  *
+ * @param userId Authenticated user's UUID
  * @param input Check-in values excluding readiness_score (computed internally)
  * @param injuryAreaHealth Current health ratings for each tracked injury area
  * @returns The newly created check-in record
  */
 export async function createCheckin(
+  userId: string,
   input: Omit<ReadinessCheckinInsert, 'readiness_score'>,
   injuryAreaHealth: InjuryAreaHealth[] = [],
 ): Promise<ApiResponse<ReadinessCheckin>> {
@@ -190,6 +199,7 @@ export async function createCheckin(
     const readiness_score = calculateReadinessScore(input, injuryAreaHealth)
     const insertPayload: ReadinessCheckinInsert = {
       ...input,
+      user_id: userId,
       readiness_score,
       injury_area_health: injuryAreaHealth,
     }
@@ -269,14 +279,16 @@ export async function createCheckin(
  * @description Checks whether a readiness check-in has already been submitted
  * today. Used by the API route to prevent duplicate entries.
  *
+ * @param userId Authenticated user's UUID
  * @returns `true` if a check-in exists for today, `false` otherwise
  */
-export async function hasCheckedInToday(): Promise<ApiResponse<boolean>> {
+export async function hasCheckedInToday(userId: string): Promise<ApiResponse<boolean>> {
   try {
     const supabase = await createClient()
     const { data, error } = await supabase
       .from('readiness_checkins')
       .select('id')
+      .eq('user_id', userId)
       .eq('date', today())
       .maybeSingle()
 
@@ -297,10 +309,12 @@ export async function hasCheckedInToday(): Promise<ApiResponse<boolean>> {
  * Returns 0 if no check-ins exist in the period rather than null, so callers
  * can use the result directly in arithmetic without null guards.
  *
+ * @param userId Authenticated user's UUID
  * @param days Number of days to average over
  * @returns Average readiness score rounded to 2 decimal places, or 0 if no data
  */
 export async function getAverageReadiness(
+  userId: string,
   days: number,
 ): Promise<ApiResponse<number>> {
   try {
@@ -308,6 +322,7 @@ export async function getAverageReadiness(
     const { data, error } = await supabase
       .from('readiness_checkins')
       .select('readiness_score')
+      .eq('user_id', userId)
       .gte('date', daysAgoDate(days))
       .lte('date', today())
 
@@ -347,14 +362,16 @@ export async function getAverageReadiness(
 /**
  * @description Deletes today's readiness check-in by date. Used to allow the
  * athlete to reset and resubmit their check-in on the same day.
+ * @param userId Authenticated user's UUID
  * @returns The deleted check-in row, or an error if none exists.
  */
-export async function deleteTodaysCheckin(): Promise<ApiResponse<ReadinessCheckin>> {
+export async function deleteTodaysCheckin(userId: string): Promise<ApiResponse<ReadinessCheckin>> {
   try {
     const supabase = await createClient()
     const { data, error } = await supabase
       .from('readiness_checkins')
       .delete()
+      .eq('user_id', userId)
       .eq('date', today())
       .select()
       .single()
@@ -372,6 +389,7 @@ export async function deleteTodaysCheckin(): Promise<ApiResponse<ReadinessChecki
 }
 
 export async function getReadinessTrend(
+  userId: string,
   days: number,
 ): Promise<ApiResponse<{ date: string; score: number }[]>> {
   try {
@@ -379,6 +397,7 @@ export async function getReadinessTrend(
     const { data, error } = await supabase
       .from('readiness_checkins')
       .select('date, readiness_score')
+      .eq('user_id', userId)
       .gte('date', daysAgoDate(days))
       .lte('date', today())
       .order('date', { ascending: true })

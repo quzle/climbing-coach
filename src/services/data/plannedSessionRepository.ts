@@ -20,11 +20,13 @@ function daysAheadDate(days: number): string {
 
 /**
  * @description Fetches planned sessions within an inclusive date range.
+ * @param userId Authenticated user's UUID
  * @param startDate ISO start date
  * @param endDate ISO end date
  * @returns Planned sessions ordered by planned_date ascending
  */
 export async function getPlannedSessionsInRange(
+  userId: string,
   startDate: string,
   endDate: string,
 ): Promise<ApiResponse<PlannedSession[]>> {
@@ -33,6 +35,7 @@ export async function getPlannedSessionsInRange(
     const { data, error } = await supabase
       .from('planned_sessions')
       .select('*')
+      .eq('user_id', userId)
       .gte('planned_date', startDate)
       .lte('planned_date', endDate)
       .order('planned_date', { ascending: true })
@@ -54,21 +57,25 @@ export async function getPlannedSessionsInRange(
 
 /**
  * @description Fetches planned sessions for the next n days including today.
+ * @param userId Authenticated user's UUID
  * @param days Number of days ahead to include
  * @returns Upcoming planned sessions ordered by planned_date ascending
  */
 export async function getUpcomingPlannedSessions(
+  userId: string,
   days: number,
 ): Promise<ApiResponse<PlannedSession[]>> {
-  return getPlannedSessionsInRange(today(), daysAheadDate(days))
+  return getPlannedSessionsInRange(userId, today(), daysAheadDate(days))
 }
 
 /**
  * @description Fetches a single planned session by UUID.
+ * @param userId Authenticated user's UUID
  * @param id Planned session UUID
  * @returns Matching planned session row
  */
 export async function getPlannedSessionById(
+  userId: string,
   id: string,
 ): Promise<ApiResponse<PlannedSession>> {
   try {
@@ -76,6 +83,7 @@ export async function getPlannedSessionById(
     const { data, error } = await supabase
       .from('planned_sessions')
       .select('*')
+      .eq('user_id', userId)
       .eq('id', id)
       .single()
 
@@ -93,17 +101,19 @@ export async function getPlannedSessionById(
 
 /**
  * @description Creates a new planned session row.
+ * @param userId Authenticated user's UUID
  * @param input Planned session insert payload
  * @returns Newly created planned session row
  */
 export async function createPlannedSession(
+  userId: string,
   input: PlannedSessionInsert,
 ): Promise<ApiResponse<PlannedSession>> {
   try {
     const supabase = await createClient()
     const { data, error } = await supabase
       .from('planned_sessions')
-      .insert(input)
+      .insert({ ...input, user_id: userId })
       .select()
       .single()
 
@@ -121,11 +131,13 @@ export async function createPlannedSession(
 
 /**
  * @description Updates an existing planned session row.
+ * @param userId Authenticated user's UUID
  * @param id Planned session UUID
  * @param updates Partial planned session fields to update
  * @returns Updated planned session row
  */
 export async function updatePlannedSession(
+  userId: string,
   id: string,
   updates: PlannedSessionUpdate,
 ): Promise<ApiResponse<PlannedSession>> {
@@ -134,6 +146,7 @@ export async function updatePlannedSession(
     const { data, error } = await supabase
       .from('planned_sessions')
       .update(updates)
+      .eq('user_id', userId)
       .eq('id', id)
       .select()
       .single()
@@ -152,10 +165,12 @@ export async function updatePlannedSession(
 
 /**
  * @description Deletes a planned session row by UUID.
+ * @param userId Authenticated user's UUID
  * @param id Planned session UUID
  * @returns The deleted planned session row
  */
 export async function deletePlannedSession(
+  userId: string,
   id: string,
 ): Promise<ApiResponse<PlannedSession>> {
   try {
@@ -163,6 +178,7 @@ export async function deletePlannedSession(
     const { data, error } = await supabase
       .from('planned_sessions')
       .delete()
+      .eq('user_id', userId)
       .eq('id', id)
       .select()
       .single()

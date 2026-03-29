@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { z } from 'zod'
 import { createClient } from '@/lib/supabase/server'
+import { requireAuth } from '@/lib/auth'
 import type { ApiResponse } from '@/types'
 
 // =============================================================================
@@ -47,6 +48,9 @@ export async function POST(
   { params }: { params: Promise<{ id: string }> },
 ): Promise<NextResponse<ApiResponse<{ count: number }>>> {
   try {
+    const { userId, errorResponse } = await requireAuth()
+    if (errorResponse) return errorResponse
+
     const { id } = await params
 
     const body: unknown = await request.json()
@@ -65,6 +69,7 @@ export async function POST(
     const { error: deleteError } = await supabase
       .from('weekly_templates')
       .delete()
+      .eq('user_id', userId)
       .eq('mesocycle_id', id)
 
     if (deleteError) {
@@ -78,6 +83,7 @@ export async function POST(
     // Bulk insert all slots
     const rows = parsed.data.slots.map((slot) => ({
       mesocycle_id: id,
+      user_id: userId,
       day_of_week: slot.day_of_week,
       session_label: slot.session_label,
       session_type: slot.session_type,

@@ -164,7 +164,7 @@ beforeEach(() => {
 
 describe('sendChatMessage', () => {
   it('returns a response string from Gemini', async () => {
-    const result = await sendChatMessage('What should I train today?', [])
+    const result = await sendChatMessage('user-1', 'What should I train today?', [])
 
     expect(result.response).toBe('This is the mock coach response.')
   })
@@ -174,7 +174,7 @@ describe('sendChatMessage', () => {
       makeAthleteContext({ warnings: ['🔴 ILLNESS FLAG ACTIVE'] }),
     )
 
-    const result = await sendChatMessage('Hello', [])
+    const result = await sendChatMessage('user-1', 'Hello', [])
 
     expect(result.warnings).toContain('🔴 ILLNESS FLAG ACTIVE')
   })
@@ -184,13 +184,13 @@ describe('sendChatMessage', () => {
       makeAthleteContext({ warnings: [] }),
     )
 
-    const result = await sendChatMessage('Hello', [])
+    const result = await sendChatMessage('user-1', 'Hello', [])
 
     expect(result.warnings).toHaveLength(0)
   })
 
   it('calls buildAthleteContext once per request', async () => {
-    await sendChatMessage('Hello', [])
+    await sendChatMessage('user-1', 'Hello', [])
 
     expect(mockBuildAthleteContext).toHaveBeenCalledTimes(1)
   })
@@ -199,7 +199,7 @@ describe('sendChatMessage', () => {
     const context = makeAthleteContext()
     mockBuildAthleteContext.mockResolvedValue(context)
 
-    await sendChatMessage('Hello', [])
+    await sendChatMessage('user-1', 'Hello', [])
 
     expect(mockBuildSystemPrompt).toHaveBeenCalledWith(context)
   })
@@ -210,7 +210,7 @@ describe('sendChatMessage', () => {
       makeChatMessage({ role: 'assistant', content: 'Hello!' }),
     ]
 
-    await sendChatMessage('New message', history)
+    await sendChatMessage('user-1', 'New message', history)
 
     const genAIInstance = (GoogleGenerativeAI as jest.Mock).mock.results[0]?.value as {
       getGenerativeModel: jest.Mock
@@ -226,7 +226,7 @@ describe('sendChatMessage', () => {
   it('maps assistant role to model role for Gemini', async () => {
     const history = [makeChatMessage({ role: 'assistant', content: 'Hello' })]
 
-    await sendChatMessage('Test', history)
+    await sendChatMessage('user-1', 'Test', history)
 
     const genAIInstance = (GoogleGenerativeAI as jest.Mock).mock.results[0]?.value as {
       getGenerativeModel: jest.Mock
@@ -246,7 +246,7 @@ describe('sendChatMessage', () => {
       makeChatMessage({ id: `msg-${i}`, content: `Message ${i}` }),
     )
 
-    await sendChatMessage('Test', twentyFiveMessages)
+    await sendChatMessage('user-1', 'Test', twentyFiveMessages)
 
     const genAIInstance = (GoogleGenerativeAI as jest.Mock).mock.results[0]?.value as {
       getGenerativeModel: jest.Mock
@@ -267,7 +267,7 @@ describe('sendChatMessage', () => {
       }),
     }))
 
-    await expect(sendChatMessage('Hello', [])).rejects.toThrow(
+    await expect(sendChatMessage('user-1', 'Hello', [])).rejects.toThrow(
       'coach is temporarily unavailable',
     )
   })
@@ -275,7 +275,7 @@ describe('sendChatMessage', () => {
   it('throws when GEMINI_API_KEY is not set', async () => {
     delete process.env.GEMINI_API_KEY
     try {
-      await expect(sendChatMessage('Hello', [])).rejects.toThrow(
+      await expect(sendChatMessage('user-1', 'Hello', [])).rejects.toThrow(
         'coach is temporarily unavailable',
       )
     } finally {
@@ -287,21 +287,21 @@ describe('sendChatMessage', () => {
 
 describe('generateSessionPlan', () => {
   it('returns a session plan string', async () => {
-    const result = await generateSessionPlan('bouldering')
+    const result = await generateSessionPlan('user-1', 'bouldering')
 
     expect(typeof result).toBe('string')
     expect(result.length).toBeGreaterThan(0)
   })
 
   it('includes session type in the generation instruction', async () => {
-    await generateSessionPlan('fingerboard')
+    await generateSessionPlan('user-1', 'fingerboard')
 
     const sentMessage = getMockSendMessage().mock.calls[0]?.[0] as string
     expect(sentMessage).toContain('fingerboard')
   })
 
   it('includes additional context when provided', async () => {
-    await generateSessionPlan('strength', 'Focus on shoulder stability this week')
+    await generateSessionPlan('user-1', 'strength', 'Focus on shoulder stability this week')
 
     const sentMessage = getMockSendMessage().mock.calls[0]?.[0] as string
     expect(sentMessage).toContain('shoulder stability')
@@ -316,7 +316,7 @@ describe('generateSessionPlan', () => {
       }),
     }))
 
-    await expect(generateSessionPlan('bouldering')).rejects.toThrow(
+    await expect(generateSessionPlan('user-1', 'bouldering')).rejects.toThrow(
       'coach is temporarily unavailable',
     )
   })

@@ -133,22 +133,22 @@ describe('buildSystemPrompt', () => {
   it('includes athlete profile information', () => {
     const prompt = buildSystemPrompt(makeAthleteContext())
 
-    expect(prompt).toContain('6c/7a')
-    expect(prompt).toContain('limestone and granite')
-    expect(prompt).toContain('Autumn 2025')
+    expect(prompt).toContain('ATHLETE PROFILE')
+    expect(prompt).toContain('ATHLETE LEVEL')
+    expect(prompt).toContain('Limestone')
   })
 
   it('includes injury area reference in athlete profile', () => {
     const prompt = buildSystemPrompt(makeAthleteContext())
 
-    expect(prompt).toContain('injury area')
+    expect(prompt).toContain('Injury areas')
     expect(prompt).toContain('CURRENT ATHLETE CONTEXT')
   })
 
-  it('includes return-to-training protocol', () => {
+  it('includes progression rules', () => {
     const prompt = buildSystemPrompt(makeAthleteContext())
 
-    expect(prompt).toContain('RETURN-TO-TRAINING')
+    expect(prompt).toContain('PROGRESSION RULES')
     expect(prompt).toContain('60%')
   })
 
@@ -156,7 +156,7 @@ describe('buildSystemPrompt', () => {
     const prompt = buildSystemPrompt(makeAthleteContext())
 
     expect(prompt).toContain('onsight')
-    expect(prompt).toContain('Route reading')
+    expect(prompt).toContain('route reading')
   })
 
   it('includes the dynamic context section', () => {
@@ -207,7 +207,7 @@ describe('buildSystemPrompt', () => {
     const prompt = buildSystemPrompt(makeAthleteContext())
 
     expect(prompt).toContain('illness_flag')
-    expect(prompt).toContain('finger_health')
+    expect(prompt).toContain('FINGER HEALTH')
     expect(prompt).toContain('TRACKED INJURY AREAS')
   })
 

@@ -13,10 +13,12 @@ function today(): string {
 
 /**
  * @description Fetches all mesocycles belonging to a programme ordered by start date.
+ * @param userId Authenticated user's UUID
  * @param programmeId Parent programme UUID
  * @returns Mesocycle rows ordered by planned_start ascending
  */
 export async function getMesocyclesByProgramme(
+  userId: string,
   programmeId: string,
 ): Promise<ApiResponse<Mesocycle[]>> {
   try {
@@ -24,6 +26,7 @@ export async function getMesocyclesByProgramme(
     const { data, error } = await supabase
       .from('mesocycles')
       .select('*')
+      .eq('user_id', userId)
       .eq('programme_id', programmeId)
       .order('planned_start', { ascending: true })
 
@@ -45,9 +48,10 @@ export async function getMesocyclesByProgramme(
  * Fallback 1: the next upcoming mesocycle (planned_start > today).
  * Fallback 2: the most recently started mesocycle (covers the case where
  *   all mesocycles are in the past, e.g. during testing with old data).
+ * @param userId Authenticated user's UUID
  * @returns Best-match mesocycle row, or null if none exist
  */
-export async function getActiveMesocycle(): Promise<ApiResponse<Mesocycle | null>> {
+export async function getActiveMesocycle(userId: string): Promise<ApiResponse<Mesocycle | null>> {
   try {
     const supabase = await createClient()
 
@@ -55,6 +59,7 @@ export async function getActiveMesocycle(): Promise<ApiResponse<Mesocycle | null
     const { data: active, error: activeError } = await supabase
       .from('mesocycles')
       .select('*')
+      .eq('user_id', userId)
       .lte('planned_start', today())
       .gte('planned_end', today())
       .order('planned_start', { ascending: false })
@@ -71,6 +76,7 @@ export async function getActiveMesocycle(): Promise<ApiResponse<Mesocycle | null
     const { data: upcoming, error: upcomingError } = await supabase
       .from('mesocycles')
       .select('*')
+      .eq('user_id', userId)
       .gt('planned_start', today())
       .order('planned_start', { ascending: true })
       .limit(1)
@@ -86,6 +92,7 @@ export async function getActiveMesocycle(): Promise<ApiResponse<Mesocycle | null
     const { data: recent, error: recentError } = await supabase
       .from('mesocycles')
       .select('*')
+      .eq('user_id', userId)
       .lte('planned_start', today())
       .order('planned_start', { ascending: false })
       .limit(1)
@@ -105,10 +112,12 @@ export async function getActiveMesocycle(): Promise<ApiResponse<Mesocycle | null
 
 /**
  * @description Fetches a single mesocycle by UUID.
+ * @param userId Authenticated user's UUID
  * @param id Mesocycle UUID
  * @returns Matching mesocycle row
  */
 export async function getMesocycleById(
+  userId: string,
   id: string,
 ): Promise<ApiResponse<Mesocycle>> {
   try {
@@ -116,6 +125,7 @@ export async function getMesocycleById(
     const { data, error } = await supabase
       .from('mesocycles')
       .select('*')
+      .eq('user_id', userId)
       .eq('id', id)
       .single()
 
@@ -133,17 +143,19 @@ export async function getMesocycleById(
 
 /**
  * @description Creates a new mesocycle row.
+ * @param userId Authenticated user's UUID
  * @param input Mesocycle insert payload
  * @returns Newly created mesocycle row
  */
 export async function createMesocycle(
+  userId: string,
   input: MesocycleInsert,
 ): Promise<ApiResponse<Mesocycle>> {
   try {
     const supabase = await createClient()
     const { data, error } = await supabase
       .from('mesocycles')
-      .insert(input)
+      .insert({ ...input, user_id: userId })
       .select()
       .single()
 
@@ -161,11 +173,13 @@ export async function createMesocycle(
 
 /**
  * @description Updates an existing mesocycle with partial fields.
+ * @param userId Authenticated user's UUID
  * @param id Mesocycle UUID
  * @param updates Partial mesocycle fields to update
  * @returns Updated mesocycle row
  */
 export async function updateMesocycle(
+  userId: string,
   id: string,
   updates: MesocycleUpdate,
 ): Promise<ApiResponse<Mesocycle>> {
@@ -174,6 +188,7 @@ export async function updateMesocycle(
     const { data, error } = await supabase
       .from('mesocycles')
       .update(updates)
+      .eq('user_id', userId)
       .eq('id', id)
       .select()
       .single()
@@ -192,10 +207,12 @@ export async function updateMesocycle(
 
 /**
  * @description Deletes a mesocycle row by UUID.
+ * @param userId Authenticated user's UUID
  * @param id Mesocycle UUID
  * @returns Deleted mesocycle row
  */
 export async function deleteMesocycle(
+  userId: string,
   id: string,
 ): Promise<ApiResponse<Mesocycle>> {
   try {
@@ -203,6 +220,7 @@ export async function deleteMesocycle(
     const { data, error } = await supabase
       .from('mesocycles')
       .delete()
+      .eq('user_id', userId)
       .eq('id', id)
       .select()
       .single()

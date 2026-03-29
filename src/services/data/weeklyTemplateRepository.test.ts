@@ -59,7 +59,7 @@ describe('weeklyTemplateRepository', () => {
     const templates = [makeWeeklyTemplate()]
     mockChain.order.mockResolvedValue({ data: templates, error: null })
 
-    const result = await getWeeklyTemplateByMesocycle('mesocycle-1')
+    const result = await getWeeklyTemplateByMesocycle('user-1', 'mesocycle-1')
 
     expect(mockChain.eq).toHaveBeenCalledWith('mesocycle_id', 'mesocycle-1')
     expect(mockChain.order).toHaveBeenCalledWith('day_of_week', { ascending: true })
@@ -78,9 +78,9 @@ describe('weeklyTemplateRepository', () => {
     const template = makeWeeklyTemplate()
     mockChain.single.mockResolvedValue({ data: template, error: null })
 
-    const result = await createWeeklyTemplate(input)
+    const result = await createWeeklyTemplate('user-1', input)
 
-    expect(mockChain.insert).toHaveBeenCalledWith(input)
+    expect(mockChain.insert).toHaveBeenCalledWith({ ...input, user_id: 'user-1' })
     expect(result.data).toEqual(template)
   })
 
@@ -88,7 +88,7 @@ describe('weeklyTemplateRepository', () => {
     const template = makeWeeklyTemplate()
     mockChain.single.mockResolvedValue({ data: template, error: null })
 
-    const result = await getWeeklyTemplateById('template-1')
+    const result = await getWeeklyTemplateById('user-1', 'template-1')
 
     expect(mockChain.eq).toHaveBeenCalledWith('id', 'template-1')
     expect(result.data).toEqual(template)
@@ -99,7 +99,7 @@ describe('weeklyTemplateRepository', () => {
     const template = makeWeeklyTemplate({ session_label: 'Fingerboard' })
     mockChain.single.mockResolvedValue({ data: template, error: null })
 
-    const result = await updateWeeklyTemplate('template-1', updates)
+    const result = await updateWeeklyTemplate('user-1', 'template-1', updates)
 
     expect(mockChain.update).toHaveBeenCalledWith(updates)
     expect(result.data?.session_label).toBe('Fingerboard')

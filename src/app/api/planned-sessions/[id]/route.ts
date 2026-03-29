@@ -5,6 +5,7 @@ import {
   getPlannedSessionById,
   updatePlannedSession,
 } from '@/services/data/plannedSessionRepository'
+import { requireAuth } from '@/lib/auth'
 import type { Json } from '@/lib/database.types'
 import type { ApiResponse, PlannedSession } from '@/types'
 
@@ -44,6 +45,9 @@ export async function GET(
   context: { params: Promise<{ id: string }> },
 ): Promise<NextResponse<ApiResponse<{ plannedSession: PlannedSession }>>> {
   try {
+    const { userId, errorResponse } = await requireAuth()
+    if (errorResponse) return errorResponse
+
     const parsedParams = paramsSchema.safeParse(await context.params)
     if (!parsedParams.success) {
       return NextResponse.json(
@@ -52,7 +56,7 @@ export async function GET(
       )
     }
 
-    const result = await getPlannedSessionById(parsedParams.data.id)
+    const result = await getPlannedSessionById(userId, parsedParams.data.id)
     if (result.error !== null || result.data === null) {
       return NextResponse.json(
         { data: null, error: 'Failed to load planned session.' },
@@ -79,6 +83,9 @@ export async function PUT(
   context: { params: Promise<{ id: string }> },
 ): Promise<NextResponse<ApiResponse<{ plannedSession: PlannedSession }>>> {
   try {
+    const { userId, errorResponse } = await requireAuth()
+    if (errorResponse) return errorResponse
+
     const parsedParams = paramsSchema.safeParse(await context.params)
     if (!parsedParams.success) {
       return NextResponse.json(
@@ -96,7 +103,7 @@ export async function PUT(
       )
     }
 
-    const result = await updatePlannedSession(parsedParams.data.id, {
+    const result = await updatePlannedSession(userId, parsedParams.data.id, {
       ...parsedBody.data,
       generated_plan:
         parsedBody.data.generated_plan === undefined
@@ -129,6 +136,9 @@ export async function DELETE(
   context: { params: Promise<{ id: string }> },
 ): Promise<NextResponse<ApiResponse<{ plannedSession: PlannedSession }>>> {
   try {
+    const { userId, errorResponse } = await requireAuth()
+    if (errorResponse) return errorResponse
+
     const parsedParams = paramsSchema.safeParse(await context.params)
     if (!parsedParams.success) {
       return NextResponse.json(
@@ -137,7 +147,7 @@ export async function DELETE(
       )
     }
 
-    const result = await deletePlannedSession(parsedParams.data.id)
+    const result = await deletePlannedSession(userId, parsedParams.data.id)
     if (result.error !== null || result.data === null) {
       return NextResponse.json(
         { data: null, error: 'Failed to delete planned session.' },

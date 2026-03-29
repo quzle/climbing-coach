@@ -13,14 +13,16 @@ function today(): string {
 
 /**
  * @description Fetches all programmes ordered by most recent start date first.
+ * @param userId Authenticated user's UUID
  * @returns Array of programmes ordered by start_date descending
  */
-export async function getProgrammes(): Promise<ApiResponse<Programme[]>> {
+export async function getProgrammes(userId: string): Promise<ApiResponse<Programme[]>> {
   try {
     const supabase = await createClient()
     const { data, error } = await supabase
       .from('programmes')
       .select('*')
+      .eq('user_id', userId)
       .order('start_date', { ascending: false })
 
     if (error) {
@@ -37,10 +39,12 @@ export async function getProgrammes(): Promise<ApiResponse<Programme[]>> {
 
 /**
  * @description Fetches a single programme by its UUID.
+ * @param userId Authenticated user's UUID
  * @param id Programme UUID
  * @returns Matching programme row
  */
 export async function getProgrammeById(
+  userId: string,
   id: string,
 ): Promise<ApiResponse<Programme>> {
   try {
@@ -48,6 +52,7 @@ export async function getProgrammeById(
     const { data, error } = await supabase
       .from('programmes')
       .select('*')
+      .eq('user_id', userId)
       .eq('id', id)
       .single()
 
@@ -64,17 +69,19 @@ export async function getProgrammeById(
 }
 
 /**
- * @description Fetches the most recently created programme.
+ * @description Fetches the most recently created programme for the given user.
  * Programmes do not expire — the most recently created one is always the
  * current one, regardless of start_date or target_date.
+ * @param userId Authenticated user's UUID
  * @returns Most recent programme row, or null if none exists
  */
-export async function getActiveProgramme(): Promise<ApiResponse<Programme | null>> {
+export async function getActiveProgramme(userId: string): Promise<ApiResponse<Programme | null>> {
   try {
     const supabase = await createClient()
     const { data, error } = await supabase
       .from('programmes')
       .select('*')
+      .eq('user_id', userId)
       .order('created_at', { ascending: false })
       .limit(1)
       .maybeSingle()
@@ -93,17 +100,19 @@ export async function getActiveProgramme(): Promise<ApiResponse<Programme | null
 
 /**
  * @description Inserts a new programme and returns the created row.
+ * @param userId Authenticated user's UUID
  * @param input Programme insert payload
  * @returns Newly created programme row
  */
 export async function createProgramme(
+  userId: string,
   input: ProgrammeInsert,
 ): Promise<ApiResponse<Programme>> {
   try {
     const supabase = await createClient()
     const { data, error } = await supabase
       .from('programmes')
-      .insert(input)
+      .insert({ ...input, user_id: userId })
       .select()
       .single()
 
@@ -121,11 +130,13 @@ export async function createProgramme(
 
 /**
  * @description Updates an existing programme with partial fields.
+ * @param userId Authenticated user's UUID
  * @param id Programme UUID
  * @param updates Partial programme fields to update
  * @returns Updated programme row
  */
 export async function updateProgramme(
+  userId: string,
   id: string,
   updates: ProgrammeUpdate,
 ): Promise<ApiResponse<Programme>> {
@@ -134,6 +145,7 @@ export async function updateProgramme(
     const { data, error } = await supabase
       .from('programmes')
       .update(updates)
+      .eq('user_id', userId)
       .eq('id', id)
       .select()
       .single()
@@ -152,10 +164,12 @@ export async function updateProgramme(
 
 /**
  * @description Deletes a programme row by UUID.
+ * @param userId Authenticated user's UUID
  * @param id Programme UUID
  * @returns Deleted programme row
  */
 export async function deleteProgramme(
+  userId: string,
   id: string,
 ): Promise<ApiResponse<Programme>> {
   try {
@@ -163,6 +177,7 @@ export async function deleteProgramme(
     const { data, error } = await supabase
       .from('programmes')
       .delete()
+      .eq('user_id', userId)
       .eq('id', id)
       .select()
       .single()

@@ -62,7 +62,7 @@ describe('plannedSessionRepository', () => {
     const sessions = [makePlannedSession()]
     mockChain.order.mockResolvedValue({ data: sessions, error: null })
 
-    const result = await getPlannedSessionsInRange('2026-03-25', '2026-03-31')
+    const result = await getPlannedSessionsInRange('user-1', '2026-03-25', '2026-03-31')
 
     expect(mockChain.gte).toHaveBeenCalledWith('planned_date', '2026-03-25')
     expect(mockChain.lte).toHaveBeenCalledWith('planned_date', '2026-03-31')
@@ -73,7 +73,7 @@ describe('plannedSessionRepository', () => {
     const sessions = [makePlannedSession()]
     mockChain.order.mockResolvedValue({ data: sessions, error: null })
 
-    const result = await getUpcomingPlannedSessions(7)
+    const result = await getUpcomingPlannedSessions('user-1', 7)
 
     expect(mockChain.gte).toHaveBeenCalled()
     expect(mockChain.lte).toHaveBeenCalled()
@@ -84,7 +84,7 @@ describe('plannedSessionRepository', () => {
     const session = makePlannedSession()
     mockChain.single.mockResolvedValue({ data: session, error: null })
 
-    const result = await getPlannedSessionById('planned-session-1')
+    const result = await getPlannedSessionById('user-1', 'planned-session-1')
 
     expect(mockChain.eq).toHaveBeenCalledWith('id', 'planned-session-1')
     expect(result.data).toEqual(session)
@@ -100,9 +100,9 @@ describe('plannedSessionRepository', () => {
     const session = makePlannedSession()
     mockChain.single.mockResolvedValue({ data: session, error: null })
 
-    const result = await createPlannedSession(input)
+    const result = await createPlannedSession('user-1', input)
 
-    expect(mockChain.insert).toHaveBeenCalledWith(input)
+    expect(mockChain.insert).toHaveBeenCalledWith({ ...input, user_id: 'user-1' })
     expect(result.data).toEqual(session)
   })
 
@@ -111,7 +111,7 @@ describe('plannedSessionRepository', () => {
     const session = makePlannedSession({ status: 'completed' })
     mockChain.single.mockResolvedValue({ data: session, error: null })
 
-    const result = await updatePlannedSession('planned-session-1', updates)
+    const result = await updatePlannedSession('user-1', 'planned-session-1', updates)
 
     expect(mockChain.update).toHaveBeenCalledWith(updates)
     expect(result.data?.status).toBe('completed')
@@ -121,7 +121,7 @@ describe('plannedSessionRepository', () => {
     const session = makePlannedSession()
     mockChain.single.mockResolvedValue({ data: session, error: null })
 
-    const result = await deletePlannedSession('planned-session-1')
+    const result = await deletePlannedSession('user-1', 'planned-session-1')
 
     expect(mockChain.delete).toHaveBeenCalledTimes(1)
     expect(mockChain.eq).toHaveBeenCalledWith('id', 'planned-session-1')

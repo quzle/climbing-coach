@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { z } from 'zod'
 import { createMesocycle, getMesocyclesByProgramme } from '@/services/data/mesocycleRepository'
+import { requireAuth } from '@/lib/auth'
 import type { ApiResponse, Mesocycle } from '@/types'
 
 const querySchema = z.object({ programme_id: z.string().uuid() })
@@ -33,6 +34,9 @@ export async function GET(
   request: NextRequest,
 ): Promise<NextResponse<ApiResponse<{ mesocycles: Mesocycle[] }>>> {
   try {
+    const { userId, errorResponse } = await requireAuth()
+    if (errorResponse) return errorResponse
+
     const parsed = querySchema.safeParse({
       programme_id: request.nextUrl.searchParams.get('programme_id'),
     })
@@ -44,7 +48,7 @@ export async function GET(
       )
     }
 
-    const result = await getMesocyclesByProgramme(parsed.data.programme_id)
+    const result = await getMesocyclesByProgramme(userId, parsed.data.programme_id)
     if (result.error !== null) {
       console.error('[GET /api/mesocycles]', result.error)
       return NextResponse.json(
@@ -68,6 +72,9 @@ export async function POST(
   request: NextRequest,
 ): Promise<NextResponse<ApiResponse<{ mesocycle: Mesocycle }>>> {
   try {
+    const { userId, errorResponse } = await requireAuth()
+    if (errorResponse) return errorResponse
+
     const body: unknown = await request.json()
     const parsed = createMesocycleSchema.safeParse(body)
 
@@ -79,7 +86,7 @@ export async function POST(
       )
     }
 
-    const result = await createMesocycle(parsed.data)
+    const result = await createMesocycle(userId, parsed.data)
     if (result.error !== null || result.data === null) {
       console.error('[POST /api/mesocycles]', result.error)
       return NextResponse.json(

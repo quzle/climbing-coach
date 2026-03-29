@@ -7,6 +7,7 @@ import {
   updateSessionDeviation,
 } from '@/services/data/sessionRepository'
 import { updatePlannedSession } from '@/services/data/plannedSessionRepository'
+import { requireAuth } from '@/lib/auth'
 import type { ApiResponse, SessionLog, SessionType } from '@/types'
 
 // =============================================================================
@@ -93,6 +94,9 @@ export async function POST(
   request: NextRequest,
 ): Promise<NextResponse<ApiResponse<{ session: SessionLog }>>> {
   try {
+    const { userId, errorResponse } = await requireAuth()
+    if (errorResponse) return errorResponse
+
     const body: unknown = await request.json()
     const parsed = sessionLogSchema.safeParse(body)
 
@@ -106,7 +110,7 @@ export async function POST(
 
     const validated = parsed.data
 
-    const result = await createSession({
+    const result = await createSession(userId, {
       ...validated,
       // log_data from Zod is Record<string,unknown>; cast to Json to satisfy
       // the Supabase insert type which uses a recursive Json alias.
@@ -122,7 +126,7 @@ export async function POST(
 
     // Link back to the planned session if one was provided
     if (validated.planned_session_id !== null) {
-      const plannedSessionResult = await updatePlannedSession(validated.planned_session_id, {
+      const plannedSessionResult = await updatePlannedSession(userId, validated.planned_session_id, {
         status: 'completed',
       })
 
@@ -148,6 +152,7 @@ export async function POST(
           Math.abs(validated.duration_mins - plannedDuration) / plannedDuration > 0.2
         ) {
           await updateSessionDeviation(
+            userId,
             session.id,
             'Session duration differed from plan by more than 20%',
           )
@@ -175,6 +180,9 @@ export async function GET(
   request: NextRequest,
 ): Promise<NextResponse<ApiResponse<{ sessions: SessionLog[] }>>> {
   try {
+    const { userId, errorResponse } = await requireAuth()
+    if (errorResponse) return errorResponse
+
     const days = Number(request.nextUrl.searchParams.get('days') ?? '30')
     const safeDays = Math.min(Math.max(days, 1), 365)
     const type = request.nextUrl.searchParams.get('type') as SessionType | null
@@ -188,8 +196,8 @@ export async function GET(
 
     const result =
       type !== null
-        ? await getSessionsByType(type, safeDays)
-        : await getRecentSessions(safeDays)
+        ? await getSessionsByType(userId, type, safeDays)
+        : await getRecentSessions(userId, safeDays)
 
     if (result.error) {
       console.error('[GET /api/sessions]', result.error)

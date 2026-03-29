@@ -9,6 +9,10 @@ import {
 } from '@/services/data/plannedSessionRepository'
 import { GET, POST } from './route'
 
+jest.mock('@/lib/auth', () => ({
+  requireAuth: jest.fn().mockResolvedValue({ userId: 'user-1', errorResponse: null }),
+}))
+
 jest.mock('@/services/data/plannedSessionRepository', () => ({
   getPlannedSessionsInRange: jest.fn(),
   getUpcomingPlannedSessions: jest.fn(),
@@ -48,6 +52,7 @@ describe('GET /api/planned-sessions', () => {
 
     expect(response.status).toBe(200)
     expect(mockGetPlannedSessionsInRange).toHaveBeenCalledWith(
+      'user-1',
       '2026-03-30',
       '2026-04-05',
     )

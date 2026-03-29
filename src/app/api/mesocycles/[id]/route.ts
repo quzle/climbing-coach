@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { z } from 'zod'
 import { getMesocycleById, updateMesocycle } from '@/services/data/mesocycleRepository'
+import { requireAuth } from '@/lib/auth'
 import type { ApiResponse, Mesocycle } from '@/types'
 
 const paramsSchema = z.object({ id: z.string().uuid() })
@@ -39,12 +40,15 @@ export async function GET(
   context: { params: Promise<{ id: string }> },
 ): Promise<NextResponse<ApiResponse<{ mesocycle: Mesocycle }>>> {
   try {
+    const { userId, errorResponse } = await requireAuth()
+    if (errorResponse) return errorResponse
+
     const parsedParams = paramsSchema.safeParse(await context.params)
     if (!parsedParams.success) {
       return NextResponse.json({ data: null, error: 'Invalid mesocycle id.' }, { status: 400 })
     }
 
-    const result = await getMesocycleById(parsedParams.data.id)
+    const result = await getMesocycleById(userId, parsedParams.data.id)
     if (result.error !== null || result.data === null) {
       return NextResponse.json({ data: null, error: 'Failed to load mesocycle.' }, { status: 500 })
     }
@@ -65,6 +69,9 @@ export async function PUT(
   context: { params: Promise<{ id: string }> },
 ): Promise<NextResponse<ApiResponse<{ mesocycle: Mesocycle }>>> {
   try {
+    const { userId, errorResponse } = await requireAuth()
+    if (errorResponse) return errorResponse
+
     const parsedParams = paramsSchema.safeParse(await context.params)
     if (!parsedParams.success) {
       return NextResponse.json({ data: null, error: 'Invalid mesocycle id.' }, { status: 400 })
@@ -79,7 +86,7 @@ export async function PUT(
       )
     }
 
-    const result = await updateMesocycle(parsedParams.data.id, parsedBody.data)
+    const result = await updateMesocycle(userId, parsedParams.data.id, parsedBody.data)
     if (result.error !== null || result.data === null) {
       return NextResponse.json(
         { data: null, error: 'Failed to update mesocycle.' },

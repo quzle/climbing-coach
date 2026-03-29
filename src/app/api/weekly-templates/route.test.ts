@@ -8,6 +8,10 @@ import {
 } from '@/services/data/weeklyTemplateRepository'
 import { GET, POST } from './route'
 
+jest.mock('@/lib/auth', () => ({
+  requireAuth: jest.fn().mockResolvedValue({ userId: 'user-1', errorResponse: null }),
+}))
+
 jest.mock('@/services/data/weeklyTemplateRepository', () => ({
   getWeeklyTemplateByMesocycle: jest.fn(),
   createWeeklyTemplate: jest.fn(),
@@ -43,7 +47,7 @@ describe('GET /api/weekly-templates', () => {
     )
 
     expect(response.status).toBe(200)
-    expect(mockGetWeeklyTemplateByMesocycle).toHaveBeenCalledWith(template.mesocycle_id)
+    expect(mockGetWeeklyTemplateByMesocycle).toHaveBeenCalledWith('user-1', template.mesocycle_id)
   })
 })
 

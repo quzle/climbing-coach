@@ -8,6 +8,10 @@ import {
 } from '@/services/data/weeklyTemplateRepository'
 import { GET, PUT } from './route'
 
+jest.mock('@/lib/auth', () => ({
+  requireAuth: jest.fn().mockResolvedValue({ userId: 'user-1', errorResponse: null }),
+}))
+
 jest.mock('@/services/data/weeklyTemplateRepository', () => ({
   getWeeklyTemplateById: jest.fn(),
   updateWeeklyTemplate: jest.fn(),
@@ -54,7 +58,7 @@ describe('PUT /api/weekly-templates/:id', () => {
 
     const response = await PUT(request, { params: Promise.resolve({ id }) })
     expect(response.status).toBe(200)
-    expect(mockUpdateWeeklyTemplate).toHaveBeenCalledWith(id, {
+    expect(mockUpdateWeeklyTemplate).toHaveBeenCalledWith('user-1', id, {
       session_label: 'Updated label',
     })
   })

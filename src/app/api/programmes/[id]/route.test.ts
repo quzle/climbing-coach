@@ -5,6 +5,10 @@ import { NextRequest } from 'next/server'
 import { getProgrammeById, updateProgramme } from '@/services/data/programmeRepository'
 import { GET, PUT } from './route'
 
+jest.mock('@/lib/auth', () => ({
+  requireAuth: jest.fn().mockResolvedValue({ userId: 'user-1', errorResponse: null }),
+}))
+
 jest.mock('@/services/data/programmeRepository', () => ({
   getProgrammeById: jest.fn(),
   updateProgramme: jest.fn(),
@@ -36,7 +40,7 @@ describe('GET /api/programmes/:id', () => {
       params: Promise.resolve({ id }),
     })
     expect(response.status).toBe(200)
-    expect(mockGetProgrammeById).toHaveBeenCalledWith(id)
+    expect(mockGetProgrammeById).toHaveBeenCalledWith('user-1', id)
   })
 })
 
@@ -50,7 +54,7 @@ describe('PUT /api/programmes/:id', () => {
 
     const response = await PUT(request, { params: Promise.resolve({ id }) })
     expect(response.status).toBe(200)
-    expect(mockUpdateProgramme).toHaveBeenCalledWith(id, { notes: 'updated' })
+    expect(mockUpdateProgramme).toHaveBeenCalledWith('user-1', id, { notes: 'updated' })
   })
 
   it('returns 400 for invalid id', async () => {

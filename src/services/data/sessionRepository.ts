@@ -113,10 +113,12 @@ function daysAgoDate(days: number): string {
  * @description Fetches session logs for the last n days, ordered most recent
  * first.
  *
+ * @param userId Authenticated user's UUID
  * @param days Number of days to look back (e.g. 7, 30)
  * @returns Array of session logs ordered by date descending
  */
 export async function getRecentSessions(
+  userId: string,
   days: number,
 ): Promise<ApiResponse<SessionLog[]>> {
   try {
@@ -124,6 +126,7 @@ export async function getRecentSessions(
     const { data, error } = await supabase
       .from('session_logs')
       .select('*')
+      .eq('user_id', userId)
       .gte('date', daysAgoDate(days))
       .lte('date', today())
       .order('date', { ascending: false })
@@ -144,10 +147,12 @@ export async function getRecentSessions(
  * @description Fetches a single session log by its UUID. Returns an error if
  * no matching record exists.
  *
+ * @param userId Authenticated user's UUID
  * @param id The session UUID
  * @returns The matching session log record
  */
 export async function getSessionById(
+  userId: string,
   id: string,
 ): Promise<ApiResponse<SessionLog>> {
   try {
@@ -155,6 +160,7 @@ export async function getSessionById(
     const { data, error } = await supabase
       .from('session_logs')
       .select('*')
+      .eq('user_id', userId)
       .eq('id', id)
       .single()
 
@@ -173,17 +179,19 @@ export async function getSessionById(
 /**
  * @description Inserts a new session log record and returns the created row.
  *
+ * @param userId Authenticated user's UUID
  * @param input The session data to insert
  * @returns The newly created session log
  */
 export async function createSession(
+  userId: string,
   input: SessionLogInsert,
 ): Promise<ApiResponse<SessionLog>> {
   try {
     const supabase = await createClient()
     const { data, error } = await supabase
       .from('session_logs')
-      .insert(input)
+      .insert({ ...input, user_id: userId })
       .select()
       .single()
 
@@ -203,11 +211,13 @@ export async function createSession(
  * @description Updates fields on an existing session log and returns the
  * updated record. Only the fields present in `updates` are changed.
  *
+ * @param userId Authenticated user's UUID
  * @param id The session UUID to update
  * @param updates Partial session fields to apply
  * @returns The updated session log record
  */
 export async function updateSession(
+  userId: string,
   id: string,
   updates: SessionLogUpdate,
 ): Promise<ApiResponse<SessionLog>> {
@@ -216,6 +226,7 @@ export async function updateSession(
     const { data, error } = await supabase
       .from('session_logs')
       .update(updates)
+      .eq('user_id', userId)
       .eq('id', id)
       .select()
       .single()
@@ -237,26 +248,30 @@ export async function updateSession(
  * Convenience wrapper around updateSession for the common case of recording
  * how a session deviated from what was planned.
  *
+ * @param userId Authenticated user's UUID
  * @param id The session UUID
  * @param deviation Free-text description of how the session deviated from plan
  * @returns The updated session log record
  */
 export async function updateSessionDeviation(
+  userId: string,
   id: string,
   deviation: string,
 ): Promise<ApiResponse<SessionLog>> {
-  return updateSession(id, { deviation_from_plan: deviation })
+  return updateSession(userId, id, { deviation_from_plan: deviation })
 }
 
 /**
  * @description Fetches sessions of a specific type for the last n days,
  * ordered most recent first.
  *
+ * @param userId Authenticated user's UUID
  * @param type The session type to filter by (e.g. 'bouldering', 'fingerboard')
  * @param days Number of days to look back
  * @returns Array of matching session logs ordered by date descending
  */
 export async function getSessionsByType(
+  userId: string,
   type: SessionType,
   days: number,
 ): Promise<ApiResponse<SessionLog[]>> {
@@ -265,6 +280,7 @@ export async function getSessionsByType(
     const { data, error } = await supabase
       .from('session_logs')
       .select('*')
+      .eq('user_id', userId)
       .eq('session_type', type)
       .gte('date', daysAgoDate(days))
       .lte('date', today())
@@ -289,11 +305,13 @@ export async function getSessionsByType(
  * @description Fetches all sessions between two dates inclusive, ordered
  * oldest first. Intended for charting where chronological order matters.
  *
+ * @param userId Authenticated user's UUID
  * @param startDate ISO date string 'YYYY-MM-DD' (inclusive)
  * @param endDate ISO date string 'YYYY-MM-DD' (inclusive)
  * @returns Array of session logs ordered by date ascending
  */
 export async function getSessionsInDateRange(
+  userId: string,
   startDate: string,
   endDate: string,
 ): Promise<ApiResponse<SessionLog[]>> {
@@ -302,6 +320,7 @@ export async function getSessionsInDateRange(
     const { data, error } = await supabase
       .from('session_logs')
       .select('*')
+      .eq('user_id', userId)
       .gte('date', startDate)
       .lte('date', endDate)
       .order('date', { ascending: true })
@@ -326,14 +345,16 @@ export async function getSessionsInDateRange(
  * week (Monday to today inclusive). Used on the home dashboard training
  * summary.
  *
+ * @param userId Authenticated user's UUID
  * @returns Number of sessions logged since Monday of the current week
  */
-export async function getSessionCountThisWeek(): Promise<ApiResponse<number>> {
+export async function getSessionCountThisWeek(userId: string): Promise<ApiResponse<number>> {
   try {
     const supabase = await createClient()
     const { data, error } = await supabase
       .from('session_logs')
       .select('id')
+      .eq('user_id', userId)
       .gte('date', getMondayOfCurrentWeek())
       .lte('date', today())
 
@@ -357,9 +378,12 @@ export async function getSessionCountThisWeek(): Promise<ApiResponse<number>> {
  * string, or null if no sessions have been logged yet. Used to calculate
  * days since last session for the AI coaching context.
  *
+ * @param userId Authenticated user's UUID
  * @returns ISO date string of the most recent session, or null
  */
-export async function getLastSessionDate(): Promise<
+export async function getLastSessionDate(
+  userId: string,
+): Promise<
   ApiResponse<string | null>
 > {
   try {
@@ -367,6 +391,7 @@ export async function getLastSessionDate(): Promise<
     const { data, error } = await supabase
       .from('session_logs')
       .select('date')
+      .eq('user_id', userId)
       .order('date', { ascending: false })
       .limit(1)
       .maybeSingle()
@@ -397,9 +422,12 @@ export async function getLastSessionDate(): Promise<
  * TODO (Phase 3): Add date range filtering to avoid loading the full history
  * as the session_logs table grows.
  *
+ * @param userId Authenticated user's UUID
  * @returns Array of { date, best_grade, session_type } ordered by date ascending
  */
-export async function getGradeProgressionData(): Promise<
+export async function getGradeProgressionData(
+  userId: string,
+): Promise<
   ApiResponse<{ date: string; best_grade: string; session_type: SessionType }[]>
 > {
   try {
@@ -409,6 +437,7 @@ export async function getGradeProgressionData(): Promise<
     const { data, error } = await supabase
       .from('session_logs')
       .select('date, session_type, log_data')
+      .eq('user_id', userId)
       .in('session_type', climbingTypes)
       .order('date', { ascending: true })
 

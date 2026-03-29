@@ -11,6 +11,7 @@ import {
 import { buildAthleteContext, computeWarnings, parseInjuryAreaHealth } from '@/services/ai/contextBuilder'
 import { getLastSessionDate } from '@/services/data/sessionRepository'
 import { getActiveInjuryAreas } from '@/services/data/injuryAreasRepository'
+import { requireAuth } from '@/lib/auth'
 import type { ApiResponse, InjuryAreaHealth, ReadinessCheckin } from '@/types'
 
 const injuryAreaHealthItemSchema = z.object({
@@ -48,6 +49,9 @@ export async function POST(
   NextResponse<ApiResponse<{ checkin: ReadinessCheckin; warnings: string[] }>>
 > {
   try {
+    const { userId, errorResponse } = await requireAuth()
+    if (errorResponse) return errorResponse
+
     const body: unknown = await request.json()
     const parsed = readinessSchema.safeParse(body)
 
@@ -62,7 +66,7 @@ export async function POST(
     const validated = parsed.data
     const { injury_area_health, ...checkinInput } = validated
 
-    const alreadyCheckedIn = await hasCheckedInToday()
+    const alreadyCheckedIn = await hasCheckedInToday(userId)
     if (alreadyCheckedIn.error) {
       console.error(
         '[POST /api/readiness] hasCheckedInToday:',
@@ -86,6 +90,7 @@ export async function POST(
 
     const today = new Date().toISOString().split('T')[0] as string
     const result = await createCheckin(
+      userId,
       { ...checkinInput, date: today },
       injury_area_health as InjuryAreaHealth[],
     )
@@ -105,7 +110,7 @@ export async function POST(
       )
     }
 
-    const context = await buildAthleteContext()
+    const context = await buildAthleteContext(userId)
 
     return NextResponse.json(
       {
@@ -132,7 +137,10 @@ export async function POST(
  */
 export async function DELETE(): Promise<NextResponse<ApiResponse<{ deleted: true }>>> {
   try {
-    const result = await deleteTodaysCheckin()
+    const { userId, errorResponse } = await requireAuth()
+    if (errorResponse) return errorResponse
+
+    const result = await deleteTodaysCheckin(userId)
     if (result.error !== null) {
       console.error('[DELETE /api/readiness]', result.error)
       return NextResponse.json(
@@ -173,15 +181,18 @@ export async function GET(
   >
 > {
   try {
+    const { userId, errorResponse } = await requireAuth()
+    if (errorResponse) return errorResponse
+
     const days = Number(request.nextUrl.searchParams.get('days') ?? '7')
     const safeDays = Math.min(Math.max(days, 1), 90)
 
     const [checkinsResult, todayResult, avgResult, lastSessionResult, activeInjuryAreasResult] = await Promise.all([
-      getRecentCheckins(safeDays),
-      getTodaysCheckin(),
-      getAverageReadiness(7),
-      getLastSessionDate(),
-      getActiveInjuryAreas(),
+      getRecentCheckins(userId, safeDays),
+      getTodaysCheckin(userId),
+      getAverageReadiness(userId, 7),
+      getLastSessionDate(userId),
+      getActiveInjuryAreas(userId),
     ])
 
     if (checkinsResult.error) {

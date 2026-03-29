@@ -88,10 +88,13 @@ function formatHistoryForGemini(
  *
  * @param message The chat message payload to insert
  */
-async function saveMessageToDatabase(message: ChatMessageInsert): Promise<void> {
+async function saveMessageToDatabase(
+  userId: string,
+  message: ChatMessageInsert,
+): Promise<void> {
   try {
     const supabase = await createClient()
-    const { error } = await supabase.from('chat_messages').insert(message)
+    const { error } = await supabase.from('chat_messages').insert({ ...message, user_id: userId })
     if (error) {
       console.error('[geminiClient.saveMessageToDatabase] insert failed:', error)
     }
@@ -112,18 +115,20 @@ async function saveMessageToDatabase(message: ChatMessageInsert): Promise<void> 
  * Both the user message and the AI response are saved to the database as a
  * fire-and-forget operation — they do not block the response.
  *
+ * @param userId Authenticated user's UUID
  * @param userMessage The message text from the athlete
  * @param existingHistory Previous chat messages to provide conversation continuity
  * @returns Object containing the AI response text and any active warnings
  * @throws Error with a safe user-facing message if the Gemini API call fails
  */
 export async function sendChatMessage(
+  userId: string,
   userMessage: string,
   existingHistory: ChatMessage[],
 ): Promise<{ response: string; warnings: string[] }> {
   try {
     // Step 1: Build athlete context
-    const context = await buildAthleteContext()
+    const context = await buildAthleteContext(userId)
 
     // Step 2: Build system prompt
     const systemPrompt = buildSystemPrompt(context)
@@ -150,12 +155,12 @@ export async function sendChatMessage(
     const responseText = result.response.text()
 
     // Step 7: Save both messages to database (fire and forget — do not await)
-    void saveMessageToDatabase({
+    void saveMessageToDatabase(userId, {
       role: 'user',
       content: userMessage,
       context_snapshot: null,
     })
-    void saveMessageToDatabase({
+    void saveMessageToDatabase(userId, {
       role: 'assistant',
       content: responseText,
       context_snapshot: null,
@@ -179,6 +184,7 @@ export async function sendChatMessage(
  *
  * Used for weekly session generation in Phase 2 of the application build.
  *
+ * @param userId Authenticated user's UUID
  * @param sessionType The type of session to generate (e.g. 'bouldering', 'fingerboard')
  * @param additionalContext Optional extra context to focus the generation
  *   (e.g. 'Focus on slab technique this week')
@@ -186,11 +192,12 @@ export async function sendChatMessage(
  * @throws Error with a safe user-facing message if the Gemini API call fails
  */
 export async function generateSessionPlan(
+  userId: string,
   sessionType: string,
   additionalContext?: string,
 ): Promise<string> {
   try {
-    const context = await buildAthleteContext()
+    const context = await buildAthleteContext(userId)
     const systemPrompt = buildSessionPlanSystemPrompt(context)
 
     const genAI = getGeminiClient()

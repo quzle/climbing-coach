@@ -1,11 +1,15 @@
 /** @jest-environment node */
-import { DELETE } from './route'
+
+jest.mock('@/lib/auth', () => ({
+  requireAuth: jest.fn().mockResolvedValue({ userId: 'user-1', errorResponse: null }),
+}))
 
 jest.mock('@/services/data/injuryAreasRepository', () => ({
   archiveInjuryArea: jest.fn(),
 }))
 
 import { archiveInjuryArea } from '@/services/data/injuryAreasRepository'
+import { DELETE } from './route'
 
 const mockArchiveInjuryArea = archiveInjuryArea as jest.Mock
 
@@ -35,7 +39,7 @@ describe('DELETE /api/injury-areas/[area]', () => {
     const response = await DELETE(new Request('http://localhost'), makeParams('shoulder_left'))
     const body = await response.json()
 
-    expect(mockArchiveInjuryArea).toHaveBeenCalledWith('shoulder_left')
+    expect(mockArchiveInjuryArea).toHaveBeenCalledWith('user-1', 'shoulder_left')
     expect(response.status).toBe(200)
     expect(body).toEqual({ data: row, error: null })
   })
@@ -46,7 +50,7 @@ describe('DELETE /api/injury-areas/[area]', () => {
 
     await DELETE(new Request('http://localhost'), makeParams('finger_a2_left'))
 
-    expect(mockArchiveInjuryArea).toHaveBeenCalledWith('finger_a2_left')
+    expect(mockArchiveInjuryArea).toHaveBeenCalledWith('user-1', 'finger_a2_left')
   })
 
   it('returns 500 when repository returns an error', async () => {

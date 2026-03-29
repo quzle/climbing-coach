@@ -9,6 +9,10 @@ import { POST } from './route'
 // MODULE MOCKS
 // =============================================================================
 
+jest.mock('@/lib/auth', () => ({
+  requireAuth: jest.fn().mockResolvedValue({ userId: 'user-1', errorResponse: null }),
+}))
+
 jest.mock('@/services/ai/geminiClient', () => ({
   sendChatMessage: jest.fn(),
 }))
@@ -104,6 +108,6 @@ describe('POST /api/chat', () => {
     const response = await POST(request)
 
     expect(response.status).toBe(200)
-    expect(sendChatMessage).toHaveBeenCalledWith('Hello', [])
+    expect(sendChatMessage).toHaveBeenCalledWith('user-1', 'Hello', [])
   })
 })

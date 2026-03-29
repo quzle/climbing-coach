@@ -57,7 +57,7 @@ describe('programmeRepository', () => {
     const programmes = [makeProgramme()]
     mockChain.order.mockResolvedValue({ data: programmes, error: null })
 
-    const result = await getProgrammes()
+    const result = await getProgrammes('user-1')
 
     expect(mockChain.order).toHaveBeenCalledWith('start_date', { ascending: false })
     expect(result.data).toEqual(programmes)
@@ -68,7 +68,7 @@ describe('programmeRepository', () => {
     const programme = makeProgramme()
     mockChain.single.mockResolvedValue({ data: programme, error: null })
 
-    const result = await getProgrammeById('programme-1')
+    const result = await getProgrammeById('user-1', 'programme-1')
 
     expect(mockChain.eq).toHaveBeenCalledWith('id', 'programme-1')
     expect(result.data).toEqual(programme)
@@ -78,7 +78,7 @@ describe('programmeRepository', () => {
     const programme = makeProgramme()
     mockChain.maybeSingle.mockResolvedValue({ data: programme, error: null })
 
-    const result = await getActiveProgramme()
+    const result = await getActiveProgramme('user-1')
 
     expect(mockChain.lte).toHaveBeenCalled()
     expect(mockChain.gte).toHaveBeenCalled()
@@ -95,9 +95,9 @@ describe('programmeRepository', () => {
     const programme = makeProgramme()
     mockChain.single.mockResolvedValue({ data: programme, error: null })
 
-    const result = await createProgramme(input)
+    const result = await createProgramme('user-1', input)
 
-    expect(mockChain.insert).toHaveBeenCalledWith(input)
+    expect(mockChain.insert).toHaveBeenCalledWith({ ...input, user_id: 'user-1' })
     expect(result.data).toEqual(programme)
   })
 
@@ -106,7 +106,7 @@ describe('programmeRepository', () => {
     const programme = makeProgramme({ notes: 'Updated notes' })
     mockChain.single.mockResolvedValue({ data: programme, error: null })
 
-    const result = await updateProgramme('programme-1', updates)
+    const result = await updateProgramme('user-1', 'programme-1', updates)
 
     expect(mockChain.update).toHaveBeenCalledWith(updates)
     expect(mockChain.eq).toHaveBeenCalledWith('id', 'programme-1')
@@ -117,7 +117,7 @@ describe('programmeRepository', () => {
     const programme = makeProgramme()
     mockChain.single.mockResolvedValue({ data: programme, error: null })
 
-    const result = await deleteProgramme('programme-1')
+    const result = await deleteProgramme('user-1', 'programme-1')
 
     expect(mockChain.delete).toHaveBeenCalled()
     expect(mockChain.eq).toHaveBeenCalledWith('id', 'programme-1')

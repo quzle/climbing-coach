@@ -5,6 +5,10 @@ import { NextRequest } from 'next/server'
 import { generatePlannedSessionsForActiveMesocycle } from '@/services/training/sessionGenerator'
 import { POST } from './route'
 
+jest.mock('@/lib/auth', () => ({
+  requireAuth: jest.fn().mockResolvedValue({ userId: 'user-1', errorResponse: null }),
+}))
+
 jest.mock('@/services/training/sessionGenerator', () => ({
   generatePlannedSessionsForActiveMesocycle: jest.fn(),
 }))
@@ -47,6 +51,7 @@ describe('POST /api/planned-sessions/generate', () => {
     expect(body.error).toBeNull()
     expect(body.data.plannedSessions).toHaveLength(1)
     expect(mockGeneratePlannedSessionsForActiveMesocycle).toHaveBeenCalledWith(
+      'user-1',
       '2026-03-30',
     )
   })
@@ -61,7 +66,7 @@ describe('POST /api/planned-sessions/generate', () => {
     const response = await POST(request)
 
     expect(response.status).toBe(200)
-    expect(mockGeneratePlannedSessionsForActiveMesocycle).toHaveBeenCalledWith(undefined)
+    expect(mockGeneratePlannedSessionsForActiveMesocycle).toHaveBeenCalledWith('user-1', undefined)
   })
 
   it('returns 400 when week_start is malformed', async () => {
