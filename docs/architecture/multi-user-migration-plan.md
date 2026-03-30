@@ -52,7 +52,7 @@ Goal: create the final ownership model in the schema before application changes 
     - one-to-one link to `auth.users`
     - fields for `email`, `display_name`, `role`, `invite_status`, timestamps
 
-- [ ] **DB-2** Create `chat_threads` table
+- [x] **DB-2** Create `chat_threads` table
   - Depends on: none
   - Deliverables:
     - `user_id` ownership

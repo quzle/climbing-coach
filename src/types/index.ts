@@ -36,6 +36,9 @@ export type SessionLog = Database['public']['Tables']['session_logs']['Row']
 /** A single message in the AI coach chat history. */
 export type ChatMessage = Database['public']['Tables']['chat_messages']['Row']
 
+/** A chat thread owned by a user, grouping related chat messages. */
+export type ChatThread = Database['public']['Tables']['chat_threads']['Row']
+
 // =============================================================================
 // INSERT TYPES
 // What you pass to INSERT queries. Optional fields have been made optional
@@ -72,6 +75,9 @@ export type SessionLogInsert = Database['public']['Tables']['session_logs']['Ins
 /** Payload for creating a new chat message. */
 export type ChatMessageInsert = Database['public']['Tables']['chat_messages']['Insert']
 
+/** Payload for creating a new chat thread. */
+export type ChatThreadInsert = Database['public']['Tables']['chat_threads']['Insert']
+
 // =============================================================================
 // UPDATE TYPES
 // What you pass to UPDATE queries. All fields are optional. Use in repository
@@ -86,6 +92,9 @@ export type PlannedSessionUpdate = Database['public']['Tables']['planned_session
 
 /** Partial update payload for a readiness check-in. */
 export type ReadinessCheckinUpdate = Database['public']['Tables']['readiness_checkins']['Update']
+
+/** Partial update payload for a chat thread (e.g. updating the title). */
+export type ChatThreadUpdate = Database['public']['Tables']['chat_threads']['Update']
 
 // =============================================================================
 // INJURY TRACKING TYPES
