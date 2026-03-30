@@ -167,7 +167,7 @@ describe('ProgrammePage', () => {
     mockFetchOk({ ...mockSnapshot, currentProgramme: null })
     render(<ProgrammePage />)
     await waitFor(() => {
-      expect(screen.getByText('Start Your Programme')).toBeInTheDocument()
+      expect(screen.getByText('Programme Builder')).toBeInTheDocument()
     })
   })
 
@@ -175,7 +175,7 @@ describe('ProgrammePage', () => {
     mockFetchOk({ ...mockSnapshot, currentProgramme: null })
     render(<ProgrammePage />)
     await waitFor(() => {
-      expect(screen.getByText('Start Your Programme')).toBeInTheDocument()
+      expect(screen.getByText('Programme Builder')).toBeInTheDocument()
     })
     expect(screen.queryByText('16-Week Peak 2026')).not.toBeInTheDocument()
   })

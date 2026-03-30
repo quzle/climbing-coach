@@ -8,6 +8,7 @@ import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Skeleton } from '@/components/ui/skeleton'
 import { ProseMarkdown } from '@/components/ui/prose-markdown'
+import { ProgrammeBuilderEditor } from '@/components/programme/programme-builder-editor'
 import type { ApiResponse, Mesocycle, PlannedSession, ProgrammeBuilderSnapshot } from '@/types'
 
 // =============================================================================
@@ -195,27 +196,7 @@ export default function ProgrammePage(): React.JSX.Element {
         {/* No programme                                                        */}
         {/* ------------------------------------------------------------------ */}
         {!isLoading && !error && snapshot !== null && !snapshot.currentProgramme && (
-          <Card>
-            <CardHeader>
-              <CardTitle>Start Your Programme</CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-3 text-sm text-slate-600">
-              <p>
-                The AI wizard will design a full periodised training plan based on your goals,
-                current level, and availability — typically 12–24 weeks split into structured
-                mesocycle blocks.
-              </p>
-              <p>
-                You&apos;ll review and adjust the plan before anything is saved. Once confirmed,
-                you&apos;ll set up your weekly schedule for the first training block, and the AI
-                will generate session plans on demand from there.
-              </p>
-              <p className="text-xs text-slate-400">Takes about 2 minutes to complete.</p>
-              <Button asChild className="min-h-[44px] w-full">
-                <Link href="/programme/new">Create with AI wizard →</Link>
-              </Button>
-            </CardContent>
-          </Card>
+          <ProgrammeBuilderEditor snapshot={snapshot} onSaved={loadSnapshot} />
         )}
 
         {/* ------------------------------------------------------------------ */}
