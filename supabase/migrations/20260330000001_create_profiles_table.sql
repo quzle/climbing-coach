@@ -1,6 +1,11 @@
 -- DB-1: Create profiles table
 -- One-to-one relationship with auth.users.
 -- Stores application-owned user metadata for the multi-user MVP.
+--
+-- Rollback:
+--   DROP TRIGGER IF EXISTS profiles_set_updated_at ON public.profiles;
+--   DROP FUNCTION IF EXISTS public.set_updated_at();
+--   DROP TABLE IF EXISTS public.profiles;
 
 CREATE TABLE public.profiles (
   id             uuid        PRIMARY KEY REFERENCES auth.users(id) ON DELETE CASCADE,
