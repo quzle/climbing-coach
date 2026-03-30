@@ -24,6 +24,7 @@ function makeSupabaseMock() {
     gte: jest.fn().mockReturnThis(),
     lte: jest.fn().mockReturnThis(),
     order: jest.fn().mockReturnThis(),
+    limit: jest.fn().mockReturnThis(),
     single: jest.fn().mockResolvedValue(mockResult),
     maybeSingle: jest.fn().mockResolvedValue(mockResult),
   }
