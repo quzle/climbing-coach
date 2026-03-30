@@ -22,7 +22,7 @@ This document is the canonical implementation roadmap for migrating the Climbing
 
 **Goal:** Users can sign in and sign out. The app knows who is making each request. No data is yet user-scoped.
 
-**GitHub Issue:** [#TBD] `feat: authentication foundation (Supabase Auth + session middleware)`
+**GitHub Issue:** `feat: authentication foundation (Supabase Auth + session middleware)`
 
 ### Steps
 
@@ -75,7 +75,7 @@ This document is the canonical implementation roadmap for migrating the Climbing
 
 **Goal:** Every user has a profile row. Existing single-user data is attributed to the owner account.
 
-**GitHub Issue:** [#TBD] `feat: profiles table and data attribution migration`
+**GitHub Issue:** `feat: profiles table and data attribution migration`
 
 ### Steps
 
@@ -133,7 +133,7 @@ This document is the canonical implementation roadmap for migrating the Climbing
 
 **Goal:** The database enforces per-user data isolation. No query can return another user's rows.
 
-**GitHub Issue:** [#TBD] `feat: enable RLS on all data tables`
+**GitHub Issue:** `feat: enable RLS on all data tables`
 
 **Depends on:** Phase 2 complete (all rows attributed before RLS is enabled)
 
@@ -182,7 +182,7 @@ This document is the canonical implementation roadmap for migrating the Climbing
 
 **Goal:** The AI coach builds context exclusively from the authenticated user's data. Chat messages are persisted per user.
 
-**GitHub Issue:** [#TBD] `feat: scope AI context and chat history to authenticated user`
+**GitHub Issue:** `feat: scope AI context and chat history to authenticated user`
 
 **Depends on:** Phase 3 complete (RLS ensures correct scoping)
 
@@ -221,7 +221,7 @@ This document is the canonical implementation roadmap for migrating the Climbing
 
 **Goal:** Dev tools are accessible to superusers in all environments. The `NODE_ENV` guard is replaced with an `is_superuser` check.
 
-**GitHub Issue:** [#TBD] `feat: superuser access control for dev endpoints`
+**GitHub Issue:** `feat: superuser access control for dev endpoints`
 
 **Depends on:** Phase 2 complete (profiles table with `is_superuser` column)
 
@@ -262,7 +262,7 @@ This document is the canonical implementation roadmap for migrating the Climbing
 
 **Goal:** All programme and session generation flows correctly attribute newly created data to the authenticated user.
 
-**GitHub Issue:** [#TBD] `feat: multi-user programme and session generation`
+**GitHub Issue:** `feat: multi-user programme and session generation`
 
 **Depends on:** Phase 3 (RLS) and Phase 4 (scoped context)
 
@@ -301,7 +301,7 @@ This document is the canonical implementation roadmap for migrating the Climbing
 
 **Goal:** All phases are validated together. All documentation reflects the multi-user state of the system.
 
-**GitHub Issue:** [#TBD] `chore: multi-user migration end-to-end validation and docs finalisation`
+**GitHub Issue:** `chore: multi-user migration end-to-end validation and docs finalisation`
 
 **Depends on:** All phases 1–6 complete
 

@@ -113,7 +113,8 @@ alter table injury_areas    add column if not exists user_id uuid references aut
 
 ### Step 2.4 — Run Migration 003: Attribute Existing Data
 
-Replace `<OWNER_UUID>` with the UUID from step 2.3:
+Replace `<OWNER_UUID>` with the UUID from step 2.3. UUIDs look like `xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx`
+(e.g. `a1b2c3d4-e5f6-7890-abcd-ef1234567890`):
 
 ```sql
 -- Attribute all existing rows to the owner
