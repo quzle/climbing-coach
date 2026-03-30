@@ -83,9 +83,20 @@ const mockSnapshot = {
 // =============================================================================
 
 function mockFetchOk(data: unknown = mockSnapshot): void {
-  ;(global.fetch as jest.Mock).mockResolvedValue({
-    ok: true,
-    json: jest.fn().mockResolvedValue({ data, error: null }),
+  ;(global.fetch as jest.Mock).mockImplementation((url: string) => {
+    if (typeof url === 'string' && url.includes('/api/mesocycles')) {
+      return Promise.resolve({
+        ok: true,
+        json: jest.fn().mockResolvedValue({
+          data: { mesocycles: [mockSnapshot.activeMesocycle] },
+          error: null,
+        }),
+      })
+    }
+    return Promise.resolve({
+      ok: true,
+      json: jest.fn().mockResolvedValue({ data, error: null }),
+    })
   })
 }
 
@@ -128,21 +139,19 @@ describe('ProgrammePage', () => {
       expect(screen.getByText('Power & Finger Strength')).toBeInTheDocument()
     })
     expect(screen.getByText('Max finger recruitment and contact strength')).toBeInTheDocument()
-    expect(screen.getByText('power')).toBeInTheDocument()
+    expect(screen.getByText('Power')).toBeInTheDocument()
   })
 
-  it('renders weekly template rows sorted by day_of_week', async () => {
+  it('renders active mesocycle card details', async () => {
     mockFetchOk()
     render(<ProgrammePage />)
     await waitFor(() => {
-      expect(screen.getByText('Fingerboard — Limit Hangs')).toBeInTheDocument()
+      expect(screen.getByText('Current block')).toBeInTheDocument()
     })
-    expect(screen.getByText('Bouldering — Hard Problems')).toBeInTheDocument()
-    // Mon (day 1) should appear before Wed (day 3) in the DOM
-    const allText = screen.getAllByRole('listitem')
-    const monIdx = allText.findIndex((el) => el.textContent?.includes('Mon'))
-    const wedIdx = allText.findIndex((el) => el.textContent?.includes('Wed'))
-    expect(monIdx).toBeLessThan(wedIdx)
+    expect(screen.getByText('Mesocycles')).toBeInTheDocument()
+    // Mesocycle dates are rendered
+    expect(screen.getByText(/2 Mar/)).toBeInTheDocument()
+    expect(screen.getByText(/5 Apr 2026/)).toBeInTheDocument()
   })
 
   it('renders upcoming planned sessions section', async () => {
