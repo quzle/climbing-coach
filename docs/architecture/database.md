@@ -2,7 +2,29 @@
 
 This document describes the complete Supabase Postgres schema for the Climbing Coach application.
 
-Run this schema against your Supabase project via the SQL Editor before starting the application.
+Schema changes are managed as SQL migration files in `supabase/migrations/`. Run each migration in order against your Supabase project via the SQL Editor before starting the application.
+
+---
+
+## `profiles`
+
+Application-owned user metadata. One row per `auth.users` entry (one-to-one).
+
+Created by migration `20260330000001_create_profiles_table.sql`.
+
+| Column | Type | Nullable | Default | Description |
+|---|---|---|---|---|
+| `id` | `uuid` | No | — | Primary key — references `auth.users(id)` (cascade delete) |
+| `email` | `text` | No | — | User's email address |
+| `display_name` | `text` | Yes | `null` | Optional display name |
+| `role` | `text` | No | `'user'` | MVP values: `user`, `superuser` |
+| `invite_status` | `text` | No | `'invited'` | MVP values: `invited`, `active` |
+| `created_at` | `timestamptz` | No | `now()` | Row creation timestamp |
+| `updated_at` | `timestamptz` | No | `now()` | Last update timestamp |
+
+**Relationships:** `id` → `auth.users(id)` (one-to-one, cascade delete).
+
+**Business rules:** A profile row is created when a superuser sends an invite (`invite_status = 'invited'`). On the user's first successful sign-in the application transitions `invite_status` to `'active'`. `role` is managed by superuser tooling only.
 
 ---
 
