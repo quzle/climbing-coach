@@ -2,10 +2,11 @@
 
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
-import { Home, Dumbbell, MessageCircle, History, CalendarRange, User } from 'lucide-react'
+import { Home, ClipboardCheck, Dumbbell, MessageCircle, History, CalendarRange, User } from 'lucide-react'
 
 const TABS = [
   { href: '/', label: 'Home', icon: Home },
+  { href: '/readiness', label: 'Check-in', icon: ClipboardCheck },
   { href: '/session/log', label: 'Log', icon: Dumbbell },
   { href: '/chat', label: 'Chat', icon: MessageCircle },
   { href: '/history', label: 'History', icon: History },
@@ -14,7 +15,7 @@ const TABS = [
 ] as const
 
 /**
- * @description Fixed bottom navigation bar with 5 tabs. Uses the current
+ * @description Fixed bottom navigation bar with 7 tabs. Uses the current
  * pathname to highlight the active tab. Rendered inside the root layout so
  * it appears on every page.
  */
