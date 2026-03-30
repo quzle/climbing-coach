@@ -48,7 +48,8 @@ describe('ChatMessage', () => {
 
   it('applies slate background to assistant message bubbles', () => {
     render(<ChatMessage message={makeMessage({ role: 'assistant', content: 'Coach msg' })} />)
-    const bubble = screen.getByText('Coach msg').closest('div')
+    // getByText returns ProseMarkdown's wrapper <div>; go up one level to reach the bubble div
+    const bubble = screen.getByText('Coach msg').closest('div')?.parentElement
     expect(bubble).toHaveClass('bg-slate-100')
   })
 
