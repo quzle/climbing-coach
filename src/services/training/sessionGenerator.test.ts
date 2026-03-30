@@ -57,6 +57,7 @@ function makeMesocycle(overrides?: Partial<Mesocycle>): Mesocycle {
     planned_start: '2026-03-03',
     programme_id: 'programme-1',
     status: 'active',
+    user_id: 'user-1',
     ...overrides,
   }
 }
@@ -72,6 +73,7 @@ function makeWeeklyTemplate(overrides?: Partial<WeeklyTemplate>): WeeklyTemplate
     primary_focus: 'Power',
     session_label: 'Limit Bouldering',
     session_type: 'bouldering',
+    user_id: 'user-1',
     ...overrides,
   }
 }
@@ -91,6 +93,7 @@ function makeSessionLog(overrides?: Partial<SessionLog>): SessionLog {
     quality_rating: 4,
     rpe: 7,
     session_type: 'bouldering',
+    user_id: 'user-1',
   }
 
   return {
@@ -111,6 +114,7 @@ function makePlannedSession(overrides?: Partial<PlannedSession>): PlannedSession
     session_type: 'bouldering',
     status: 'planned',
     template_id: 'template-1',
+    user_id: 'user-1',
     ...overrides,
   }
 }

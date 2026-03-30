@@ -65,6 +65,7 @@ function makeReadinessCheckin(
     readiness_score: 3.8,
     notes: null,
     created_at: '2026-03-24T08:00:00Z',
+    user_id: 'user-1',
     ...overrides,
   }
 }
@@ -83,6 +84,7 @@ function makeCheckinInput(
     life_stress: 2,
     illness_flag: false,
     notes: null,
+    user_id: 'user-1',
     ...overrides,
   }
 }

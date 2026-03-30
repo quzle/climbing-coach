@@ -2,6 +2,7 @@ import { GoogleGenerativeAI } from '@google/generative-ai'
 import { createClient } from '@/lib/supabase/server'
 import { buildAthleteContext } from '@/services/ai/contextBuilder'
 import { buildSystemPrompt, buildSessionPlanSystemPrompt } from '@/services/ai/promptBuilder'
+import { SINGLE_USER_PLACEHOLDER_ID } from '@/lib/placeholder-user-id'
 import type { ChatMessage, ChatMessageInsert } from '@/types'
 
 // =============================================================================
@@ -154,11 +155,13 @@ export async function sendChatMessage(
       role: 'user',
       content: userMessage,
       context_snapshot: null,
+      user_id: SINGLE_USER_PLACEHOLDER_ID,
     })
     void saveMessageToDatabase({
       role: 'assistant',
       content: responseText,
       context_snapshot: null,
+      user_id: SINGLE_USER_PLACEHOLDER_ID,
     })
 
     // Step 8: Return response with active warnings

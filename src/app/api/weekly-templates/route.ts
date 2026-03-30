@@ -4,6 +4,7 @@ import {
   createWeeklyTemplate,
   getWeeklyTemplateByMesocycle,
 } from '@/services/data/weeklyTemplateRepository'
+import { SINGLE_USER_PLACEHOLDER_ID } from '@/lib/placeholder-user-id'
 import type { ApiResponse, WeeklyTemplate } from '@/types'
 
 const querySchema = z.object({ mesocycle_id: z.string().uuid() })
@@ -89,6 +90,7 @@ export async function POST(
       duration_mins: parsed.data.duration_mins ?? null,
       primary_focus: parsed.data.primary_focus ?? null,
       notes: parsed.data.notes ?? null,
+      user_id: SINGLE_USER_PLACEHOLDER_ID,
     })
 
     if (result.error !== null || result.data === null) {

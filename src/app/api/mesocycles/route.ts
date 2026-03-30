@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { z } from 'zod'
 import { createMesocycle, getMesocyclesByProgramme } from '@/services/data/mesocycleRepository'
+import { SINGLE_USER_PLACEHOLDER_ID } from '@/lib/placeholder-user-id'
 import type { ApiResponse, Mesocycle } from '@/types'
 
 const querySchema = z.object({ programme_id: z.string().uuid() })
@@ -79,7 +80,7 @@ export async function POST(
       )
     }
 
-    const result = await createMesocycle(parsed.data)
+    const result = await createMesocycle({ ...parsed.data, user_id: SINGLE_USER_PLACEHOLDER_ID })
     if (result.error !== null || result.data === null) {
       console.error('[POST /api/mesocycles]', result.error)
       return NextResponse.json(

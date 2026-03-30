@@ -58,6 +58,8 @@ function makeProgramme(overrides?: Partial<Programme>): Programme {
     notes: null,
     start_date: '2026-03-23',
     target_date: '2026-07-12',
+    athlete_profile: null,
+    user_id: 'user-1',
     ...overrides,
   }
 }
@@ -76,6 +78,7 @@ function makeMesocycle(index: number, overrides?: Partial<Mesocycle>): Mesocycle
     planned_start: '2026-03-23',
     programme_id: 'programme-1',
     status: index === 1 ? 'active' : 'planned',
+    user_id: 'user-1',
     ...overrides,
   }
 }
@@ -91,6 +94,7 @@ function makeWeeklyTemplate(index: number, overrides?: Partial<WeeklyTemplate>):
     primary_focus: 'Focus',
     session_label: `Template ${index}`,
     session_type: 'lead',
+    user_id: 'user-1',
     ...overrides,
   }
 }
@@ -106,6 +110,7 @@ function makePlannedSession(index: number, overrides?: Partial<PlannedSession>):
     session_type: 'lead',
     status: 'planned',
     template_id: 'template-1',
+    user_id: 'user-1',
     ...overrides,
   }
 }

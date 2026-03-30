@@ -4,6 +4,7 @@ import {
   getPlannedSessionsInRange,
 } from '@/services/data/plannedSessionRepository'
 import { getWeeklyTemplateByMesocycle } from '@/services/data/weeklyTemplateRepository'
+import { SINGLE_USER_PLACEHOLDER_ID } from '@/lib/placeholder-user-id'
 import type { ApiResponse, Mesocycle, PlannedSession, WeeklyTemplate } from '@/types'
 
 /** Returns YYYY-MM-DD for a Date in UTC-safe format. */
@@ -132,6 +133,7 @@ export async function generatePlannedSessionsForActiveMesocycle(
               primary_focus: template.primary_focus,
               duration_mins: template.duration_mins,
             },
+            user_id: SINGLE_USER_PLACEHOLDER_ID,
           })
 
           if (createResult.error !== null || createResult.data === null) {

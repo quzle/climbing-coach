@@ -21,6 +21,7 @@ export type Database = {
           created_at: string | null
           id: string
           role: string
+          user_id: string
         }
         Insert: {
           content: string
@@ -28,6 +29,7 @@ export type Database = {
           created_at?: string | null
           id?: string
           role: string
+          user_id: string
         }
         Update: {
           content?: string
@@ -35,8 +37,17 @@ export type Database = {
           created_at?: string | null
           id?: string
           role?: string
+          user_id?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "chat_messages_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       mesocycles: {
         Row: {
@@ -52,6 +63,7 @@ export type Database = {
           planned_start: string
           programme_id: string | null
           status: string
+          user_id: string
         }
         Insert: {
           actual_end?: string | null
@@ -66,6 +78,7 @@ export type Database = {
           planned_start: string
           programme_id?: string | null
           status?: string
+          user_id: string
         }
         Update: {
           actual_end?: string | null
@@ -80,6 +93,7 @@ export type Database = {
           planned_start?: string
           programme_id?: string | null
           status?: string
+          user_id?: string
         }
         Relationships: [
           {
@@ -87,6 +101,13 @@ export type Database = {
             columns: ["programme_id"]
             isOneToOne: false
             referencedRelation: "programmes"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "mesocycles_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "users"
             referencedColumns: ["id"]
           },
         ]
@@ -102,6 +123,7 @@ export type Database = {
           session_type: string
           status: string
           template_id: string | null
+          user_id: string
         }
         Insert: {
           created_at?: string | null
@@ -113,6 +135,7 @@ export type Database = {
           session_type: string
           status?: string
           template_id?: string | null
+          user_id: string
         }
         Update: {
           created_at?: string | null
@@ -124,6 +147,7 @@ export type Database = {
           session_type?: string
           status?: string
           template_id?: string | null
+          user_id?: string
         }
         Relationships: [
           {
@@ -140,6 +164,13 @@ export type Database = {
             referencedRelation: "weekly_templates"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "planned_sessions_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
         ]
       }
       programmes: {
@@ -152,6 +183,7 @@ export type Database = {
           notes: string | null
           start_date: string
           target_date: string
+          user_id: string
         }
         Insert: {
           athlete_profile?: Json | null
@@ -162,6 +194,7 @@ export type Database = {
           notes?: string | null
           start_date: string
           target_date: string
+          user_id: string
         }
         Update: {
           athlete_profile?: Json | null
@@ -172,8 +205,17 @@ export type Database = {
           notes?: string | null
           start_date?: string
           target_date?: string
+          user_id?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "programmes_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       injury_areas: {
         Row: {
@@ -182,6 +224,7 @@ export type Database = {
           is_active: boolean
           added_at: string
           archived_at: string | null
+          user_id: string
         }
         Insert: {
           id?: string
@@ -189,6 +232,7 @@ export type Database = {
           is_active?: boolean
           added_at?: string
           archived_at?: string | null
+          user_id: string
         }
         Update: {
           id?: string
@@ -196,8 +240,17 @@ export type Database = {
           is_active?: boolean
           added_at?: string
           archived_at?: string | null
+          user_id?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "injury_areas_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       readiness_checkins: {
         Row: {
@@ -212,6 +265,7 @@ export type Database = {
           notes: string | null
           readiness_score: number | null
           sleep_quality: number
+          user_id: string
         }
         Insert: {
           created_at?: string | null
@@ -225,6 +279,7 @@ export type Database = {
           notes?: string | null
           readiness_score?: number | null
           sleep_quality: number
+          user_id: string
         }
         Update: {
           created_at?: string | null
@@ -238,8 +293,17 @@ export type Database = {
           notes?: string | null
           readiness_score?: number | null
           sleep_quality?: number
+          user_id?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "readiness_checkins_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       session_logs: {
         Row: {
@@ -256,6 +320,7 @@ export type Database = {
           rpe: number | null
           session_type: string
           injury_flags: Json | null
+          user_id: string
         }
         Insert: {
           created_at?: string | null
@@ -271,6 +336,7 @@ export type Database = {
           quality_rating?: number | null
           rpe?: number | null
           session_type: string
+          user_id: string
         }
         Update: {
           created_at?: string | null
@@ -286,6 +352,7 @@ export type Database = {
           quality_rating?: number | null
           rpe?: number | null
           session_type?: string
+          user_id?: string
         }
         Relationships: [
           {
@@ -293,6 +360,13 @@ export type Database = {
             columns: ["planned_session_id"]
             isOneToOne: false
             referencedRelation: "planned_sessions"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "session_logs_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "users"
             referencedColumns: ["id"]
           },
         ]
@@ -308,6 +382,7 @@ export type Database = {
           primary_focus: string | null
           session_label: string
           session_type: string
+          user_id: string
         }
         Insert: {
           day_of_week: number
@@ -319,6 +394,7 @@ export type Database = {
           primary_focus?: string | null
           session_label: string
           session_type: string
+          user_id: string
         }
         Update: {
           day_of_week?: number
@@ -330,6 +406,7 @@ export type Database = {
           primary_focus?: string | null
           session_label?: string
           session_type?: string
+          user_id?: string
         }
         Relationships: [
           {
@@ -337,6 +414,13 @@ export type Database = {
             columns: ["mesocycle_id"]
             isOneToOne: false
             referencedRelation: "mesocycles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "weekly_templates_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "users"
             referencedColumns: ["id"]
           },
         ]

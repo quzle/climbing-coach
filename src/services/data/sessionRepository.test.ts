@@ -84,6 +84,7 @@ function makeSessionLog(overrides?: Partial<SessionLog>): SessionLog {
     log_data: null,
     deviation_from_plan: null,
     created_at: '2025-03-24T18:00:00Z',
+    user_id: 'user-1',
     ...overrides,
   }
 }
@@ -195,6 +196,7 @@ describe('createSession', () => {
     location: 'Boulder World Geneva',
     duration_mins: 90,
     rpe: 7,
+    user_id: 'user-1',
   }
 
   it('calls insert and returns the created session', async () => {

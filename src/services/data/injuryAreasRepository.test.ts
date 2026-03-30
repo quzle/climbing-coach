@@ -45,6 +45,7 @@ function makeInjuryAreaRow(overrides?: Partial<InjuryAreaRow>): InjuryAreaRow {
     is_active: true,
     added_at: '2026-03-25T10:00:00Z',
     archived_at: null,
+    user_id: 'user-1',
     ...overrides,
   }
 }
