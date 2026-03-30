@@ -38,7 +38,22 @@ const mockSnapshot = {
     interruption_notes: null,
     created_at: null,
   },
-  mesocycles: [],
+  mesocycles: [
+    {
+      id: 'meso-1',
+      name: 'Power & Finger Strength',
+      phase_type: 'power',
+      planned_start: '2026-03-02',
+      planned_end: '2026-04-05',
+      actual_start: null,
+      actual_end: null,
+      status: 'active',
+      focus: 'Max finger recruitment and contact strength',
+      programme_id: 'prog-1',
+      interruption_notes: null,
+      created_at: null,
+    },
+  ],
   currentWeeklyTemplate: [
     {
       id: 'wt-2',
