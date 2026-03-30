@@ -100,19 +100,6 @@ export default function Home(): React.JSX.Element {
           <p className="text-sm text-slate-500">AI-powered training assistant</p>
         </div>
 
-        {/* Quick actions */}
-        <div className="grid grid-cols-3 gap-3">
-          <Button asChild className="min-h-[44px]">
-            <Link href="/session/log">Log Session</Link>
-          </Button>
-          <Button asChild variant="outline" className="min-h-[44px]">
-            <Link href="/readiness">Check-in</Link>
-          </Button>
-          <Button asChild variant="outline" className="min-h-[44px]">
-            <Link href="/chat">Ask Coach</Link>
-          </Button>
-        </div>
-
         {/* Readiness card */}
         <Card>
           <CardHeader className="pb-2">
