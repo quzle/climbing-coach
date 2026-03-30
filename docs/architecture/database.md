@@ -206,3 +206,21 @@ Stores the full conversation history between the athlete and the AI coach.
 **Relationships:** None.
 
 **Business rules:** The prompt builder fetches the most recent 10 messages ordered by `created_at` descending. There is no hard limit on total rows — implement a cleanup job if the table grows excessively.
+
+---
+
+## `chat_threads`
+
+Groups chat messages into per-user conversation threads. Introduced to support the multi-user ownership model and future thread history expansion.
+
+| Column | Type | Nullable | Description |
+|---|---|---|---|
+| `id` | `uuid` | No | Primary key |
+| `user_id` | `uuid` | No | Owner — references `auth.users(id)` |
+| `title` | `text` | Yes | Optional human-readable thread name (e.g. AI-generated or user-assigned) |
+| `created_at` | `timestamptz` | No | Row creation timestamp |
+| `updated_at` | `timestamptz` | No | Last-updated timestamp (used for ordering threads by recency) |
+
+**Relationships:** `user_id` → `auth.users(id)`.
+
+**Business rules:** The MVP exposes one default thread per user in the UI. The schema supports multiple threads per user without a redesign. `updated_at` should be refreshed whenever a message is added to the thread.
