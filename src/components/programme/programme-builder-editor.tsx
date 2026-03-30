@@ -101,7 +101,6 @@ export function ProgrammeBuilderEditor({
   const [isSavingMesocycle, setIsSavingMesocycle] = useState(false)
   const [isSavingTemplate, setIsSavingTemplate] = useState(false)
   const [isAddingTemplate, setIsAddingTemplate] = useState(false)
-  const [isGenerating, setIsGenerating] = useState(false)
 
 
   const selectedTemplate = useMemo(() => {
@@ -271,28 +270,6 @@ export function ProgrammeBuilderEditor({
       setError('Failed to add template slot.')
     } finally {
       setIsAddingTemplate(false)
-    }
-  }
-
-  async function handleGenerateWeekSessions(): Promise<void> {
-    setError(null)
-    setIsGenerating(true)
-    try {
-      const response = await fetch('/api/planned-sessions/generate', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({}),
-      })
-      const json = (await response.json()) as ApiResponse<unknown>
-      if (!response.ok || json.error !== null) {
-        setError(json.error ?? 'Failed to generate week sessions.')
-        return
-      }
-      await onSaved()
-    } catch {
-      setError('Failed to generate week sessions.')
-    } finally {
-      setIsGenerating(false)
     }
   }
 
@@ -645,27 +622,6 @@ export function ProgrammeBuilderEditor({
                 </Button>
               </div>
             </form>
-          </CardContent>
-        </Card>
-      ) : null}
-
-      {snapshot.activeMesocycle !== null ? (
-        <Card>
-          <CardHeader>
-            <CardTitle>Generate Sessions</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <p className="mb-4 text-sm text-slate-600">
-              Generate planned sessions for the current week based on your weekly template.
-            </p>
-            <Button
-              type="button"
-              className="min-h-[44px]"
-              disabled={isGenerating}
-              onClick={() => void handleGenerateWeekSessions()}
-            >
-              {isGenerating ? 'Generating...' : 'Generate Week Sessions'}
-            </Button>
           </CardContent>
         </Card>
       ) : null}
