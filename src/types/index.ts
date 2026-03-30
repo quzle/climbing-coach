@@ -42,6 +42,15 @@ export type ChatMessage = Database['public']['Tables']['chat_messages']['Row']
 // by Supabase codegen (e.g. id, created_at). Use in repository insert functions.
 // =============================================================================
 
+/** A user profile row linked one-to-one with auth.users. */
+export type Profile = Database['public']['Tables']['profiles']['Row']
+
+/** Payload for creating a new profile (handled automatically by trigger). */
+export type ProfileInsert = Database['public']['Tables']['profiles']['Insert']
+
+/** Partial update payload for a profile (e.g. changing display_name). */
+export type ProfileUpdate = Database['public']['Tables']['profiles']['Update']
+
 /** Payload for creating a new programme. */
 export type ProgrammeInsert = Database['public']['Tables']['programmes']['Insert']
 

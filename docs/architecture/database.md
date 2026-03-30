@@ -3,6 +3,25 @@
 This document describes the complete Supabase Postgres schema for the Climbing Coach application.
 
 Run this schema against your Supabase project via the SQL Editor before starting the application.
+Migration files live in `supabase/migrations/` and must be applied in order.
+
+---
+
+## `profiles`
+
+One-to-one extension of `auth.users` that stores application-level user data.
+A row is created automatically by the `handle_new_user` trigger whenever a new auth user signs up.
+
+| Column | Type | Nullable | Description |
+|---|---|---|---|
+| `id` | `uuid` | No | Primary key — references `auth.users(id)` (one-to-one) |
+| `display_name` | `text` | Yes | User's chosen display name |
+| `created_at` | `timestamptz` | No | Row creation timestamp (defaults to `now()`) |
+| `updated_at` | `timestamptz` | No | Last update timestamp (defaults to `now()`) |
+
+**Relationships:** `id` → `auth.users(id)` (cascade delete — profile is removed when the auth user is deleted).
+
+**Row Level Security:** Users can only `SELECT` and `UPDATE` their own row (`auth.uid() = id`). Inserts are performed by the `handle_new_user` trigger running as `SECURITY DEFINER`.
 
 ---
 
