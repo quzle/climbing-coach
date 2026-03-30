@@ -26,17 +26,17 @@ jest.mock('next/link', () => {
 // =============================================================================
 
 describe('BottomNav', () => {
-  it('renders all 7 navigation tabs', () => {
+  it('renders all 6 navigation tabs', () => {
     mockUsePathname.mockReturnValue('/')
     render(<BottomNav />)
 
     expect(screen.getByText('Home')).toBeInTheDocument()
-    expect(screen.getByText('Check-in')).toBeInTheDocument()
     expect(screen.getByText('Log')).toBeInTheDocument()
     expect(screen.getByText('Chat')).toBeInTheDocument()
     expect(screen.getByText('History')).toBeInTheDocument()
     expect(screen.getByText('Plan')).toBeInTheDocument()
     expect(screen.getByText('Profile')).toBeInTheDocument()
+    expect(screen.queryByText('Check-in')).not.toBeInTheDocument()
   })
 
   it('renders correct hrefs for each tab', () => {
@@ -44,7 +44,6 @@ describe('BottomNav', () => {
     render(<BottomNav />)
 
     expect(screen.getByRole('link', { name: /home/i })).toHaveAttribute('href', '/')
-    expect(screen.getByRole('link', { name: /check-in/i })).toHaveAttribute('href', '/readiness')
     expect(screen.getByRole('link', { name: /^log$/i })).toHaveAttribute('href', '/session/log')
     expect(screen.getByRole('link', { name: /^chat$/i })).toHaveAttribute('href', '/chat')
     expect(screen.getByRole('link', { name: /history/i })).toHaveAttribute('href', '/history')
@@ -62,19 +61,11 @@ describe('BottomNav', () => {
   })
 
   it('does not apply active styles to Home tab when on another route', () => {
-    mockUsePathname.mockReturnValue('/readiness')
+    mockUsePathname.mockReturnValue('/chat')
     render(<BottomNav />)
 
     const homeLink = screen.getByRole('link', { name: /home/i })
     expect(homeLink).not.toHaveClass('text-blue-600')
-  })
-
-  it('applies active styles to Check-in tab when on /readiness', () => {
-    mockUsePathname.mockReturnValue('/readiness')
-    render(<BottomNav />)
-
-    const checkinLink = screen.getByRole('link', { name: /check-in/i })
-    expect(checkinLink).toHaveClass('text-blue-600')
   })
 
   it('applies active styles to Log tab when on /session/log', () => {
