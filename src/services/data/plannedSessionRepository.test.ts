@@ -45,6 +45,7 @@ function makePlannedSession(overrides?: Partial<PlannedSession>): PlannedSession
     session_type: 'bouldering',
     status: 'planned',
     template_id: 'template-1',
+    user_id: 'user-1',
     ...overrides,
   }
 }
@@ -96,6 +97,7 @@ describe('plannedSessionRepository', () => {
       planned_date: '2026-03-26',
       session_type: 'bouldering',
       template_id: 'template-1',
+      user_id: 'user-1',
     }
     const session = makePlannedSession()
     mockChain.single.mockResolvedValue({ data: session, error: null })

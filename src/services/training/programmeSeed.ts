@@ -25,6 +25,7 @@ import type {
   SessionType,
   WeeklyTemplateInsert,
 } from '@/types'
+import { SINGLE_USER_PLACEHOLDER_ID } from '@/lib/placeholder-user-id'
 
 const PHASE_2F_SEED_MARKER = '[phase2f-seed:v1]'
 
@@ -427,6 +428,7 @@ function buildProgrammeBlueprint(): ProgrammeBlueprint {
       start_date: toIsoDate(programmeStart),
       target_date: toIsoDate(programmeEnd),
       notes: buildSeedNotes('Phase 2F starter seed for programme-layer development.'),
+      user_id: SINGLE_USER_PLACEHOLDER_ID,
     },
     mesocycles,
   }
@@ -460,6 +462,7 @@ function buildPlannedSessionsForMesocycle(
           duration_mins: template.durationMins,
           ai_plan_text: aiPlanText(mesocycle.name, template, weekIndex + 1),
         },
+        user_id: SINGLE_USER_PLACEHOLDER_ID,
       })
     }
   }
@@ -596,6 +599,7 @@ export async function seedSummerMultipitchProgramme(): Promise<
         actual_end: null,
         status: mesocycle.status,
         interruption_notes: null,
+        user_id: SINGLE_USER_PLACEHOLDER_ID,
       } satisfies MesocycleInsert)
 
       if (mesocycleResult.error !== null || mesocycleResult.data === null) {
@@ -620,6 +624,7 @@ export async function seedSummerMultipitchProgramme(): Promise<
           duration_mins: template.durationMins,
           primary_focus: template.primaryFocus,
           notes: template.notes,
+          user_id: SINGLE_USER_PLACEHOLDER_ID,
         } satisfies WeeklyTemplateInsert)
 
         if (templateResult.error !== null || templateResult.data === null) {

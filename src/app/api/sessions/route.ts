@@ -7,6 +7,7 @@ import {
   updateSessionDeviation,
 } from '@/services/data/sessionRepository'
 import { updatePlannedSession } from '@/services/data/plannedSessionRepository'
+import { SINGLE_USER_PLACEHOLDER_ID } from '@/lib/placeholder-user-id'
 import type { ApiResponse, SessionLog, SessionType } from '@/types'
 
 // =============================================================================
@@ -112,6 +113,7 @@ export async function POST(
       // the Supabase insert type which uses a recursive Json alias.
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       log_data: validated.log_data as any,
+      user_id: SINGLE_USER_PLACEHOLDER_ID,
     })
     if (result.error) {
       console.error('[POST /api/sessions] createSession:', result.error)

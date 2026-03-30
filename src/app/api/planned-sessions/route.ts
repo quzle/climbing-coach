@@ -6,6 +6,7 @@ import {
   getUpcomingPlannedSessions,
 } from '@/services/data/plannedSessionRepository'
 import type { Json } from '@/lib/database.types'
+import { SINGLE_USER_PLACEHOLDER_ID } from '@/lib/placeholder-user-id'
 import type { ApiResponse, PlannedSession, SessionStatus } from '@/types'
 
 const querySchema = z
@@ -108,6 +109,7 @@ export async function POST(
       status: (parsed.data.status ?? 'planned') as SessionStatus,
       generation_notes: parsed.data.generation_notes ?? null,
       generated_plan: (parsed.data.generated_plan ?? null) as Json,
+      user_id: SINGLE_USER_PLACEHOLDER_ID,
     })
 
     if (result.error !== null || result.data === null) {

@@ -42,6 +42,7 @@ function makeWeeklyTemplate(overrides?: Partial<WeeklyTemplate>): WeeklyTemplate
     primary_focus: 'Power',
     session_label: 'Limit Bouldering',
     session_type: 'bouldering',
+    user_id: 'user-1',
     ...overrides,
   }
 }
@@ -74,6 +75,7 @@ describe('weeklyTemplateRepository', () => {
       primary_focus: 'Power',
       session_label: 'Limit Bouldering',
       session_type: 'bouldering',
+      user_id: 'user-1',
     }
     const template = makeWeeklyTemplate()
     mockChain.single.mockResolvedValue({ data: template, error: null })

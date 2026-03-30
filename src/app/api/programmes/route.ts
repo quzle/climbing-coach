@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { z } from 'zod'
 import { createProgramme, getProgrammes } from '@/services/data/programmeRepository'
+import { SINGLE_USER_PLACEHOLDER_ID } from '@/lib/placeholder-user-id'
 import type { ApiResponse, Programme } from '@/types'
 
 const createProgrammeSchema = z.object({
@@ -63,6 +64,7 @@ export async function POST(
     const result = await createProgramme({
       ...parsed.data,
       notes: parsed.data.notes ?? null,
+      user_id: SINGLE_USER_PLACEHOLDER_ID,
     })
 
     if (result.error !== null || result.data === null) {

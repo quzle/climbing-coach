@@ -40,6 +40,8 @@ function makeProgramme(overrides?: Partial<Programme>): Programme {
     notes: null,
     start_date: '2026-01-05',
     target_date: '2026-04-26',
+    athlete_profile: null,
+    user_id: 'user-1',
     ...overrides,
   }
 }
@@ -91,6 +93,7 @@ describe('programmeRepository', () => {
       name: 'Summer Multipitch Season',
       start_date: '2026-01-05',
       target_date: '2026-04-26',
+      user_id: 'user-1',
     }
     const programme = makeProgramme()
     mockChain.single.mockResolvedValue({ data: programme, error: null })

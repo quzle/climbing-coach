@@ -1,4 +1,5 @@
 import { createClient } from '@/lib/supabase/server'
+import { SINGLE_USER_PLACEHOLDER_ID } from '@/lib/placeholder-user-id'
 import type { ApiResponse, InjuryAreaRow, InjuryAreaInsert } from '@/types'
 
 // =============================================================================
@@ -57,6 +58,7 @@ export async function addInjuryArea(
       is_active: true,
       added_at: new Date().toISOString(),
       archived_at: null,
+      user_id: SINGLE_USER_PLACEHOLDER_ID,
     }
 
     const { data, error } = await supabase

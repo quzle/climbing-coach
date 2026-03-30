@@ -45,6 +45,7 @@ function makeMesocycle(overrides?: Partial<Mesocycle>): Mesocycle {
     planned_start: '2026-03-03',
     programme_id: 'programme-1',
     status: 'active',
+    user_id: 'user-1',
     ...overrides,
   }
 }
@@ -97,6 +98,7 @@ describe('mesocycleRepository', () => {
       planned_end: '2026-03-30',
       planned_start: '2026-03-03',
       programme_id: 'programme-1',
+      user_id: 'user-1',
     }
     const mesocycle = makeMesocycle()
     mockChain.single.mockResolvedValue({ data: mesocycle, error: null })

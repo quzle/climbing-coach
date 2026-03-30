@@ -12,6 +12,8 @@ const snapshot: ProgrammeBuilderSnapshot = {
     notes: null,
     start_date: '2026-01-05',
     target_date: '2026-04-26',
+    athlete_profile: null,
+    user_id: 'user-1',
   },
   activeMesocycle: {
     id: '11711946-7ec0-4640-9f03-2be6ac3cd571',
@@ -26,6 +28,7 @@ const snapshot: ProgrammeBuilderSnapshot = {
     planned_start: '2026-03-03',
     programme_id: '9f9d2ebd-cd7c-4d2d-b1f8-a8fae1f019d1',
     status: 'active',
+    user_id: 'user-1',
   },
   mesocycles: [],
   currentWeeklyTemplate: [
@@ -39,6 +42,7 @@ const snapshot: ProgrammeBuilderSnapshot = {
       primary_focus: 'Power',
       session_label: 'Limit Bouldering',
       session_type: 'bouldering',
+      user_id: 'user-1',
     },
   ],
   upcomingPlannedSessions: [],

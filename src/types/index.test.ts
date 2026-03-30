@@ -79,6 +79,7 @@ describe('AthleteContext', () => {
       quality_rating: 8,
       rpe: 7,
       injury_flags: null,
+      user_id: 'user-1',
     }
 
     const programme: Programme = {
@@ -89,6 +90,8 @@ describe('AthleteContext', () => {
       notes: null,
       start_date: '2026-01-05',
       target_date: '2026-04-26',
+      athlete_profile: null,
+      user_id: 'user-1',
     }
 
     const mesocycle: Mesocycle = {
@@ -104,6 +107,7 @@ describe('AthleteContext', () => {
       planned_start: '2026-03-03',
       programme_id: 'programme-1',
       status: 'active',
+      user_id: 'user-1',
     }
 
     const weeklyTemplate: WeeklyTemplate = {
@@ -116,6 +120,7 @@ describe('AthleteContext', () => {
       primary_focus: 'Power',
       session_label: 'Limit Bouldering',
       session_type: 'bouldering',
+      user_id: 'user-1',
     }
 
     const plannedSession: PlannedSession = {
@@ -128,6 +133,7 @@ describe('AthleteContext', () => {
       session_type: 'bouldering',
       status: 'planned',
       template_id: 'template-1',
+      user_id: 'user-1',
     }
 
     const context: AthleteContext = {
@@ -185,6 +191,7 @@ describe('ApiResponse', () => {
       quality_rating: 9,
       rpe: 6,
       injury_flags: null,
+      user_id: 'user-1',
     }
 
     const response: ApiResponse<SessionLog> = { data: log, error: null }

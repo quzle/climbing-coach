@@ -58,7 +58,7 @@ Goal: create the final ownership model in the schema before application changes 
     - `user_id` ownership
     - thread metadata fields for MVP and later thread history expansion
 
-- [ ] **DB-3** Add `user_id` to all user-owned domain tables
+- [x] **DB-3** Add `user_id` to all user-owned domain tables
   - Depends on: none
   - Deliverables:
     - `programmes`, `mesocycles`, `planned_sessions`, `session_logs`, `readiness_checkins`, `chat_messages`, `injury_areas`, `weekly_templates`

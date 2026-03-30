@@ -11,6 +11,7 @@ import {
 import { buildAthleteContext, computeWarnings, parseInjuryAreaHealth } from '@/services/ai/contextBuilder'
 import { getLastSessionDate } from '@/services/data/sessionRepository'
 import { getActiveInjuryAreas } from '@/services/data/injuryAreasRepository'
+import { SINGLE_USER_PLACEHOLDER_ID } from '@/lib/placeholder-user-id'
 import type { ApiResponse, InjuryAreaHealth, ReadinessCheckin } from '@/types'
 
 const injuryAreaHealthItemSchema = z.object({
@@ -86,7 +87,7 @@ export async function POST(
 
     const today = new Date().toISOString().split('T')[0] as string
     const result = await createCheckin(
-      { ...checkinInput, date: today },
+      { ...checkinInput, date: today, user_id: SINGLE_USER_PLACEHOLDER_ID },
       injury_area_health as InjuryAreaHealth[],
     )
     if (result.error) {
