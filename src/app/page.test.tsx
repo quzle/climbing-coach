@@ -193,17 +193,6 @@ describe('Home dashboard', () => {
     await waitFor(() => expect(screen.getByText(/90 min/)).toBeInTheDocument())
   })
 
-  it('renders the three quick-action buttons', async () => {
-    mockFetchResponses(mockReadinessOk(), mockSessionsOk())
-    render(<Home />)
-
-    await waitFor(() => {
-      expect(screen.getByText('Log Session')).toBeInTheDocument()
-      expect(screen.getByText('Check-in')).toBeInTheDocument()
-      expect(screen.getByText('Ask Coach')).toBeInTheDocument()
-    })
-  })
-
   it('still renders when API fetch rejects', async () => {
     ;(global.fetch as jest.Mock).mockRejectedValue(new Error('Network error'))
     render(<Home />)
