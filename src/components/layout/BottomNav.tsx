@@ -14,7 +14,7 @@ const TABS = [
 ] as const
 
 /**
- * @description Fixed bottom navigation bar with 5 tabs. Uses the current
+ * @description Fixed bottom navigation bar with 6 tabs. Uses the current
  * pathname to highlight the active tab. Rendered inside the root layout so
  * it appears on every page.
  */
