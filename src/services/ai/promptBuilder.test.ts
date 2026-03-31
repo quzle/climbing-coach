@@ -136,7 +136,14 @@ describe('buildSystemPrompt', () => {
   })
 
   it('includes athlete profile information', () => {
-    const prompt = buildSystemPrompt(makeAthleteContext())
+    const prompt = buildSystemPrompt(makeAthleteContext({
+      currentProgramme: makeProgramme({
+        athlete_profile: {
+          current_grade_onsight: '6c/7a',
+          strengths: 'limestone and granite',
+        },
+      }),
+    }))
 
     expect(prompt).toContain('ATHLETE LEVEL')
     expect(prompt).toContain('Not specified')
@@ -149,10 +156,10 @@ describe('buildSystemPrompt', () => {
     expect(prompt).toContain('CURRENT ATHLETE CONTEXT')
   })
 
-  it('includes return-to-training protocol', () => {
+  it('includes progression and recovery rules', () => {
     const prompt = buildSystemPrompt(makeAthleteContext())
 
-    expect(prompt).toContain('PROGRESSION RULES')
+    expect(prompt).toContain('3:1 loading')
     expect(prompt).toContain('60%')
   })
 
