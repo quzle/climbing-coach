@@ -12,6 +12,23 @@ See `docs/architecture/overview.md` for full architecture documentation.
 
 ---
 
+## Database Rules
+
+- **All schema changes must go through a migration file** in `supabase/migrations/`. Never alter the remote database directly via the Supabase dashboard or any other means.
+- **`src/lib/database.types.ts` must never be edited manually.** It is generated exclusively by running:
+  ```
+  supabase gen types typescript --project-id <project-id> 2>/dev/null > src/lib/database.types.ts
+  ```
+  Redirect stderr to `/dev/null` to prevent the Supabase CLI update notice from being appended to the file. Run this command immediately after every `supabase db push`.
+- The correct sequence for any schema change is:
+  1. Write a new migration file in `supabase/migrations/`
+  2. Run `supabase db push` to apply it to the remote database
+  3. Regenerate `database.types.ts` via the CLI command above
+  4. Fix any downstream TypeScript errors caused by the updated types
+- If `database.types.ts` contains fields that application code has intentionally removed (e.g. after an ADR cutover), that means the migration to drop those columns has not been applied yet — write and push the migration rather than adjusting the types or working around them.
+
+---
+
 ## Architecture Rules
 
 - **API routes are thin.** Validate input with Zod, call one service function, return a response. No business logic, no direct database calls.
