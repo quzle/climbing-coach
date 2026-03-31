@@ -21,8 +21,6 @@ function makeSupabaseMock() {
     update: jest.fn().mockReturnThis(),
     delete: jest.fn().mockReturnThis(),
     eq: jest.fn().mockReturnThis(),
-    gte: jest.fn().mockReturnThis(),
-    lte: jest.fn().mockReturnThis(),
     order: jest.fn().mockReturnThis(),
     limit: jest.fn().mockReturnThis(),
     single: jest.fn().mockResolvedValue(mockResult),
@@ -41,6 +39,7 @@ function makeProgramme(overrides?: Partial<Programme>): Programme {
     notes: null,
     start_date: '2026-01-05',
     target_date: '2026-04-26',
+    status: 'active',
     athlete_profile: null,
     user_id: 'user-1',
     ...overrides,
@@ -77,14 +76,13 @@ describe('programmeRepository', () => {
     expect(result.data).toEqual(programme)
   })
 
-  it('getActiveProgramme returns the live programme for today', async () => {
+  it('getActiveProgramme returns the programme with status active', async () => {
     const programme = makeProgramme()
     mockChain.maybeSingle.mockResolvedValue({ data: programme, error: null })
 
     const result = await getActiveProgramme()
 
-    expect(mockChain.lte).toHaveBeenCalled()
-    expect(mockChain.gte).toHaveBeenCalled()
+    expect(mockChain.eq).toHaveBeenCalledWith('status', 'active')
     expect(result.data).toEqual(programme)
   })
 

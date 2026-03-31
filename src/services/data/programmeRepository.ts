@@ -6,11 +6,6 @@ import type {
   ProgrammeUpdate,
 } from '@/types'
 
-/** Returns today's date as an ISO date string (YYYY-MM-DD). */
-function today(): string {
-  return new Date().toISOString().split('T')[0]!
-}
-
 /**
  * @description Fetches all programmes ordered by most recent start date first.
  * @returns Array of programmes ordered by start_date descending
@@ -64,9 +59,9 @@ export async function getProgrammeById(
 }
 
 /**
- * @description Fetches the programme whose date range contains today
- * (start_date <= today <= target_date). Returns null if no programme is
- * currently active.
+ * @description Fetches the programme with status = 'active' for the current user.
+ * The partial unique index on (user_id) WHERE status = 'active' guarantees
+ * at most one row is returned.
  * @returns Active programme row, or null if none exists
  */
 export async function getActiveProgramme(): Promise<ApiResponse<Programme | null>> {
@@ -75,10 +70,7 @@ export async function getActiveProgramme(): Promise<ApiResponse<Programme | null
     const { data, error } = await supabase
       .from('programmes')
       .select('*')
-      .lte('start_date', today())
-      .gte('target_date', today())
-      .order('start_date', { ascending: false })
-      .limit(1)
+      .eq('status', 'active')
       .maybeSingle()
 
     if (error) {
