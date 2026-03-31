@@ -63,6 +63,24 @@ Two Supabase client factories exist in `src/lib/supabase/`:
 - API routes always use `server.ts`.
 - Client Components that need to read data call API routes — they do not query Supabase directly using `server.ts`.
 
+## Server Auth Helper
+
+`src/lib/supabase/get-current-user.ts` exports the canonical `getCurrentUser()` function for resolving the authenticated user server-side:
+
+```ts
+import { getCurrentUser } from '@/lib/supabase/get-current-user'
+
+// Inside an API route or Server Component:
+const user = await getCurrentUser() // throws 'Unauthenticated' if no valid session
+// user.id — the Supabase Auth UUID
+// user.email — the user's email address (may be undefined)
+```
+
+**Rules:**
+- All API routes that require authentication must call `getCurrentUser()` to identify the user. Never use a hardcoded user ID.
+- `getCurrentUser()` throws `Error('Unauthenticated')` if there is no valid session. API routes should catch this and return a `401` response.
+- Never call `getCurrentUser()` from a Client Component. Call it in an API route or Server Component only.
+
 ## Layered Architecture
 
 Each layer has a single responsibility. Violating these boundaries is the most common source of bugs and test difficulties.
