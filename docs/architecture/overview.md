@@ -81,6 +81,21 @@ const user = await getCurrentUser() // throws 'Unauthenticated' if no valid sess
 - `getCurrentUser()` throws `Error('Unauthenticated')` if there is no valid session. API routes should catch this and return a `401` response.
 - Never call `getCurrentUser()` from a Client Component. Call it in an API route or Server Component only.
 
+## Middleware and Route Gating
+
+`src/middleware.ts` runs on every request that is not a static asset. It:
+
+1. Refreshes the user's Supabase session by calling `supabase.auth.getUser()`.
+2. Redirects any unauthenticated request to `/auth/login` (307) unless the path starts with `/auth/`.
+
+**Public routes** (accessible without a valid session):
+- `/auth/login` — sign-in page
+- `/auth/callback` — auth code exchange
+
+All other routes — including `/`, `/api/**`, `/chat`, `/dev`, `/history`, `/profile`, `/programme/**`, `/readiness`, and `/session/**` — require an authenticated session.
+
+The middleware uses the anon key (`NEXT_PUBLIC_SUPABASE_ANON_KEY`) and **not** the service role secret. This is intentional: the anon key is safe for Edge/middleware because session validation only reads the JWT from cookies.
+
 ## Auth Entry Flow
 
 Authentication entry points for invited users live under `src/app/auth/`:

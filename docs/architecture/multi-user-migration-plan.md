@@ -147,8 +147,25 @@ Test coverage added:
 
 AUTH-2 establishes a working login UI and successful authenticated session entry flow. Route-level gating of protected pages remains in AUTH-3.
 
-- [ ] **AUTH-3** Update middleware for route gating and unauthenticated redirect handling
+- [x] **AUTH-3** Update middleware for route gating and unauthenticated redirect handling
   - Depends on: AUTH-2
+
+#### Phase 2 Implementation Notes (AUTH-3 completed 2026-03-31)
+
+Updated `src/middleware.ts` to gate all protected routes:
+
+- Added `isPublicPath()` helper: returns `true` for `/auth/**` routes (login, callback), which remain accessible without a session.
+- After refreshing the session via `supabase.auth.getUser()`, if no authenticated user is present and the request is not to a public path, the middleware redirects to `/auth/login` (307).
+- All other routes — including `/`, `/chat`, `/profile`, `/history`, `/programme/**`, `/readiness`, `/session/**`, `/dev`, and `/api/**` — require a valid session.
+- The existing matcher (excluding `_next/*`, `favicon.ico`, and static files) is unchanged.
+
+Test coverage added in `src/middleware.test.ts`:
+
+- Authenticated requests pass through for all protected and public routes (9 tests).
+- Unauthenticated requests to protected routes redirect to `/auth/login` with status 307 (9 tests).
+- Unauthenticated requests to `/auth/login` and `/auth/callback` are allowed through (2 tests).
+
+55 test suites, 444 tests pass.
 
 - [ ] **AUTH-4** Add shared server auth helper for `getCurrentUser()`
   - Depends on: AUTH-1

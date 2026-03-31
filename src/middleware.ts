@@ -1,7 +1,24 @@
 import { createServerClient } from '@supabase/ssr'
 import { NextResponse, type NextRequest } from 'next/server'
 
-export async function middleware(request: NextRequest) {
+/**
+ * @description Returns true if the given pathname is a public (unauthenticated)
+ * route that should be accessible without a valid session.
+ * @param pathname The URL pathname to check
+ * @returns Whether the path is publicly accessible
+ */
+function isPublicPath(pathname: string): boolean {
+  return pathname.startsWith('/auth/')
+}
+
+/**
+ * @description Next.js middleware that refreshes the Supabase session on every
+ * request and redirects unauthenticated users to the login page for all
+ * protected routes.
+ * @param request The incoming Next.js request
+ * @returns Either a pass-through response or a redirect to /auth/login
+ */
+export async function middleware(request: NextRequest): Promise<NextResponse> {
   let supabaseResponse = NextResponse.next({
     request,
   })
@@ -31,7 +48,16 @@ export async function middleware(request: NextRequest) {
 
   // Refresh the session — do not remove this call.
   // It keeps the user's session alive and syncs auth state.
-  await supabase.auth.getUser()
+  const {
+    data: { user },
+  } = await supabase.auth.getUser()
+
+  // Redirect unauthenticated users to the login page for all protected routes.
+  if (!user && !isPublicPath(request.nextUrl.pathname)) {
+    const loginUrl = request.nextUrl.clone()
+    loginUrl.pathname = '/auth/login'
+    return NextResponse.redirect(loginUrl)
+  }
 
   return supabaseResponse
 }
