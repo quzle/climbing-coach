@@ -146,7 +146,8 @@ describe('buildSystemPrompt', () => {
     }))
 
     expect(prompt).toContain('ATHLETE LEVEL')
-    expect(prompt).toContain('Not specified')
+    expect(prompt).toContain('6c/7a')
+    expect(prompt).toContain('limestone and granite')
   })
 
   it('includes injury area reference in athlete profile', () => {

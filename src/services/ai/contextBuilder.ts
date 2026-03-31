@@ -41,9 +41,10 @@ function computeDaysSince(dateString: string | null): number {
   if (dateString === null) return 999
   const then = new Date(dateString)
   const now = new Date()
-  // Zero out time components so we count whole calendar days, not hours
-  then.setHours(0, 0, 0, 0)
-  now.setHours(0, 0, 0, 0)
+  // Use UTC midnight so DST transitions don't shrink a 24-hour day to 23 hours
+  // and produce an off-by-one result (e.g. UK BST spring-forward weekend).
+  then.setUTCHours(0, 0, 0, 0)
+  now.setUTCHours(0, 0, 0, 0)
   const diffMs = now.getTime() - then.getTime()
   return Math.floor(diffMs / (1000 * 60 * 60 * 24))
 }
