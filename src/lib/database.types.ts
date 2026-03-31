@@ -294,7 +294,6 @@ export type Database = {
           life_stress: number
           notes: string | null
           readiness_score: number | null
-          shoulder_health: number
           sleep_quality: number
           user_id: string
         }
@@ -309,7 +308,6 @@ export type Database = {
           life_stress: number
           notes?: string | null
           readiness_score?: number | null
-          shoulder_health: number
           sleep_quality: number
           user_id: string
         }
@@ -324,7 +322,6 @@ export type Database = {
           life_stress?: number
           notes?: string | null
           readiness_score?: number | null
-          shoulder_health?: number
           sleep_quality?: number
           user_id?: string
         }
@@ -345,7 +342,6 @@ export type Database = {
           quality_rating: number | null
           rpe: number | null
           session_type: string
-          shoulder_flag: boolean
           user_id: string
         }
         Insert: {
@@ -362,7 +358,6 @@ export type Database = {
           quality_rating?: number | null
           rpe?: number | null
           session_type: string
-          shoulder_flag?: boolean
           user_id: string
         }
         Update: {
@@ -379,7 +374,6 @@ export type Database = {
           quality_rating?: number | null
           rpe?: number | null
           session_type?: string
-          shoulder_flag?: boolean
           user_id?: string
         }
         Relationships: [
