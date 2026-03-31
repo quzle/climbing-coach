@@ -71,7 +71,7 @@ Goal: create the final ownership model in the schema before application changes 
   - Deliverables:
     - partial unique index or equivalent constraint
 
-- [ ] **DB-6** Add supporting indexes for expected user-scoped query patterns
+- [x] **DB-6** Add supporting indexes for expected user-scoped query patterns
   - Depends on: DB-1, DB-2, DB-3
 
 - [ ] **DB-7** Regenerate and verify `src/lib/database.types.ts`
