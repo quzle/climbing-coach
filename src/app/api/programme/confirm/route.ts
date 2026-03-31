@@ -40,7 +40,22 @@ export async function POST(
     const { wizard_input, plan } = parsed.data
     const supabase = await createClient()
 
-    // 1. Create the programme record
+    // 1. Deactivate any existing active programme so the partial unique index
+    //    (user_id WHERE status = 'active') allows the new one to be inserted.
+    const { error: deactivateError } = await supabase
+      .from('programmes')
+      .update({ status: 'completed' })
+      .eq('status', 'active')
+
+    if (deactivateError) {
+      console.error('[POST /api/programme/confirm] deactivate existing programme:', deactivateError)
+      return NextResponse.json(
+        { data: null, error: 'Failed to deactivate existing programme.' },
+        { status: 500 },
+      )
+    }
+
+    // 2. Create the programme record
     const { data: programme, error: programmeError } = await supabase
       .from('programmes')
       .insert({
@@ -49,6 +64,7 @@ export async function POST(
         notes: plan.programme.notes ?? null,
         start_date: wizard_input.start_date,
         target_date: addDaysToDate(wizard_input.start_date, wizard_input.duration_weeks * 7 - 1),
+        status: 'active',
         athlete_profile: {
           current_grade_bouldering: wizard_input.current_grade_bouldering ?? null,
           current_grade_sport: wizard_input.current_grade_sport ?? null,
@@ -70,7 +86,7 @@ export async function POST(
       )
     }
 
-    // 2. Create mesocycles sequentially (each start date depends on the
+    // 3. Create mesocycles sequentially (each start date depends on the
     //    previous block's end date). Track the earliest to return as first_mesocycle_id.
     let blockStart = wizard_input.start_date
     let firstMesocycleId: string | null = null

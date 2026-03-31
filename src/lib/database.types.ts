@@ -262,6 +262,7 @@ export type Database = {
           name: string
           notes: string | null
           start_date: string
+          status: string
           target_date: string
           user_id: string
         }
@@ -273,6 +274,7 @@ export type Database = {
           name: string
           notes?: string | null
           start_date: string
+          status?: string
           target_date: string
           user_id: string
         }
@@ -284,6 +286,7 @@ export type Database = {
           name?: string
           notes?: string | null
           start_date?: string
+          status?: string
           target_date?: string
           user_id?: string
         }

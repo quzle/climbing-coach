@@ -38,14 +38,14 @@ Represents a structured training programme (e.g. a 12-week block targeting 7a on
 | `name` | `text` | No | Human-readable programme name |
 | `goal` | `text` | Yes | Target grade or objective (e.g. "7a onsight") |
 | `start_date` | `date` | Yes | Planned programme start date |
-| `end_date` | `date` | Yes | Planned programme end date |
-| `status` | `text` | No | `active`, `completed`, or `paused` |
+| `target_date` | `date` | Yes | Planned programme end date |
+| `status` | `text` | No | `active`, `completed`, or `paused` (default `active`) |
 | `notes` | `text` | Yes | Free-text notes about the programme |
 | `created_at` | `timestamptz` | No | Row creation timestamp |
 
 **Relationships:** None — top-level entity.
 
-**Business rules:** Only one programme should have `status = 'active'` at a time. Application logic enforces this; no database constraint.
+**Business rules:** Only one programme per user may have `status = 'active'` at any time. This is enforced by a partial unique index `idx_programmes_one_active_per_user ON programmes(user_id) WHERE (status = 'active')` (added in migration `20260330000002_add_programme_status_constraint.sql`). Before activating a new programme the existing active programme must be transitioned to `completed` or `paused`.
 
 ---
 
