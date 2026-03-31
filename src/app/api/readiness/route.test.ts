@@ -63,7 +63,6 @@ const validBody = {
   sleep_quality: 4,
   fatigue: 2,
   finger_health: 5,
-  shoulder_health: 4,
   injury_area_health: [],
   illness_flag: false,
   life_stress: 2,

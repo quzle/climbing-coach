@@ -13,40 +13,6 @@ type SupabaseErrorShape = {
   hint?: string
 }
 
-function hasLegacyRequiredColumnError(error: SupabaseErrorShape): boolean {
-  const message = `${error.message ?? ''} ${error.details ?? ''}`.toLowerCase()
-  if (error.code !== '23502') {
-    return false
-  }
-
-  return /shoulder_health/.test(message)
-}
-
-function getLegacyShoulderHealth(injuryAreaHealth: InjuryAreaHealth[]): number {
-  const shoulderHealthEntries = injuryAreaHealth
-    .filter((area) => area.area === 'shoulder_left' || area.area === 'shoulder_right')
-    .map((area) => area.health)
-
-  if (shoulderHealthEntries.length === 0) {
-    return 5
-  }
-
-  return Math.min(...shoulderHealthEntries)
-}
-
-function buildLegacyCompatiblePayload(
-  payload: ReadinessCheckinInsert,
-  injuryAreaHealth: InjuryAreaHealth[],
-): ReadinessCheckinInsert {
-  const legacyPayload = {
-    ...payload,
-    shoulder_health: getLegacyShoulderHealth(injuryAreaHealth),
-  }
-
-  // Cast is intentional: legacy keys are only needed for older production schemas.
-  return legacyPayload as unknown as ReadinessCheckinInsert
-}
-
 // =============================================================================
 // PRIVATE HELPERS
 // =============================================================================
@@ -194,31 +160,11 @@ export async function createCheckin(
       injury_area_health: injuryAreaHealth,
     }
 
-    let { data, error } = await supabase
+    const { data, error } = await supabase
       .from('readiness_checkins')
       .insert(insertPayload)
       .select()
       .single()
-
-    if (error) {
-      const firstError = error as SupabaseErrorShape
-
-      if (hasLegacyRequiredColumnError(firstError)) {
-        const legacyPayload = buildLegacyCompatiblePayload(insertPayload, injuryAreaHealth)
-        const retryResult = await supabase
-          .from('readiness_checkins')
-          .insert(legacyPayload)
-          .select()
-          .single()
-
-        data = retryResult.data
-        error = retryResult.error
-
-        if (retryResult.error === null) {
-          return { data: retryResult.data, error: null }
-        }
-      }
-    }
 
     if (error) {
       const supabaseError = error as SupabaseErrorShape
@@ -246,8 +192,7 @@ export async function createCheckin(
       if (
         supabaseError.code === 'PGRST204' ||
         supabaseError.code === '42703' ||
-        supabaseError.code === '42P01' ||
-        hasLegacyRequiredColumnError(supabaseError)
+        supabaseError.code === '42P01'
       ) {
         return {
           data: null,

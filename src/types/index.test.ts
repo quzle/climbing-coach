@@ -79,7 +79,6 @@ describe('AthleteContext', () => {
       quality_rating: 8,
       rpe: 7,
       injury_flags: null,
-      shoulder_flag: false,
       user_id: 'user-1',
     }
 
@@ -193,7 +192,6 @@ describe('ApiResponse', () => {
       quality_rating: 9,
       rpe: 6,
       injury_flags: null,
-      shoulder_flag: false,
       user_id: 'user-1',
     }
 

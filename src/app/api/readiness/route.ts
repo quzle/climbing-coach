@@ -24,7 +24,6 @@ const readinessSchema = z.object({
   sleep_quality: z.number().int().min(1).max(5),
   fatigue: z.number().int().min(1).max(5),
   finger_health: z.number().int().min(1).max(5),
-  shoulder_health: z.number().int().min(1).max(5),
   injury_area_health: z.array(injuryAreaHealthItemSchema).default([]),
   illness_flag: z.boolean(),
   life_stress: z.number().int().min(1).max(5),

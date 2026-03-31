@@ -103,7 +103,6 @@ const mockCheckin = {
   sleep_quality: 4,
   fatigue: 3,
   finger_health: 5,
-  shoulder_health: 4,
   life_stress: 2,
   illness_flag: false,
   notes: null,

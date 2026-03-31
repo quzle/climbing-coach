@@ -61,7 +61,6 @@ function makeReadinessCheckin(
     finger_health: 4,
     life_stress: 2,
     illness_flag: false,
-    shoulder_health: 4,
     injury_area_health: null,
     readiness_score: 3.8,
     notes: null,
@@ -84,7 +83,6 @@ function makeCheckinInput(
     finger_health: 4,
     life_stress: 2,
     illness_flag: false,
-    shoulder_health: 4,
     notes: null,
     user_id: 'user-1',
     ...overrides,
@@ -371,29 +369,6 @@ describe('createCheckin', () => {
     expect(result.error).toBe(
       'Readiness database schema is out of date. Apply latest Supabase migrations.',
     )
-  })
-
-  it('retries insert with legacy columns when old required fields are missing', async () => {
-    const createdRecord = makeReadinessCheckin()
-    mockChain.single
-      .mockResolvedValueOnce({
-        data: null,
-        error: {
-          code: '23502',
-          message: 'null value in column "shoulder_health" of relation "readiness_checkins" violates not-null constraint',
-        },
-      })
-      .mockResolvedValueOnce({ data: createdRecord, error: null })
-
-    const result = await createCheckin(makeCheckinInput())
-
-    expect(mockChain.insert).toHaveBeenCalledTimes(2)
-    const retryPayload = mockChain.insert.mock.calls[1]?.[0] as Record<string, unknown>
-    expect(retryPayload['shoulder_health']).toBeDefined()
-    expect(retryPayload['overall_fatigue']).toBeUndefined()
-    expect(retryPayload['motivation']).toBeUndefined()
-    expect(result.data).toEqual(createdRecord)
-    expect(result.error).toBeNull()
   })
 })
 
