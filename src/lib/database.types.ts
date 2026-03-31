@@ -14,44 +14,6 @@ export type Database = {
   }
   public: {
     Tables: {
-      profiles: {
-        Row: {
-          id: string
-          email: string
-          display_name: string | null
-          role: 'user' | 'superuser'
-          invite_status: 'invited' | 'active'
-          created_at: string
-          updated_at: string
-        }
-        Insert: {
-          id: string
-          email: string
-          display_name?: string | null
-          role?: 'user' | 'superuser'
-          invite_status?: 'invited' | 'active'
-          created_at?: string
-          updated_at?: string
-        }
-        Update: {
-          id?: string
-          email?: string
-          display_name?: string | null
-          role?: 'user' | 'superuser'
-          invite_status?: 'invited' | 'active'
-          created_at?: string
-          updated_at?: string
-        }
-        Relationships: [
-          {
-            foreignKeyName: "profiles_id_fkey"
-            columns: ["id"]
-            isOneToOne: true
-            referencedRelation: "users"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
       chat_messages: {
         Row: {
           content: string
@@ -88,13 +50,6 @@ export type Database = {
             referencedRelation: "chat_threads"
             referencedColumns: ["id"]
           },
-          {
-            foreignKeyName: "chat_messages_user_id_fkey"
-            columns: ["user_id"]
-            isOneToOne: false
-            referencedRelation: "users"
-            referencedColumns: ["id"]
-          },
         ]
       }
       chat_threads: {
@@ -119,15 +74,34 @@ export type Database = {
           updated_at?: string | null
           user_id?: string
         }
-        Relationships: [
-          {
-            foreignKeyName: "chat_threads_user_id_fkey"
-            columns: ["user_id"]
-            isOneToOne: false
-            referencedRelation: "users"
-            referencedColumns: ["id"]
-          },
-        ]
+        Relationships: []
+      }
+      injury_areas: {
+        Row: {
+          added_at: string
+          archived_at: string | null
+          area: string
+          id: string
+          is_active: boolean
+          user_id: string
+        }
+        Insert: {
+          added_at?: string
+          archived_at?: string | null
+          area: string
+          id?: string
+          is_active?: boolean
+          user_id: string
+        }
+        Update: {
+          added_at?: string
+          archived_at?: string | null
+          area?: string
+          id?: string
+          is_active?: boolean
+          user_id?: string
+        }
+        Relationships: []
       }
       mesocycles: {
         Row: {
@@ -181,13 +155,6 @@ export type Database = {
             columns: ["programme_id"]
             isOneToOne: false
             referencedRelation: "programmes"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "mesocycles_user_id_fkey"
-            columns: ["user_id"]
-            isOneToOne: false
-            referencedRelation: "users"
             referencedColumns: ["id"]
           },
         ]
@@ -244,14 +211,37 @@ export type Database = {
             referencedRelation: "weekly_templates"
             referencedColumns: ["id"]
           },
-          {
-            foreignKeyName: "planned_sessions_user_id_fkey"
-            columns: ["user_id"]
-            isOneToOne: false
-            referencedRelation: "users"
-            referencedColumns: ["id"]
-          },
         ]
+      }
+      profiles: {
+        Row: {
+          created_at: string
+          display_name: string | null
+          email: string
+          id: string
+          invite_status: string
+          role: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          display_name?: string | null
+          email: string
+          id: string
+          invite_status?: string
+          role?: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          display_name?: string | null
+          email?: string
+          id?: string
+          invite_status?: string
+          role?: string
+          updated_at?: string
+        }
+        Relationships: []
       }
       programmes: {
         Row: {
@@ -290,50 +280,7 @@ export type Database = {
           target_date?: string
           user_id?: string
         }
-        Relationships: [
-          {
-            foreignKeyName: "programmes_user_id_fkey"
-            columns: ["user_id"]
-            isOneToOne: false
-            referencedRelation: "users"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
-      injury_areas: {
-        Row: {
-          id: string
-          area: string
-          is_active: boolean
-          added_at: string
-          archived_at: string | null
-          user_id: string
-        }
-        Insert: {
-          id?: string
-          area: string
-          is_active?: boolean
-          added_at?: string
-          archived_at?: string | null
-          user_id: string
-        }
-        Update: {
-          id?: string
-          area?: string
-          is_active?: boolean
-          added_at?: string
-          archived_at?: string | null
-          user_id?: string
-        }
-        Relationships: [
-          {
-            foreignKeyName: "injury_areas_user_id_fkey"
-            columns: ["user_id"]
-            isOneToOne: false
-            referencedRelation: "users"
-            referencedColumns: ["id"]
-          },
-        ]
+        Relationships: []
       }
       readiness_checkins: {
         Row: {
@@ -347,6 +294,7 @@ export type Database = {
           life_stress: number
           notes: string | null
           readiness_score: number | null
+          shoulder_health: number
           sleep_quality: number
           user_id: string
         }
@@ -361,6 +309,7 @@ export type Database = {
           life_stress: number
           notes?: string | null
           readiness_score?: number | null
+          shoulder_health: number
           sleep_quality: number
           user_id: string
         }
@@ -375,18 +324,11 @@ export type Database = {
           life_stress?: number
           notes?: string | null
           readiness_score?: number | null
+          shoulder_health?: number
           sleep_quality?: number
           user_id?: string
         }
-        Relationships: [
-          {
-            foreignKeyName: "readiness_checkins_user_id_fkey"
-            columns: ["user_id"]
-            isOneToOne: false
-            referencedRelation: "users"
-            referencedColumns: ["id"]
-          },
-        ]
+        Relationships: []
       }
       session_logs: {
         Row: {
@@ -395,6 +337,7 @@ export type Database = {
           deviation_from_plan: string | null
           duration_mins: number | null
           id: string
+          injury_flags: Json | null
           location: string | null
           log_data: Json | null
           notes: string | null
@@ -402,7 +345,7 @@ export type Database = {
           quality_rating: number | null
           rpe: number | null
           session_type: string
-          injury_flags: Json | null
+          shoulder_flag: boolean
           user_id: string
         }
         Insert: {
@@ -419,6 +362,7 @@ export type Database = {
           quality_rating?: number | null
           rpe?: number | null
           session_type: string
+          shoulder_flag?: boolean
           user_id: string
         }
         Update: {
@@ -435,6 +379,7 @@ export type Database = {
           quality_rating?: number | null
           rpe?: number | null
           session_type?: string
+          shoulder_flag?: boolean
           user_id?: string
         }
         Relationships: [
@@ -443,13 +388,6 @@ export type Database = {
             columns: ["planned_session_id"]
             isOneToOne: false
             referencedRelation: "planned_sessions"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "session_logs_user_id_fkey"
-            columns: ["user_id"]
-            isOneToOne: false
-            referencedRelation: "users"
             referencedColumns: ["id"]
           },
         ]
@@ -497,13 +435,6 @@ export type Database = {
             columns: ["mesocycle_id"]
             isOneToOne: false
             referencedRelation: "mesocycles"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "weekly_templates_user_id_fkey"
-            columns: ["user_id"]
-            isOneToOne: false
-            referencedRelation: "users"
             referencedColumns: ["id"]
           },
         ]
@@ -646,3 +577,5 @@ export const Constants = {
     Enums: {},
   },
 } as const
+A new version of Supabase CLI is available: v2.84.2 (currently installed v2.75.0)
+We recommend updating regularly for new features and bug fixes: https://supabase.com/docs/guides/cli/getting-started#updating-the-supabase-cli

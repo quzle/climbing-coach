@@ -5,6 +5,18 @@
 -- NOT NULL is safe here because the database is recreated for the multi-user
 -- MVP and backwards-compatible data migration is not required (see ADR 005).
 
+-- Clear legacy single-user data so NOT NULL constraints can be applied cleanly.
+TRUNCATE TABLE
+  weekly_templates,
+  injury_areas,
+  chat_messages,
+  readiness_checkins,
+  session_logs,
+  planned_sessions,
+  mesocycles,
+  programmes
+CASCADE;
+
 ALTER TABLE programmes
   ADD COLUMN user_id uuid NOT NULL REFERENCES auth.users(id);
 
