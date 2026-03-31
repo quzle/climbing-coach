@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
+import { requireSuperuser } from '@/lib/supabase/get-current-user'
 import type { ApiResponse } from '@/types'
 
 export type ClearAllResult = {
@@ -28,6 +29,8 @@ export async function POST(): Promise<NextResponse<ApiResponse<ClearAllResult>>>
   }
 
   try {
+    await requireSuperuser()
+
     const supabase = await createClient()
     const tablesCleared: Record<string, number> = {}
 
@@ -53,6 +56,18 @@ export async function POST(): Promise<NextResponse<ApiResponse<ClearAllResult>>>
     return NextResponse.json({ data: { tablesCleared }, error: null }, { status: 200 })
   } catch (error) {
     console.error('[POST /api/dev/clear-all]', error)
+
+    if (error instanceof Error && error.message === 'Unauthenticated') {
+      return NextResponse.json(
+        { data: null, error: 'Authentication required.' },
+        { status: 401 },
+      )
+    }
+
+    if (error instanceof Error && error.message === 'Forbidden') {
+      return NextResponse.json({ data: null, error: 'Forbidden.' }, { status: 403 })
+    }
+
     return NextResponse.json(
       { data: null, error: 'Failed to clear database.' },
       { status: 500 },

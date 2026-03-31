@@ -63,22 +63,26 @@ Two Supabase client factories exist in `src/lib/supabase/`:
 - API routes always use `server.ts`.
 - Client Components that need to read data call API routes — they do not query Supabase directly using `server.ts`.
 
-## Server Auth Helper
+## Server Auth Helpers
 
-`src/lib/supabase/get-current-user.ts` exports the canonical `getCurrentUser()` function for resolving the authenticated user server-side:
+`src/lib/supabase/get-current-user.ts` exports the canonical `getCurrentUser()` and `requireSuperuser()` functions for server-side identity and role checks:
 
 ```ts
-import { getCurrentUser } from '@/lib/supabase/get-current-user'
+import { getCurrentUser, requireSuperuser } from '@/lib/supabase/get-current-user'
 
 // Inside an API route or Server Component:
 const user = await getCurrentUser() // throws 'Unauthenticated' if no valid session
 // user.id — the Supabase Auth UUID
 // user.email — the user's email address (may be undefined)
+
+await requireSuperuser() // throws 'Unauthenticated' or 'Forbidden' for privileged actions
 ```
 
 **Rules:**
 - All API routes that require authentication must call `getCurrentUser()` to identify the user. Never use a hardcoded user ID.
 - `getCurrentUser()` throws `Error('Unauthenticated')` if there is no valid session. API routes should catch this and return a `401` response.
+- Routes that execute privileged actions (for example under `/api/dev`) must call `requireSuperuser()` before performing the action.
+- `requireSuperuser()` validates `profiles.role === 'superuser'` server-side and throws `Error('Forbidden')` for non-superusers.
 - Never call `getCurrentUser()` from a Client Component. Call it in an API route or Server Component only.
 
 ## Middleware and Route Gating

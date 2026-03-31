@@ -1,4 +1,5 @@
 import { createClient } from '@/lib/supabase/server'
+import { getProfile } from '@/services/data/profilesRepository'
 
 export type AuthUser = {
   id: string
@@ -27,4 +28,25 @@ export async function getCurrentUser(): Promise<AuthUser> {
     id: user.id,
     email: user.email,
   }
+}
+
+/**
+ * @description Ensures the authenticated user has the superuser role before
+ * allowing privileged server-side actions.
+ * @returns The authenticated user payload
+ * @throws {Error} If unauthenticated, if authorization cannot be checked, or if the user is not a superuser
+ */
+export async function requireSuperuser(): Promise<AuthUser> {
+  const user = await getCurrentUser()
+  const profileResult = await getProfile(user.id)
+
+  if (profileResult.error) {
+    throw new Error('Authorization check failed')
+  }
+
+  if (!profileResult.data || profileResult.data.role !== 'superuser') {
+    throw new Error('Forbidden')
+  }
+
+  return user
 }

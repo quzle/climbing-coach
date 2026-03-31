@@ -1,11 +1,17 @@
 import { createClient } from '@/lib/supabase/server'
-import { getCurrentUser } from './get-current-user'
+import { getProfile } from '@/services/data/profilesRepository'
+import { getCurrentUser, requireSuperuser } from './get-current-user'
 
 jest.mock('@/lib/supabase/server', () => ({
   createClient: jest.fn(),
 }))
 
+jest.mock('@/services/data/profilesRepository', () => ({
+  getProfile: jest.fn(),
+}))
+
 const mockGetUser = jest.fn()
+const mockGetProfile = getProfile as jest.Mock
 
 beforeEach(() => {
   jest.clearAllMocks()
@@ -53,5 +59,70 @@ describe('getCurrentUser', () => {
     })
 
     await expect(getCurrentUser()).rejects.toThrow('Unauthenticated')
+  })
+})
+
+describe('requireSuperuser', () => {
+  it('returns user when authenticated role is superuser', async () => {
+    mockGetUser.mockResolvedValue({
+      data: { user: { id: 'super-123', email: 'admin@example.com' } },
+      error: null,
+    })
+    mockGetProfile.mockResolvedValue({
+      data: {
+        id: 'super-123',
+        email: 'admin@example.com',
+        role: 'superuser',
+        created_at: '2026-03-31T10:00:00.000Z',
+        invite_status: 'active',
+      },
+      error: null,
+    })
+
+    const result = await requireSuperuser()
+
+    expect(result).toEqual({ id: 'super-123', email: 'admin@example.com' })
+    expect(mockGetProfile).toHaveBeenCalledWith('super-123')
+  })
+
+  it('throws when user profile is not superuser', async () => {
+    mockGetUser.mockResolvedValue({
+      data: { user: { id: 'user-123', email: 'user@example.com' } },
+      error: null,
+    })
+    mockGetProfile.mockResolvedValue({
+      data: {
+        id: 'user-123',
+        email: 'user@example.com',
+        role: 'user',
+        created_at: '2026-03-31T10:00:00.000Z',
+        invite_status: 'active',
+      },
+      error: null,
+    })
+
+    await expect(requireSuperuser()).rejects.toThrow('Forbidden')
+  })
+
+  it('throws when profile lookup fails', async () => {
+    mockGetUser.mockResolvedValue({
+      data: { user: { id: 'user-123', email: 'user@example.com' } },
+      error: null,
+    })
+    mockGetProfile.mockResolvedValue({
+      data: null,
+      error: 'Failed to retrieve profile',
+    })
+
+    await expect(requireSuperuser()).rejects.toThrow('Authorization check failed')
+  })
+
+  it('throws when auth context is unauthenticated', async () => {
+    mockGetUser.mockResolvedValue({
+      data: { user: null },
+      error: { message: 'JWT missing' },
+    })
+
+    await expect(requireSuperuser()).rejects.toThrow('Unauthenticated')
   })
 })

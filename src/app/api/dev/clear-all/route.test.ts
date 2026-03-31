@@ -2,13 +2,19 @@
  * @jest-environment node
  */
 import { createClient } from '@/lib/supabase/server'
+import { requireSuperuser } from '@/lib/supabase/get-current-user'
 import { POST } from './route'
 
 jest.mock('@/lib/supabase/server', () => ({
   createClient: jest.fn(),
 }))
 
+jest.mock('@/lib/supabase/get-current-user', () => ({
+  requireSuperuser: jest.fn(),
+}))
+
 const mockCreateClient = createClient as jest.Mock
+const mockRequireSuperuser = requireSuperuser as jest.Mock
 
 function makeMockSupabase(
   deleteResult: { data: { id: string }[] | null; error: null | { message: string } },
@@ -23,6 +29,7 @@ function makeMockSupabase(
 describe('POST /api/dev/clear-all', () => {
   beforeEach(() => {
     jest.clearAllMocks()
+    mockRequireSuperuser.mockResolvedValue({ id: 'super-123', email: 'admin@example.com' })
   })
 
   it('returns 200 with per-table row counts on success', async () => {
@@ -85,5 +92,29 @@ describe('POST /api/dev/clear-all', () => {
     expect(response.status).toBe(500)
     expect(body.data).toBeNull()
     expect(body.error).toContain('Failed to clear table')
+  })
+
+  it('returns 401 when requester is unauthenticated', async () => {
+    mockRequireSuperuser.mockRejectedValue(new Error('Unauthenticated'))
+
+    const response = await POST()
+    const body = await response.json()
+
+    expect(response.status).toBe(401)
+    expect(body.data).toBeNull()
+    expect(body.error).toBe('Authentication required.')
+    expect(mockCreateClient).not.toHaveBeenCalled()
+  })
+
+  it('returns 403 when requester is not a superuser', async () => {
+    mockRequireSuperuser.mockRejectedValue(new Error('Forbidden'))
+
+    const response = await POST()
+    const body = await response.json()
+
+    expect(response.status).toBe(403)
+    expect(body.data).toBeNull()
+    expect(body.error).toBe('Forbidden.')
+    expect(mockCreateClient).not.toHaveBeenCalled()
   })
 })

@@ -762,6 +762,33 @@ Archive an injury area (soft delete). The area name is URL-encoded in the path.
 
 ## Dev
 
+All `/api/dev/*` routes are disabled in production (`404`) and privileged handlers require a server-side superuser check.
+
+### `POST /api/dev/clear-all`
+
+Deletes all application rows in FK-safe order for local/dev cleanup. Requires authenticated `superuser` role.
+
+**Response** `200`
+
+```ts
+{
+  data: {
+    tablesCleared: Record<string, number> // deleted-row count by table
+  },
+  error: null
+}
+```
+
+**Status codes**
+
+| Code | Meaning |
+|---|---|
+| `200` | Database cleared successfully |
+| `401` | Not authenticated |
+| `403` | Authenticated but not a superuser |
+| `404` | Route disabled in production |
+| `500` | Failed to clear one or more tables |
+
 ### `POST /api/dev/seed-programme`
 
 Seeds a deterministic Phase 2 starter programme with mesocycles, weekly templates, and planned sessions. **Disabled in production** — returns `404` when `NODE_ENV=production`.
