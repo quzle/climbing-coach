@@ -1,4 +1,6 @@
 import { GoogleGenerativeAI } from '@google/generative-ai'
+import { logError, logInfo, logWarn } from '@/lib/logger'
+import { createClient } from '@/lib/supabase/server'
 import type { AthleteContext, ChatMessage } from '@/types'
 import { buildAthleteContext } from '@/services/ai/contextBuilder'
 import { buildSystemPrompt, buildSessionPlanSystemPrompt } from '@/services/ai/promptBuilder'
@@ -34,6 +36,12 @@ jest.mock('@/services/ai/contextBuilder', () => ({
   formatContextForPrompt: jest.fn().mockReturnValue('=== MOCK CONTEXT ==='),
 }))
 
+jest.mock('@/lib/logger', () => ({
+  logError: jest.fn(),
+  logInfo: jest.fn(),
+  logWarn: jest.fn(),
+}))
+
 // Mock 3 — Prompt builder
 jest.mock('@/services/ai/promptBuilder', () => ({
   buildSystemPrompt: jest.fn().mockReturnValue('Mock system prompt'),
@@ -55,6 +63,10 @@ jest.mock('@/lib/supabase/server', () => ({
 const mockBuildAthleteContext = buildAthleteContext as jest.Mock
 const mockBuildSystemPrompt = buildSystemPrompt as jest.Mock
 const mockBuildSessionPlanSystemPrompt = buildSessionPlanSystemPrompt as jest.Mock
+const mockCreateClient = createClient as jest.Mock
+const mockLogError = logError as jest.Mock
+const mockLogInfo = logInfo as jest.Mock
+const mockLogWarn = logWarn as jest.Mock
 
 // =============================================================================
 // HELPERS
@@ -172,6 +184,19 @@ describe('sendChatMessage', () => {
     const result = await sendChatMessage('What should I train today?', [])
 
     expect(result.response).toBe('This is the mock coach response.')
+    expect(mockLogInfo).toHaveBeenCalledWith(
+      expect.objectContaining({
+        event: 'ai_chat_request_executed',
+        outcome: 'success',
+        entityType: 'ai_chat_request',
+        data: expect.objectContaining({
+          history_count: 0,
+          message_length: 26,
+          model: 'gemini-3.1-flash-lite-preview',
+          response_length: 32,
+        }),
+      }),
+    )
   })
 
   it('returns warnings from athlete context', async () => {
@@ -275,6 +300,35 @@ describe('sendChatMessage', () => {
     await expect(sendChatMessage('Hello', [])).rejects.toThrow(
       'coach is temporarily unavailable',
     )
+    expect(mockLogError).toHaveBeenCalledWith(
+      expect.objectContaining({
+        event: 'ai_chat_request_executed',
+        outcome: 'failure',
+        entityType: 'ai_chat_request',
+        error: expect.any(Error),
+      }),
+    )
+  })
+
+  it('logs a warning when chat message persistence fails', async () => {
+    mockCreateClient.mockResolvedValue({
+      from: jest.fn().mockReturnValue({
+        insert: jest.fn().mockResolvedValue({
+          error: { message: 'insert failed' },
+        }),
+      }),
+    })
+
+    await sendChatMessage('Hello', [])
+    await new Promise((resolve) => setTimeout(resolve, 0))
+
+    expect(mockLogWarn).toHaveBeenCalledWith(
+      expect.objectContaining({
+        event: 'chat_message_persist_failed',
+        outcome: 'failure',
+        entityType: 'chat_message',
+      }),
+    )
   })
 
   it('throws when GEMINI_API_KEY is not set', async () => {
@@ -296,6 +350,17 @@ describe('generateSessionPlan', () => {
 
     expect(typeof result).toBe('string')
     expect(result.length).toBeGreaterThan(0)
+    expect(mockLogInfo).toHaveBeenCalledWith(
+      expect.objectContaining({
+        event: 'ai_session_plan_generated',
+        outcome: 'success',
+        entityType: 'ai_session_plan',
+        data: expect.objectContaining({
+          session_type: 'bouldering',
+          model: 'gemini-3.1-flash-lite-preview',
+        }),
+      }),
+    )
   })
 
   it('includes session type in the generation instruction', async () => {
@@ -323,6 +388,14 @@ describe('generateSessionPlan', () => {
 
     await expect(generateSessionPlan('bouldering')).rejects.toThrow(
       'coach is temporarily unavailable',
+    )
+    expect(mockLogError).toHaveBeenCalledWith(
+      expect.objectContaining({
+        event: 'ai_session_plan_generated',
+        outcome: 'failure',
+        entityType: 'ai_session_plan',
+        error: expect.any(Error),
+      }),
     )
   })
 })

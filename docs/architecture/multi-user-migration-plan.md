@@ -204,16 +204,16 @@ Results: all 56 suites, 449 tests passed.
 
 Goal: introduce structured operational logging before feature refactors.
 
-- [ ] **LOG-1** Create structured logger utility
+- [x] **LOG-1** Create structured logger utility
   - Depends on: none
 
-- [ ] **LOG-2** Add auth and access-control event logging
+- [x] **LOG-2** Add auth and access-control event logging
   - Depends on: LOG-1, AUTH-4
 
-- [ ] **LOG-3** Define the route logging standard and add it to repository instructions
+- [x] **LOG-3** Define the route logging standard and add it to repository instructions
   - Depends on: LOG-1
 
-- [ ] **LOG-4** Add AI/chat request logging contract
+- [x] **LOG-4** Add AI/chat request logging contract
   - Depends on: LOG-1
 
 ### Phase 4: Profiles Repository

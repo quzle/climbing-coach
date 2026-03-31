@@ -1,5 +1,6 @@
 import { GoogleGenerativeAI } from '@google/generative-ai'
 import { createClient } from '@/lib/supabase/server'
+import { logError, logInfo, logWarn } from '@/lib/logger'
 import { buildAthleteContext } from '@/services/ai/contextBuilder'
 import { buildSystemPrompt, buildSessionPlanSystemPrompt } from '@/services/ai/promptBuilder'
 import { SINGLE_USER_PLACEHOLDER_ID } from '@/lib/placeholder-user-id'
@@ -94,10 +95,28 @@ async function saveMessageToDatabase(message: ChatMessageInsert): Promise<void> 
     const supabase = await createClient()
     const { error } = await supabase.from('chat_messages').insert(message)
     if (error) {
-      console.error('[geminiClient.saveMessageToDatabase] insert failed:', error)
+      logWarn({
+        event: 'chat_message_persist_failed',
+        outcome: 'failure',
+        userId: message.user_id,
+        entityType: 'chat_message',
+        data: {
+          role: message.role,
+        },
+        error,
+      })
     }
   } catch (err) {
-    console.error('[geminiClient.saveMessageToDatabase] unexpected error:', err)
+    logError({
+      event: 'chat_message_persist_failed',
+      outcome: 'failure',
+      userId: message.user_id,
+      entityType: 'chat_message',
+      data: {
+        role: message.role,
+      },
+      error: err,
+    })
   }
 }
 
@@ -122,6 +141,8 @@ export async function sendChatMessage(
   userMessage: string,
   existingHistory: ChatMessage[],
 ): Promise<{ response: string; warnings: string[] }> {
+  const startedAt = Date.now()
+
   try {
     // Step 1: Build athlete context
     const context = await buildAthleteContext()
@@ -165,12 +186,40 @@ export async function sendChatMessage(
     })
 
     // Step 8: Return response with active warnings
+    logInfo({
+      event: 'ai_chat_request_executed',
+      outcome: 'success',
+      userId: SINGLE_USER_PLACEHOLDER_ID,
+      entityType: 'ai_chat_request',
+      durationMs: Date.now() - startedAt,
+      data: {
+        history_count: existingHistory.length,
+        message_length: userMessage.length,
+        model: MODEL_NAME,
+        response_length: responseText.length,
+        warnings_count: context.warnings.length,
+      },
+    })
+
     return {
       response: responseText,
       warnings: context.warnings,
     }
   } catch (err) {
-    console.error('[geminiClient.sendChatMessage]', err)
+    logError({
+      event: 'ai_chat_request_executed',
+      outcome: 'failure',
+      userId: SINGLE_USER_PLACEHOLDER_ID,
+      entityType: 'ai_chat_request',
+      durationMs: Date.now() - startedAt,
+      data: {
+        history_count: existingHistory.length,
+        message_length: userMessage.length,
+        model: MODEL_NAME,
+      },
+      error: err,
+    })
+
     throw new Error('The coach is temporarily unavailable. Please try again.')
   }
 }
@@ -192,6 +241,8 @@ export async function generateSessionPlan(
   sessionType: string,
   additionalContext?: string,
 ): Promise<string> {
+  const startedAt = Date.now()
+
   try {
     const context = await buildAthleteContext()
     const systemPrompt = buildSessionPlanSystemPrompt(context)
@@ -216,9 +267,38 @@ export async function generateSessionPlan(
 
     const chat = model.startChat({ history: [] })
     const result = await chat.sendMessage(generationInstruction)
-    return result.response.text()
+    const responseText = result.response.text()
+
+    logInfo({
+      event: 'ai_session_plan_generated',
+      outcome: 'success',
+      userId: SINGLE_USER_PLACEHOLDER_ID,
+      entityType: 'ai_session_plan',
+      durationMs: Date.now() - startedAt,
+      data: {
+        session_type: sessionType,
+        additional_context_length: additionalContext?.length ?? 0,
+        model: MODEL_NAME,
+        response_length: responseText.length,
+      },
+    })
+
+    return responseText
   } catch (err) {
-    console.error('[geminiClient.generateSessionPlan]', err)
+    logError({
+      event: 'ai_session_plan_generated',
+      outcome: 'failure',
+      userId: SINGLE_USER_PLACEHOLDER_ID,
+      entityType: 'ai_session_plan',
+      durationMs: Date.now() - startedAt,
+      data: {
+        session_type: sessionType,
+        additional_context_length: additionalContext?.length ?? 0,
+        model: MODEL_NAME,
+      },
+      error: err,
+    })
+
     throw new Error('The coach is temporarily unavailable. Please try again.')
   }
 }

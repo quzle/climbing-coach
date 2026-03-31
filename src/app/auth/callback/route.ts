@@ -1,6 +1,7 @@
 import { NextResponse, type NextRequest } from 'next/server'
 import { createServerClient } from '@supabase/ssr'
 import { cookies } from 'next/headers'
+import { logError, logInfo, logWarn } from '@/lib/logger'
 import { finalizeInvitedUserProfile } from '@/services/auth/authLifecycleService'
 
 /**
@@ -47,8 +48,14 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
 
     if (!error) {
       if (!user?.email) {
-        console.error('[auth/callback] missing user email after code exchange', {
+        logError({
+          event: 'login_failure',
+          outcome: 'failure',
+          route: '/auth/callback',
           userId: user?.id ?? null,
+          data: {
+            reason: 'missing_email_after_code_exchange',
+          },
         })
         return NextResponse.redirect(`${origin}/auth/login?error=callback_failed`)
       }
@@ -59,20 +66,55 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
       })
 
       if (finalizeResult.error !== null) {
-        console.error(
-          '[auth/callback] finalizeInvitedUserProfile failed:',
-          finalizeResult.error,
-        )
+        logError({
+          event: 'login_failure',
+          outcome: 'failure',
+          route: '/auth/callback',
+          userId: user.id,
+          data: {
+            reason: 'profile_finalization_failed',
+          },
+          error: finalizeResult.error,
+        })
         return NextResponse.redirect(`${origin}/auth/login?error=callback_failed`)
       }
 
       // Validate the `next` parameter to prevent open redirect attacks.
       const safeNext = next.startsWith('/') ? next : '/'
+
+      logInfo({
+        event: 'login_success',
+        outcome: 'success',
+        route: '/auth/callback',
+        userId: user.id,
+        data: {
+          auth_flow: 'invite_callback',
+          redirect_path: safeNext,
+        },
+      })
+
       return NextResponse.redirect(`${origin}${safeNext}`)
     }
 
-    console.error('[auth/callback] exchangeCodeForSession failed:', error.message)
+    logWarn({
+      event: 'login_failure',
+      outcome: 'failure',
+      route: '/auth/callback',
+      data: {
+        reason: 'exchange_code_for_session_failed',
+      },
+      error: error.message,
+    })
   }
+
+  logWarn({
+    event: 'login_failure',
+    outcome: 'failure',
+    route: '/auth/callback',
+    data: {
+      reason: 'missing_auth_code',
+    },
+  })
 
   return NextResponse.redirect(`${origin}/auth/login?error=callback_failed`)
 }

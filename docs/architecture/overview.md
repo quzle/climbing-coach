@@ -139,6 +139,20 @@ Each layer has a single responsibility. Violating these boundaries is the most c
 
 No secret must ever appear in a `NEXT_PUBLIC_` prefixed environment variable. The `NEXT_PUBLIC_` prefix causes Next.js to bundle the value into the client-side JavaScript bundle.
 
+## Structured Logging
+
+Structured operational logging is centralized in `src/lib/logger.ts`.
+
+- Use `createStructuredLog()` when a caller needs the sanitized payload without emitting it yet.
+- Use `logInfo()`, `logWarn()`, and `logError()` to emit structured logs with stable snake_case fields.
+- Standard fields align with ADR 005: `event`, `user_id`, `profile_role`, `route`, `entity_type`, `entity_id`, `outcome`, `duration_ms`, `request_id`, and `environment`.
+- Additional metadata belongs under `data` and is sanitized before logging.
+- Sensitive values such as tokens, cookies, passwords, prompts, chat message bodies, and raw response text must never be logged.
+- Auth and access-control logging currently covers login success/failure, superuser access denial, invite sending, and privileged dev action execution.
+- API routes log at the route boundary with `event`, `outcome`, and `route` on every entry, plus `userId`, `profileRole`, `entityType`, `entityId`, and safe `data` when available.
+- Route handlers use `logInfo()` for successful completions, `logWarn()` for expected handled failures, and `logError()` for unexpected exceptions.
+- AI and chat logging covers route handling, Gemini execution, context dependency failures, and message persistence failures using safe metadata such as duration, model identifier, message length, history count, warning count, session type, and dependency names only.
+
 ## Deployment
 
 The application deploys automatically to Vercel on every push to `main`.

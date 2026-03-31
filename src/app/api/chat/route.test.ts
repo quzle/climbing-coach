@@ -2,6 +2,7 @@
  * @jest-environment node
  */
 import { NextRequest } from 'next/server'
+import { logError, logInfo, logWarn } from '@/lib/logger'
 import { sendChatMessage } from '@/services/ai/geminiClient'
 import { POST } from './route'
 
@@ -11,6 +12,12 @@ import { POST } from './route'
 
 jest.mock('@/services/ai/geminiClient', () => ({
   sendChatMessage: jest.fn(),
+}))
+
+jest.mock('@/lib/logger', () => ({
+  logError: jest.fn(),
+  logInfo: jest.fn(),
+  logWarn: jest.fn(),
 }))
 
 // =============================================================================
@@ -50,6 +57,19 @@ describe('POST /api/chat', () => {
     expect(response.status).toBe(200)
     expect(body.data.response).toBe('Mock coach response')
     expect(body.error).toBeNull()
+    expect(logInfo).toHaveBeenCalledWith(
+      expect.objectContaining({
+        event: 'chat_request_handled',
+        outcome: 'success',
+        route: '/api/chat',
+        entityType: 'chat_request',
+        data: {
+          history_count: 0,
+          message_length: 26,
+          warnings_count: 0,
+        },
+      }),
+    )
   })
 
   it('returns 400 when message is empty', async () => {
@@ -60,6 +80,18 @@ describe('POST /api/chat', () => {
     expect(response.status).toBe(400)
     expect(body.error).not.toBeNull()
     expect(sendChatMessage).not.toHaveBeenCalled()
+    expect(logWarn).toHaveBeenCalledWith(
+      expect.objectContaining({
+        event: 'chat_request_handled',
+        outcome: 'failure',
+        route: '/api/chat',
+        entityType: 'chat_request',
+        data: {
+          reason: 'validation_failed',
+          issue_count: 1,
+        },
+      }),
+    )
   })
 
   it('returns 400 when message exceeds 2000 characters', async () => {
@@ -97,6 +129,15 @@ describe('POST /api/chat', () => {
     expect(response.status).toBe(500)
     expect(body.error).not.toBeNull()
     expect(body.data).toBeNull()
+    expect(logError).toHaveBeenCalledWith(
+      expect.objectContaining({
+        event: 'chat_request_handled',
+        outcome: 'failure',
+        route: '/api/chat',
+        entityType: 'chat_request',
+        error: expect.any(Error),
+      }),
+    )
   })
 
   it('uses empty array as default when history is omitted', async () => {

@@ -3,6 +3,8 @@ import {
   getRecentCheckins,
   getAverageReadiness,
 } from '@/services/data/readinessRepository'
+import { logWarn } from '@/lib/logger'
+import { SINGLE_USER_PLACEHOLDER_ID } from '@/lib/placeholder-user-id'
 import {
   getRecentSessions,
   getSessionCountThisWeek,
@@ -180,6 +182,24 @@ export function computeWarnings(
   return warnings
 }
 
+function logContextDependencyFailure(
+  stage: 'programme' | 'athlete',
+  dependency: string,
+  error: string,
+): void {
+  logWarn({
+    event: 'ai_context_dependency_failed',
+    outcome: 'failure',
+    userId: SINGLE_USER_PLACEHOLDER_ID,
+    entityType: 'athlete_context',
+    data: {
+      stage,
+      dependency,
+    },
+    error,
+  })
+}
+
 // =============================================================================
 // EXPORTED FUNCTIONS
 // =============================================================================
@@ -205,18 +225,19 @@ export async function buildProgrammeContext(): Promise<
     ])
 
   if (activeProgrammeResult.error !== null) {
-    console.error('[contextBuilder.buildProgrammeContext] getActiveProgramme failed:', activeProgrammeResult.error)
+    logContextDependencyFailure('programme', 'getActiveProgramme', activeProgrammeResult.error)
   }
   const currentProgramme: Programme | null = activeProgrammeResult.data ?? null
 
   if (activeMesocycleResult.error !== null) {
-    console.error('[contextBuilder.buildProgrammeContext] getActiveMesocycle failed:', activeMesocycleResult.error)
+    logContextDependencyFailure('programme', 'getActiveMesocycle', activeMesocycleResult.error)
   }
   const activeMesocycle: Mesocycle | null = activeMesocycleResult.data ?? null
 
   if (upcomingPlannedSessionsResult.error !== null) {
-    console.error(
-      '[contextBuilder.buildProgrammeContext] getUpcomingPlannedSessions failed:',
+    logContextDependencyFailure(
+      'programme',
+      'getUpcomingPlannedSessions',
       upcomingPlannedSessionsResult.error,
     )
   }
@@ -227,8 +248,9 @@ export async function buildProgrammeContext(): Promise<
   if (activeMesocycle !== null) {
     const weeklyTemplateResult = await getWeeklyTemplateByMesocycle(activeMesocycle.id)
     if (weeklyTemplateResult.error !== null) {
-      console.error(
-        '[contextBuilder.buildProgrammeContext] getWeeklyTemplateByMesocycle failed:',
+      logContextDependencyFailure(
+        'programme',
+        'getWeeklyTemplateByMesocycle',
         weeklyTemplateResult.error,
       )
     }
@@ -278,37 +300,37 @@ export async function buildAthleteContext(): Promise<AthleteContext> {
 
   // Extract data, logging any errors and falling back to safe defaults
   if (todaysCheckinResult.error !== null) {
-    console.error('[contextBuilder.buildAthleteContext] getTodaysCheckin failed:', todaysCheckinResult.error)
+    logContextDependencyFailure('athlete', 'getTodaysCheckin', todaysCheckinResult.error)
   }
   const todaysReadiness: ReadinessCheckin | null = todaysCheckinResult.data ?? null
 
   if (recentCheckinsResult.error !== null) {
-    console.error('[contextBuilder.buildAthleteContext] getRecentCheckins failed:', recentCheckinsResult.error)
+    logContextDependencyFailure('athlete', 'getRecentCheckins', recentCheckinsResult.error)
   }
   const recentCheckins: ReadinessCheckin[] = recentCheckinsResult.data ?? []
 
   if (weeklyAvgResult.error !== null) {
-    console.error('[contextBuilder.buildAthleteContext] getAverageReadiness failed:', weeklyAvgResult.error)
+    logContextDependencyFailure('athlete', 'getAverageReadiness', weeklyAvgResult.error)
   }
   const weeklyReadinessAvg: number = weeklyAvgResult.data ?? 0
 
   if (recentSessionsResult.error !== null) {
-    console.error('[contextBuilder.buildAthleteContext] getRecentSessions failed:', recentSessionsResult.error)
+    logContextDependencyFailure('athlete', 'getRecentSessions', recentSessionsResult.error)
   }
   const recentSessions: SessionLog[] = recentSessionsResult.data ?? []
 
   if (sessionCountResult.error !== null) {
-    console.error('[contextBuilder.buildAthleteContext] getSessionCountThisWeek failed:', sessionCountResult.error)
+    logContextDependencyFailure('athlete', 'getSessionCountThisWeek', sessionCountResult.error)
   }
   const sessionCountThisWeek: number = sessionCountResult.data ?? 0
 
   if (lastSessionDateResult.error !== null) {
-    console.error('[contextBuilder.buildAthleteContext] getLastSessionDate failed:', lastSessionDateResult.error)
+    logContextDependencyFailure('athlete', 'getLastSessionDate', lastSessionDateResult.error)
   }
   const lastSessionDate: string | null = lastSessionDateResult.data ?? null
 
   if (activeInjuryAreasResult.error !== null) {
-    console.error('[contextBuilder.buildAthleteContext] getActiveInjuryAreas failed:', activeInjuryAreasResult.error)
+    logContextDependencyFailure('athlete', 'getActiveInjuryAreas', activeInjuryAreasResult.error)
   }
   const activeInjuryAreaRows: InjuryAreaRow[] = activeInjuryAreasResult.data ?? []
 

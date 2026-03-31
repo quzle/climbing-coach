@@ -7,6 +7,7 @@ import type {
   SessionLog,
   WeeklyTemplate,
 } from '@/types'
+import { logWarn } from '@/lib/logger'
 import {
   getTodaysCheckin,
   getRecentCheckins,
@@ -65,6 +66,10 @@ jest.mock('@/services/data/plannedSessionRepository', () => ({
   getUpcomingPlannedSessions: jest.fn(),
 }))
 
+jest.mock('@/lib/logger', () => ({
+  logWarn: jest.fn(),
+}))
+
 // Typed references to mocked functions
 const mockGetTodaysCheckin = getTodaysCheckin as jest.Mock
 const mockGetRecentCheckins = getRecentCheckins as jest.Mock
@@ -77,6 +82,7 @@ const mockGetActiveProgramme = getActiveProgramme as jest.Mock
 const mockGetActiveMesocycle = getActiveMesocycle as jest.Mock
 const mockGetWeeklyTemplateByMesocycle = getWeeklyTemplateByMesocycle as jest.Mock
 const mockGetUpcomingPlannedSessions = getUpcomingPlannedSessions as jest.Mock
+const mockLogWarn = logWarn as jest.Mock
 
 // =============================================================================
 // FACTORIES & HELPERS
@@ -598,6 +604,17 @@ describe('buildAthleteContext', () => {
     const context = await buildAthleteContext()
 
     expect(context.recentSessions).toEqual([])
+    expect(mockLogWarn).toHaveBeenCalledWith({
+      event: 'ai_context_dependency_failed',
+      outcome: 'failure',
+      userId: '00000000-0000-0000-0000-000000000001',
+      entityType: 'athlete_context',
+      data: {
+        stage: 'athlete',
+        dependency: 'getRecentSessions',
+      },
+      error: 'DB error',
+    })
   })
 
   it('uses Promise.all for parallel fetching — all repository functions called once', async () => {

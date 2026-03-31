@@ -33,6 +33,19 @@ All dates are `YYYY-MM-DD` strings. Never ISO 8601 datetime — date only.
 
 All `POST` and `PUT` routes validate input with Zod. Invalid input returns `400` with a message listing which fields failed and why.
 
+### Logging and observability
+
+API routes use the structured logger in `src/lib/logger.ts`.
+
+- Every route log includes `event`, `outcome`, and `route`.
+- Add `userId` and `profileRole` when auth context is already available.
+- Add `entityType` and `entityId` when the route targets a specific domain record.
+- Put extra safe operational context under `data`.
+- Use `logInfo()` for successful route completion.
+- Use `logWarn()` for expected handled failures such as validation issues, denied access, and service or repository errors returned in-band.
+- Use `logError()` for unexpected exceptions and catch blocks.
+- Never log secrets or sensitive payloads such as tokens, cookies, prompts, chat message bodies, or raw model responses.
+
 ---
 
 ## Chat
@@ -40,6 +53,8 @@ All `POST` and `PUT` routes validate input with Zod. Invalid input returns `400`
 ### `POST /api/chat`
 
 Send a user message to the AI coach. Builds a fresh athlete context on every call (readiness, sessions, programme, injury areas) and injects it into the Gemini system prompt.
+
+Operational logging for this route records request outcome, duration, message length, history count, warning count, and model identifier. Prompt text, chat history content, and AI response content are never logged.
 
 **Request body**
 

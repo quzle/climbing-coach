@@ -2,9 +2,15 @@
  * @jest-environment node
  */
 import { NextRequest } from 'next/server'
+import { logError, logInfo } from '@/lib/logger'
 import { requireSuperuser } from '@/lib/supabase/get-current-user'
 import { inviteUserByEmail } from '@/services/data/invitesRepository'
 import { POST } from './route'
+
+jest.mock('@/lib/logger', () => ({
+  logError: jest.fn(),
+  logInfo: jest.fn(),
+}))
 
 jest.mock('@/lib/supabase/get-current-user', () => ({
   requireSuperuser: jest.fn(),
@@ -16,6 +22,8 @@ jest.mock('@/services/data/invitesRepository', () => ({
 
 const mockRequireSuperuser = requireSuperuser as jest.Mock
 const mockInviteUserByEmail = inviteUserByEmail as jest.Mock
+const mockLogError = logError as jest.Mock
+const mockLogInfo = logInfo as jest.Mock
 
 describe('POST /api/invites', () => {
   beforeEach(() => {
@@ -41,6 +49,14 @@ describe('POST /api/invites', () => {
     })
     expect(mockInviteUserByEmail).toHaveBeenCalledWith({
       email: 'new.user@example.com',
+    })
+    expect(mockLogInfo).toHaveBeenCalledWith({
+      event: 'invite_sent',
+      outcome: 'success',
+      route: '/api/invites',
+      userId: 'super-123',
+      profileRole: 'superuser',
+      entityType: 'invite',
     })
   })
 
@@ -108,5 +124,14 @@ describe('POST /api/invites', () => {
 
     expect(response.status).toBe(500)
     expect(body).toEqual({ data: null, error: 'Failed to send invite.' })
+    expect(mockLogError).toHaveBeenCalledWith({
+      event: 'invite_sent',
+      outcome: 'failure',
+      route: '/api/invites',
+      userId: 'super-123',
+      profileRole: 'superuser',
+      entityType: 'invite',
+      error: 'Failed to send invite',
+    })
   })
 })

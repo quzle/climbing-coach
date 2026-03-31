@@ -1,4 +1,5 @@
 import { createClient } from '@/lib/supabase/server'
+import { logError, logWarn } from '@/lib/logger'
 import { getProfile } from '@/services/data/profilesRepository'
 
 export type AuthUser = {
@@ -21,6 +22,15 @@ export async function getCurrentUser(): Promise<AuthUser> {
   } = await supabase.auth.getUser()
 
   if (error || !user) {
+    logWarn({
+      event: 'auth_check_failed',
+      outcome: 'failure',
+      data: {
+        source: 'getCurrentUser',
+      },
+      error: error?.message ?? 'No authenticated user session',
+    })
+
     throw new Error('Unauthenticated')
   }
 
@@ -41,10 +51,32 @@ export async function requireSuperuser(): Promise<AuthUser> {
   const profileResult = await getProfile(user.id)
 
   if (profileResult.error) {
+    logError({
+      event: 'access_control_check_failed',
+      outcome: 'failure',
+      userId: user.id,
+      data: {
+        source: 'requireSuperuser',
+        required_role: 'superuser',
+      },
+      error: profileResult.error,
+    })
+
     throw new Error('Authorization check failed')
   }
 
   if (!profileResult.data || profileResult.data.role !== 'superuser') {
+    logWarn({
+      event: 'access_control_denied',
+      outcome: 'failure',
+      userId: user.id,
+      profileRole: profileResult.data?.role ?? null,
+      data: {
+        source: 'requireSuperuser',
+        required_role: 'superuser',
+      },
+    })
+
     throw new Error('Forbidden')
   }
 

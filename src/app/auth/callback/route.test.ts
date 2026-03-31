@@ -2,6 +2,7 @@
  * @jest-environment node
  */
 import { NextRequest } from 'next/server'
+import { logError, logInfo, logWarn } from '@/lib/logger'
 import { GET } from './route'
 
 // =============================================================================
@@ -23,6 +24,12 @@ jest.mock('@/services/auth/authLifecycleService', () => ({
   finalizeInvitedUserProfile: jest.fn((...args) =>
     mockFinalizeInvitedUserProfile(...args),
   ),
+}))
+
+jest.mock('@/lib/logger', () => ({
+  logError: jest.fn(),
+  logInfo: jest.fn(),
+  logWarn: jest.fn(),
 }))
 
 jest.mock('next/headers', () => ({
@@ -49,6 +56,10 @@ function makeRequest(params: Record<string, string>): NextRequest {
 // =============================================================================
 
 describe('GET /auth/callback', () => {
+  const mockLogError = logError as jest.Mock
+  const mockLogInfo = logInfo as jest.Mock
+  const mockLogWarn = logWarn as jest.Mock
+
   beforeEach(() => {
     jest.clearAllMocks()
     mockGetAll.mockReturnValue([])
@@ -76,6 +87,16 @@ describe('GET /auth/callback', () => {
     })
     expect(response.status).toBe(307)
     expect(response.headers.get('location')).toBe('http://localhost/')
+    expect(mockLogInfo).toHaveBeenCalledWith({
+      event: 'login_success',
+      outcome: 'success',
+      route: '/auth/callback',
+      userId: 'user-123',
+      data: {
+        auth_flow: 'invite_callback',
+        redirect_path: '/',
+      },
+    })
   })
 
   it('respects a safe next parameter', async () => {
@@ -109,6 +130,14 @@ describe('GET /auth/callback', () => {
     expect(response.headers.get('location')).toBe(
       'http://localhost/auth/login?error=callback_failed',
     )
+    expect(mockLogWarn).toHaveBeenCalledWith({
+      event: 'login_failure',
+      outcome: 'failure',
+      route: '/auth/callback',
+      data: {
+        reason: 'missing_auth_code',
+      },
+    })
   })
 
   it('redirects to login with error when code exchange fails', async () => {
@@ -124,6 +153,15 @@ describe('GET /auth/callback', () => {
     expect(response.headers.get('location')).toBe(
       'http://localhost/auth/login?error=callback_failed',
     )
+    expect(mockLogWarn).toHaveBeenCalledWith({
+      event: 'login_failure',
+      outcome: 'failure',
+      route: '/auth/callback',
+      data: {
+        reason: 'exchange_code_for_session_failed',
+      },
+      error: 'invalid JWT',
+    })
   })
 
   it('redirects to login with error when email is missing after code exchange', async () => {
@@ -145,6 +183,15 @@ describe('GET /auth/callback', () => {
     expect(response.headers.get('location')).toBe(
       'http://localhost/auth/login?error=callback_failed',
     )
+    expect(mockLogError).toHaveBeenCalledWith({
+      event: 'login_failure',
+      outcome: 'failure',
+      route: '/auth/callback',
+      userId: 'user-123',
+      data: {
+        reason: 'missing_email_after_code_exchange',
+      },
+    })
   })
 
   it('redirects to login with error when profile finalization fails', async () => {
@@ -164,5 +211,15 @@ describe('GET /auth/callback', () => {
     expect(response.headers.get('location')).toBe(
       'http://localhost/auth/login?error=callback_failed',
     )
+    expect(mockLogError).toHaveBeenCalledWith({
+      event: 'login_failure',
+      outcome: 'failure',
+      route: '/auth/callback',
+      userId: 'user-123',
+      data: {
+        reason: 'profile_finalization_failed',
+      },
+      error: 'Failed to finalize profile lifecycle',
+    })
   })
 })

@@ -2,11 +2,17 @@
  * @jest-environment node
  */
 import { createClient } from '@/lib/supabase/server'
+import { logError, logInfo } from '@/lib/logger'
 import { requireSuperuser } from '@/lib/supabase/get-current-user'
 import { POST } from './route'
 
 jest.mock('@/lib/supabase/server', () => ({
   createClient: jest.fn(),
+}))
+
+jest.mock('@/lib/logger', () => ({
+  logError: jest.fn(),
+  logInfo: jest.fn(),
 }))
 
 jest.mock('@/lib/supabase/get-current-user', () => ({
@@ -15,6 +21,8 @@ jest.mock('@/lib/supabase/get-current-user', () => ({
 
 const mockCreateClient = createClient as jest.Mock
 const mockRequireSuperuser = requireSuperuser as jest.Mock
+const mockLogError = logError as jest.Mock
+const mockLogInfo = logInfo as jest.Mock
 
 function makeMockSupabase(
   deleteResult: { data: { id: string }[] | null; error: null | { message: string } },
@@ -54,6 +62,27 @@ describe('POST /api/dev/clear-all', () => {
       chat_messages: 2,
       injury_areas: 2,
     })
+    expect(mockLogInfo).toHaveBeenCalledWith({
+      event: 'privileged_dev_action_executed',
+      outcome: 'success',
+      route: '/api/dev/clear-all',
+      userId: 'super-123',
+      profileRole: 'superuser',
+      entityType: 'dev_action',
+      entityId: 'clear_all',
+      data: {
+        tables_cleared: expect.objectContaining({
+          session_logs: 2,
+          planned_sessions: 2,
+          weekly_templates: 2,
+          mesocycles: 2,
+          programmes: 2,
+          readiness_checkins: 2,
+          chat_messages: 2,
+          injury_areas: 2,
+        }),
+      },
+    })
   })
 
   it('clears tables in FK-safe order', async () => {
@@ -92,6 +121,19 @@ describe('POST /api/dev/clear-all', () => {
     expect(response.status).toBe(500)
     expect(body.data).toBeNull()
     expect(body.error).toContain('Failed to clear table')
+    expect(mockLogError).toHaveBeenCalledWith({
+      event: 'privileged_dev_action_executed',
+      outcome: 'failure',
+      route: '/api/dev/clear-all',
+      userId: 'super-123',
+      profileRole: 'superuser',
+      entityType: 'dev_action',
+      entityId: 'clear_all',
+      data: {
+        table: 'session_logs',
+      },
+      error: { message: 'db error' },
+    })
   })
 
   it('returns 401 when requester is unauthenticated', async () => {

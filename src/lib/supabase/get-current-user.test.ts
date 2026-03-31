@@ -1,9 +1,15 @@
 import { createClient } from '@/lib/supabase/server'
+import { logError, logWarn } from '@/lib/logger'
 import { getProfile } from '@/services/data/profilesRepository'
 import { getCurrentUser, requireSuperuser } from './get-current-user'
 
 jest.mock('@/lib/supabase/server', () => ({
   createClient: jest.fn(),
+}))
+
+jest.mock('@/lib/logger', () => ({
+  logError: jest.fn(),
+  logWarn: jest.fn(),
 }))
 
 jest.mock('@/services/data/profilesRepository', () => ({
@@ -12,6 +18,8 @@ jest.mock('@/services/data/profilesRepository', () => ({
 
 const mockGetUser = jest.fn()
 const mockGetProfile = getProfile as jest.Mock
+const mockLogError = logError as jest.Mock
+const mockLogWarn = logWarn as jest.Mock
 
 beforeEach(() => {
   jest.clearAllMocks()
@@ -50,6 +58,14 @@ describe('getCurrentUser', () => {
     })
 
     await expect(getCurrentUser()).rejects.toThrow('Unauthenticated')
+    expect(mockLogWarn).toHaveBeenCalledWith({
+      event: 'auth_check_failed',
+      outcome: 'failure',
+      data: {
+        source: 'getCurrentUser',
+      },
+      error: 'JWT expired',
+    })
   })
 
   it('throws when auth returns null user with no error', async () => {
@@ -59,6 +75,14 @@ describe('getCurrentUser', () => {
     })
 
     await expect(getCurrentUser()).rejects.toThrow('Unauthenticated')
+    expect(mockLogWarn).toHaveBeenCalledWith({
+      event: 'auth_check_failed',
+      outcome: 'failure',
+      data: {
+        source: 'getCurrentUser',
+      },
+      error: 'No authenticated user session',
+    })
   })
 })
 
@@ -102,6 +126,16 @@ describe('requireSuperuser', () => {
     })
 
     await expect(requireSuperuser()).rejects.toThrow('Forbidden')
+    expect(mockLogWarn).toHaveBeenCalledWith({
+      event: 'access_control_denied',
+      outcome: 'failure',
+      userId: 'user-123',
+      profileRole: 'user',
+      data: {
+        source: 'requireSuperuser',
+        required_role: 'superuser',
+      },
+    })
   })
 
   it('throws when profile lookup fails', async () => {
@@ -115,6 +149,16 @@ describe('requireSuperuser', () => {
     })
 
     await expect(requireSuperuser()).rejects.toThrow('Authorization check failed')
+    expect(mockLogError).toHaveBeenCalledWith({
+      event: 'access_control_check_failed',
+      outcome: 'failure',
+      userId: 'user-123',
+      data: {
+        source: 'requireSuperuser',
+        required_role: 'superuser',
+      },
+      error: 'Failed to retrieve profile',
+    })
   })
 
   it('throws when auth context is unauthenticated', async () => {

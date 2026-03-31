@@ -121,7 +121,70 @@ See `docs/architecture/overview.md` for full architecture documentation.
   { data: T | null, error: string | null }
   ```
 - **Never expose raw error messages or stack traces to the browser.** Log the full error server-side; return a safe generic message to the client.
-- Log errors server-side with enough context to reproduce: function name, input values, original error.
+- API routes must use the structured logger from `src/lib/logger.ts` instead of ad-hoc `console.error` or `console.warn`.
+
+## API Route Logging
+
+- API routes log with `logInfo()`, `logWarn()`, and `logError()` from `@/lib/logger`.
+- Every route log must include `event`, `outcome`, and `route`.
+- Include `userId` and `profileRole` whenever the route already resolved auth context.
+- Include `entityType` and `entityId` whenever the route is operating on a specific resource.
+- Put extra operational context under `data` as a plain object with safe, non-sensitive values only.
+- Never log tokens, cookies, passwords, prompts, chat message bodies, raw model responses, or other secrets.
+- `logInfo()` is for successful route completion.
+- `logWarn()` is for expected failure paths such as validation failures, denied access, or service/repository errors that are handled without throwing.
+- `logError()` is for unexpected exceptions, catch blocks, and unexpected states.
+- Route logs should stay at the route boundary. Repositories and services can log their own concerns, but routes should not duplicate lower-level logs unless they are adding route-specific context.
+
+Preferred route pattern:
+
+```ts
+import { logError, logInfo, logWarn } from '@/lib/logger'
+
+export async function GET(): Promise<NextResponse<ApiResponse<ResourceResponse>>> {
+  try {
+    const result = await getResource()
+
+    if (result.error !== null || result.data === null) {
+      logWarn({
+        event: 'resource_fetch_failed',
+        outcome: 'failure',
+        route: '/api/resource',
+        entityType: 'resource',
+        error: result.error,
+      })
+
+      return NextResponse.json(
+        { data: null, error: 'Failed to fetch resource.' },
+        { status: 500 },
+      )
+    }
+
+    logInfo({
+      event: 'resource_fetched',
+      outcome: 'success',
+      route: '/api/resource',
+      entityType: 'resource',
+      entityId: result.data.id,
+    })
+
+    return NextResponse.json({ data: result.data, error: null }, { status: 200 })
+  } catch (error) {
+    logError({
+      event: 'resource_fetch_failed',
+      outcome: 'failure',
+      route: '/api/resource',
+      entityType: 'resource',
+      error,
+    })
+
+    return NextResponse.json(
+      { data: null, error: 'Failed to fetch resource.' },
+      { status: 500 },
+    )
+  }
+}
+```
 
 ---
 

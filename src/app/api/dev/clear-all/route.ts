@@ -1,4 +1,5 @@
 import { NextResponse } from 'next/server'
+import { logError, logInfo } from '@/lib/logger'
 import { createClient } from '@/lib/supabase/server'
 import { requireSuperuser } from '@/lib/supabase/get-current-user'
 import type { ApiResponse } from '@/types'
@@ -29,7 +30,7 @@ export async function POST(): Promise<NextResponse<ApiResponse<ClearAllResult>>>
   }
 
   try {
-    await requireSuperuser()
+    const user = await requireSuperuser()
 
     const supabase = await createClient()
     const tablesCleared: Record<string, number> = {}
@@ -43,7 +44,20 @@ export async function POST(): Promise<NextResponse<ApiResponse<ClearAllResult>>>
         .select('id')
 
       if (error) {
-        console.error(`[POST /api/dev/clear-all] Failed to clear ${table}:`, error)
+        logError({
+          event: 'privileged_dev_action_executed',
+          outcome: 'failure',
+          route: '/api/dev/clear-all',
+          userId: user.id,
+          profileRole: 'superuser',
+          entityType: 'dev_action',
+          entityId: 'clear_all',
+          data: {
+            table,
+          },
+          error,
+        })
+
         return NextResponse.json(
           { data: null, error: `Failed to clear table: ${table}` },
           { status: 500 },
@@ -53,10 +67,21 @@ export async function POST(): Promise<NextResponse<ApiResponse<ClearAllResult>>>
       tablesCleared[table] = data?.length ?? 0
     }
 
+    logInfo({
+      event: 'privileged_dev_action_executed',
+      outcome: 'success',
+      route: '/api/dev/clear-all',
+      userId: user.id,
+      profileRole: 'superuser',
+      entityType: 'dev_action',
+      entityId: 'clear_all',
+      data: {
+        tables_cleared: tablesCleared,
+      },
+    })
+
     return NextResponse.json({ data: { tablesCleared }, error: null }, { status: 200 })
   } catch (error) {
-    console.error('[POST /api/dev/clear-all]', error)
-
     if (error instanceof Error && error.message === 'Unauthenticated') {
       return NextResponse.json(
         { data: null, error: 'Authentication required.' },
@@ -67,6 +92,15 @@ export async function POST(): Promise<NextResponse<ApiResponse<ClearAllResult>>>
     if (error instanceof Error && error.message === 'Forbidden') {
       return NextResponse.json({ data: null, error: 'Forbidden.' }, { status: 403 })
     }
+
+    logError({
+      event: 'privileged_dev_action_executed',
+      outcome: 'failure',
+      route: '/api/dev/clear-all',
+      entityType: 'dev_action',
+      entityId: 'clear_all',
+      error,
+    })
 
     return NextResponse.json(
       { data: null, error: 'Failed to clear database.' },
