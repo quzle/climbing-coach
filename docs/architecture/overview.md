@@ -27,7 +27,7 @@ No layer may skip a level. API routes do not query the database directly. Servic
 
 ## Why Modular Monolith
 
-This application is a single-developer, single-user personal tool. The primary architectural constraint is **maintenance burden** — every additional service boundary, deployment unit, or inter-service contract is overhead that slows development.
+This application is a single-developer tool now migrating to an invite-only multi-user MVP. The primary architectural constraint is **maintenance burden** — every additional service boundary, deployment unit, or inter-service contract is overhead that slows development.
 
 A modular monolith gives:
 - Logical separation enforced through folder structure and code review
@@ -80,6 +80,15 @@ const user = await getCurrentUser() // throws 'Unauthenticated' if no valid sess
 - All API routes that require authentication must call `getCurrentUser()` to identify the user. Never use a hardcoded user ID.
 - `getCurrentUser()` throws `Error('Unauthenticated')` if there is no valid session. API routes should catch this and return a `401` response.
 - Never call `getCurrentUser()` from a Client Component. Call it in an API route or Server Component only.
+
+## Auth Entry Flow
+
+Authentication entry points for invited users live under `src/app/auth/`:
+
+- `GET /auth/login`: email/password sign-in page backed by Supabase Auth client sign-in.
+- `GET /auth/callback`: exchanges Supabase auth codes for a cookie-backed session, then redirects to a validated local `next` path (or `/`).
+
+The callback route validates `next` to local paths only (`/something`) to prevent open redirect attacks.
 
 ## Layered Architecture
 

@@ -129,8 +129,23 @@ The previous `supabase gen types` command had accidentally appended the Supabase
 
 The regenerated types introduced new required fields (`shoulder_health` on `readiness_checkins.Row`, `shoulder_flag` on `session_logs.Row`, `status` on `programmes.Row`) that were missing from test fixtures and the readiness API route schema. All affected files were updated. TypeScript reports zero errors and all 50 test suites (395 tests) pass.
 
-- [ ] **AUTH-2** Add login page and authenticated session entry flow
+- [x] **AUTH-2** Add login page and authenticated session entry flow
   - Depends on: AUTH-1
+
+#### Phase 2 Implementation Notes (AUTH-2 completed 2026-03-31)
+
+Added auth entry flow under `src/app/auth/`:
+
+- `src/app/auth/layout.tsx`: auth-specific layout that omits global navigation chrome for unauthenticated screens.
+- `src/app/auth/login/page.tsx`: email/password sign-in page using Supabase Auth (`signInWithPassword`) with RHF + Zod validation and safe generic error messaging.
+- `src/app/auth/callback/route.ts`: server callback route that exchanges Supabase auth codes for sessions (`exchangeCodeForSession`) and redirects to a validated local `next` path or fallback `/`.
+
+Test coverage added:
+
+- `src/app/auth/login/page.test.tsx`: rendering, validation, success redirect, failed auth error handling, callback error state, and in-flight submit state.
+- `src/app/auth/callback/route.test.ts`: success path, safe/unsafe `next` handling, missing code, and failed code exchange redirects.
+
+AUTH-2 establishes a working login UI and successful authenticated session entry flow. Route-level gating of protected pages remains in AUTH-3.
 
 - [ ] **AUTH-3** Update middleware for route gating and unauthenticated redirect handling
   - Depends on: AUTH-2
