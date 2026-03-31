@@ -167,7 +167,7 @@ Goal: introduce structured operational logging before feature refactors.
 
 Goal: make profile access available for role checks and lifecycle hooks.
 
-- [ ] **REPO-0** Create `profilesRepository`
+- [x] **REPO-0** Create `profilesRepository` ✅ — implemented 2026-03-31. Exports `getProfile`, `getProfileByEmail`, `upsertProfile`, `updateProfile`. 14/14 unit tests pass.
   - Depends on: DB-1, DB-7
 
 ### Phase 5: Repository Refactor

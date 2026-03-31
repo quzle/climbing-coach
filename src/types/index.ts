@@ -39,6 +39,9 @@ export type ChatMessage = Database['public']['Tables']['chat_messages']['Row']
 /** A chat thread owned by a user, grouping related chat messages. */
 export type ChatThread = Database['public']['Tables']['chat_threads']['Row']
 
+/** A user profile record (app-owned metadata, linked to auth.users). */
+export type Profile = Database['public']['Tables']['profiles']['Row']
+
 // =============================================================================
 // INSERT TYPES
 // What you pass to INSERT queries. Optional fields have been made optional
@@ -78,6 +81,9 @@ export type ChatMessageInsert = Database['public']['Tables']['chat_messages']['I
 /** Payload for creating a new chat thread. */
 export type ChatThreadInsert = Database['public']['Tables']['chat_threads']['Insert']
 
+/** Payload for creating or upserting a user profile. */
+export type ProfileInsert = Database['public']['Tables']['profiles']['Insert']
+
 // =============================================================================
 // UPDATE TYPES
 // What you pass to UPDATE queries. All fields are optional. Use in repository
@@ -95,6 +101,9 @@ export type ReadinessCheckinUpdate = Database['public']['Tables']['readiness_che
 
 /** Partial update payload for a chat thread (e.g. updating the title). */
 export type ChatThreadUpdate = Database['public']['Tables']['chat_threads']['Update']
+
+/** Partial update payload for a user profile (e.g. updating display_name). */
+export type ProfileUpdate = Database['public']['Tables']['profiles']['Update']
 
 // =============================================================================
 // INJURY TRACKING TYPES
@@ -192,6 +201,19 @@ export type MesocycleStatus = 'completed' | 'active' | 'interrupted' | 'planned'
  * Maps directly to chat_messages.role in the database.
  */
 export type ChatRole = 'user' | 'assistant'
+
+/**
+ * Role of a user within the application.
+ * 'superuser' grants access to /dev tooling and admin actions.
+ * Maps directly to profiles.role in the database.
+ */
+export type UserRole = 'user' | 'superuser'
+
+/**
+ * Invite lifecycle status for a user profile.
+ * Maps directly to profiles.invite_status in the database.
+ */
+export type InviteStatus = 'invited' | 'active'
 
 /**
  * Relative training intensity for a session or weekly template slot.
