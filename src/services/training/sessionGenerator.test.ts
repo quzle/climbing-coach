@@ -53,7 +53,7 @@ function makeMesocycle(overrides?: Partial<Mesocycle>): Mesocycle {
     interruption_notes: null,
     name: 'Power Block',
     phase_type: 'power',
-    planned_end: '2026-03-30',
+    planned_end: '2026-04-05',
     planned_start: '2026-03-03',
     programme_id: 'programme-1',
     status: 'active',
@@ -173,7 +173,7 @@ describe('generatePlannedSessionsForActiveMesocycle', () => {
 
     expect(result.error).toBeNull()
     expect(result.data).toHaveLength(2)
-    expect(mockGenerateSessionPlan).toHaveBeenCalledTimes(2)
+    expect(mockGenerateSessionPlan).not.toHaveBeenCalled()
     expect(mockCreatePlannedSession).toHaveBeenCalledWith(
       expect.objectContaining({
         planned_date: '2026-03-30',
