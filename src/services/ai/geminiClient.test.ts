@@ -1,7 +1,7 @@
 import { GoogleGenerativeAI } from '@google/generative-ai'
 import type { AthleteContext, ChatMessage } from '@/types'
 import { buildAthleteContext } from '@/services/ai/contextBuilder'
-import { buildSystemPrompt } from '@/services/ai/promptBuilder'
+import { buildSystemPrompt, buildSessionPlanSystemPrompt } from '@/services/ai/promptBuilder'
 import { sendChatMessage, generateSessionPlan } from './geminiClient'
 
 // =============================================================================
@@ -37,6 +37,7 @@ jest.mock('@/services/ai/contextBuilder', () => ({
 // Mock 3 — Prompt builder
 jest.mock('@/services/ai/promptBuilder', () => ({
   buildSystemPrompt: jest.fn().mockReturnValue('Mock system prompt'),
+  buildSessionPlanSystemPrompt: jest.fn().mockReturnValue('Mock session plan system prompt'),
 }))
 
 // Mock 4 — Supabase server client
@@ -53,6 +54,7 @@ jest.mock('@/lib/supabase/server', () => ({
 // Typed references to the mocked functions we assert against
 const mockBuildAthleteContext = buildAthleteContext as jest.Mock
 const mockBuildSystemPrompt = buildSystemPrompt as jest.Mock
+const mockBuildSessionPlanSystemPrompt = buildSessionPlanSystemPrompt as jest.Mock
 
 // =============================================================================
 // HELPERS
@@ -157,6 +159,7 @@ beforeEach(() => {
 
   mockBuildAthleteContext.mockResolvedValue(makeAthleteContext())
   mockBuildSystemPrompt.mockReturnValue('Mock system prompt')
+  mockBuildSessionPlanSystemPrompt.mockReturnValue('Mock session plan system prompt')
 })
 
 // =============================================================================
