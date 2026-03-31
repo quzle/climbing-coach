@@ -760,6 +760,41 @@ Archive an injury area (soft delete). The area name is URL-encoded in the path.
 
 ---
 
+## Invites
+
+### `POST /api/invites`
+
+Sends an invite email through Supabase native invite flow. Requires authenticated `superuser` role.
+
+**Request body**
+
+```ts
+{
+  email: string // valid email address, max 320 chars
+}
+```
+
+**Response** `201`
+
+```ts
+{
+  data: {
+    invited_email: string
+  },
+  error: null
+}
+```
+
+**Status codes**
+
+| Code | Meaning |
+|---|---|
+| `201` | Invite accepted by Supabase |
+| `400` | Invalid request payload |
+| `401` | Not authenticated |
+| `403` | Authenticated but not a superuser |
+| `500` | Failed to send invite |
+
 ## Dev
 
 All `/api/dev/*` routes are disabled in production (`404`) and privileged handlers require a server-side superuser check.
