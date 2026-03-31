@@ -79,6 +79,7 @@ function makeSessionLog(overrides?: Partial<SessionLog>): SessionLog {
     quality_rating: 4,
     rpe: 7,
     injury_flags: null,
+    shoulder_flag: false,
     notes: null,
     planned_session_id: null,
     log_data: null,

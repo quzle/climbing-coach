@@ -93,6 +93,7 @@ function makeSessionLog(overrides?: Partial<SessionLog>): SessionLog {
     quality_rating: 4,
     rpe: 7,
     session_type: 'bouldering',
+    shoulder_flag: false,
     user_id: 'user-1',
   }
 

@@ -60,6 +60,7 @@ function makeProgramme(overrides?: Partial<Programme>): Programme {
     name: 'Summer Multipitch Season',
     notes: null,
     start_date: '2026-01-05',
+    status: 'active',
     target_date: '2026-04-26',
     athlete_profile: null,
     user_id: 'user-1',

@@ -1,5 +1,6 @@
 {
     "chat.tools.terminal.autoApprove": {
-        "npx jest": true
+        "npx jest": true,
+        "npx tsc": true
     }
 }

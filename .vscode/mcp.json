@@ -3,7 +3,28 @@
 		"my-mcp-server-9336c64f": {
 			"url": "https://www.shadcn.io/api/mcp",
 			"type": "http"
+		},
+		"io.github.github/github-mcp-server": {
+			"type": "stdio",
+			"command": "docker",
+			"args": [
+				"run",
+				"-i",
+				"--rm",
+				"-e",
+				"GITHUB_PERSONAL_ACCESS_TOKEN=${input:token}",
+				"ghcr.io/github/github-mcp-server:0.33.0"
+			],
+			"gallery": "https://api.mcp.github.com",
+			"version": "0.33.0"
 		}
 	},
-	"inputs": []
+	"inputs": [
+		{
+			"id": "token",
+			"type": "promptString",
+			"description": "",
+			"password": true
+		}
+	]
 }

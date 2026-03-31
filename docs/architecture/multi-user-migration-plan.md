@@ -105,8 +105,29 @@ Final migration sequence applied:
 
 Goal: establish invite-only auth and server-side user resolution.
 
-- [ ] **AUTH-1** Confirm Supabase Auth configuration and package readiness
+- [x] **AUTH-1** Confirm Supabase Auth configuration and package readiness
   - Depends on: DB-7
+
+#### Phase 2 Implementation Notes (AUTH-1 completed 2026-03-31)
+
+**Packages verified:**
+
+| Package | Version | Role |
+|---|---|---|
+| `@supabase/ssr` | `^0.9.0` | SSR-safe browser + server clients |
+| `@supabase/supabase-js` | `^2.100.0` | Core Supabase client |
+
+**Client infrastructure verified (`src/lib/supabase/`):**
+
+- `client.ts`: `createBrowserClient` with `NEXT_PUBLIC_SUPABASE_URL` + `NEXT_PUBLIC_SUPABASE_ANON_KEY`. Correct for client components and browser-side auth flows.
+- `server.ts`: `createServerClient` with `NEXT_PUBLIC_SUPABASE_URL` + `SUPABASE_SECRET_KEY` (service role) and full cookie read/write handlers. Correct for server components and API routes. Cookie handling enables `auth.getUser()` to validate the user's JWT from cookies even though the service role key is used for DB queries (which bypass RLS during this phase). RLS enforcement is deferred to Phase 9 (SEC-1).
+- `middleware.ts`: `createServerClient` with `NEXT_PUBLIC_SUPABASE_ANON_KEY`. Calls `supabase.auth.getUser()` on every non-static request to refresh the session token. Matcher excludes static assets. Route gating is deferred to AUTH-3.
+
+**Bug fixed during AUTH-1 verification:**
+
+The previous `supabase gen types` command had accidentally appended the Supabase CLI update notice to `src/lib/database.types.ts`, causing TypeScript parse errors at line 580. The notice was removed and the file is now valid TypeScript.
+
+The regenerated types introduced new required fields (`shoulder_health` on `readiness_checkins.Row`, `shoulder_flag` on `session_logs.Row`, `status` on `programmes.Row`) that were missing from test fixtures and the readiness API route schema. All affected files were updated. TypeScript reports zero errors and all 50 test suites (395 tests) pass.
 
 - [ ] **AUTH-2** Add login page and authenticated session entry flow
   - Depends on: AUTH-1
