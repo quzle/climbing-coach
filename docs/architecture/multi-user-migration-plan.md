@@ -63,7 +63,7 @@ Goal: create the final ownership model in the schema before application changes 
   - Deliverables:
     - `programmes`, `mesocycles`, `planned_sessions`, `session_logs`, `readiness_checkins`, `chat_messages`, `injury_areas`, `weekly_templates`
 
-- [ ] **DB-4** Add `thread_id` to `chat_messages`
+- [x] **DB-4** Add `thread_id` to `chat_messages`
   - Depends on: DB-2, DB-3
 
 - [ ] **DB-5** Enforce one active programme per user at database level

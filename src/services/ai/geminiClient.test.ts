@@ -132,6 +132,7 @@ function makeChatMessage(overrides?: Partial<ChatMessage>): ChatMessage {
     content: 'How is my training going?',
     context_snapshot: null,
     created_at: '2025-03-24T10:00:00Z',
+    thread_id: null,
     user_id: 'user-1',
     ...overrides,
   }

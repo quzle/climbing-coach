@@ -218,16 +218,21 @@ The `log_data` jsonb field stores session-specific structured data. The shape de
 
 Stores the full conversation history between the athlete and the AI coach.
 
+`thread_id` column added by migration `20260330000002_add_thread_id_to_chat_messages.sql`.
+
 | Column | Type | Nullable | Description |
 |---|---|---|---|
 | `id` | `uuid` | No | Primary key |
+| `user_id` | `uuid` | No | Owner — references `auth.users(id)` |
+| `thread_id` | `uuid` | Yes | FK → `chat_threads.id` (set null on thread delete) |
 | `role` | `text` | No | `user` or `assistant` |
 | `content` | `text` | No | Message text |
+| `context_snapshot` | `jsonb` | Yes | Athlete context snapshot captured at send time |
 | `created_at` | `timestamptz` | No | Message timestamp (used for ordering and recency window) |
 
-**Relationships:** None.
+**Relationships:** `user_id` → `auth.users(id)`. `thread_id` → `chat_threads(id)` (set null on delete).
 
-**Business rules:** The prompt builder fetches the most recent 10 messages ordered by `created_at` descending. There is no hard limit on total rows — implement a cleanup job if the table grows excessively.
+**Business rules:** The prompt builder fetches the most recent 20 messages ordered by `created_at` descending. `thread_id` is nullable to preserve messages created before threading was introduced; future work may back-fill this column. There is no hard limit on total rows — implement a cleanup job if the table grows excessively.
 
 ---
 

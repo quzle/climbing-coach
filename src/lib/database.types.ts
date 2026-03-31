@@ -59,6 +59,7 @@ export type Database = {
           created_at: string | null
           id: string
           role: string
+          thread_id: string | null
           user_id: string
         }
         Insert: {
@@ -67,6 +68,7 @@ export type Database = {
           created_at?: string | null
           id?: string
           role: string
+          thread_id?: string | null
           user_id: string
         }
         Update: {
@@ -75,9 +77,17 @@ export type Database = {
           created_at?: string | null
           id?: string
           role?: string
+          thread_id?: string | null
           user_id?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "chat_messages_thread_id_fkey"
+            columns: ["thread_id"]
+            isOneToOne: false
+            referencedRelation: "chat_threads"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "chat_messages_user_id_fkey"
             columns: ["user_id"]
@@ -109,7 +119,15 @@ export type Database = {
           updated_at?: string | null
           user_id?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "chat_threads_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       mesocycles: {
         Row: {
