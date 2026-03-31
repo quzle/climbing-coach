@@ -3,7 +3,7 @@
 ## Status
 
 Accepted.
-Planned before implementation begins.
+Phase 1 (Database Foundation) implemented 2026-03-31. Remaining phases pending.
 
 ## Date
 

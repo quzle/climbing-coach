@@ -2,7 +2,7 @@
 
 ## Overview
 
-An AI-powered climbing training assistant for an experienced boulderer and multipitch sport climber targeting 7a–7b onsight on limestone and granite. Built with Next.js 14, Supabase (Postgres), and Google Gemini AI. Single-user application deployed on Vercel.
+An AI-powered climbing training assistant for an experienced boulderer and multipitch sport climber targeting 7a–7b onsight on limestone and granite. Built with Next.js 14, Supabase (Postgres), and Google Gemini AI. Deployed on Vercel. Multi-user migration in progress — see `docs/architecture/multi-user-migration-plan.md`.
 
 ## Architecture
 
@@ -60,7 +60,12 @@ src/
    ```bash
    cp .env.example .env.local
    ```
-4. Run the database schema: see `docs/architecture/database.md`
+4. Apply the database schema using the Supabase CLI:
+   ```bash
+   supabase link --project-ref <your-project-ref>
+   supabase db push
+   ```
+   See `docs/architecture/database.md` and `supabase/migrations/` for schema details.
 5. Start the development server:
    ```bash
    npm run dev

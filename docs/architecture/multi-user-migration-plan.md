@@ -46,7 +46,7 @@ This plan does not include:
 
 Goal: create the final ownership model in the schema before application changes begin.
 
-- [ ] **DB-1** Create `profiles` table
+- [x] **DB-1** Create `profiles` table
   - Depends on: none
   - Deliverables:
     - one-to-one link to `auth.users`
@@ -74,9 +74,32 @@ Goal: create the final ownership model in the schema before application changes 
 - [x] **DB-6** Add supporting indexes for expected user-scoped query patterns
   - Depends on: DB-1, DB-2, DB-3
 
-- [ ] **DB-7** Regenerate and verify `src/lib/database.types.ts`
+- [x] **DB-7** Regenerate and verify `src/lib/database.types.ts`
   - Depends on: DB-1, DB-2, DB-3, DB-4, DB-5, DB-6
   - Note: this is the database gate for downstream implementation
+
+#### Phase 1 Implementation Notes (completed 2026-03-31)
+
+Applied to remote project `qsihlcmjjwarxrnmmsse` using `supabase db push`.
+
+The following issues were encountered and resolved during execution:
+
+- **Missing DB-2 migration**: `chat_threads` had no creation migration in the original set. A new migration (`20260330000002_add_chat_threads.sql`) was added covering the `CREATE TABLE chat_threads` statement with `user_id` FK.
+- **Duplicate migration timestamps**: The original three files all shared the `20260330000002` prefix. Supabase uses the numeric timestamp as a primary key in `supabase_migrations.schema_migrations`, so all three collided. They were renumbered to `000002`, `000003`, `000004`, `000005` sequentially.
+- **Legacy data truncation**: The remote database contained existing single-user rows that would have blocked the `NOT NULL` `user_id` constraint in DB-3. A `TRUNCATE ... CASCADE` was prepended to migration `000000`. This is consistent with constraint 2 in ADR 005: the database can be recreated and backwards-compatible data migration is not required.
+
+Final migration sequence applied:
+
+| File | Description |
+|---|---|
+| `20260330000000_add_user_id_to_domain_tables.sql` | DB-3: truncate legacy data + add `user_id` FK to all domain tables |
+| `20260330000001_create_profiles_table.sql` | DB-1: create `profiles` table with role/invite_status/timestamps |
+| `20260330000002_add_chat_threads.sql` | DB-2: create `chat_threads` table (added during DB-7 execution) |
+| `20260330000003_add_programme_status_constraint.sql` | DB-5: `status` column + partial unique index for one active programme per user |
+| `20260330000004_add_thread_id_to_chat_messages.sql` | DB-4: add `thread_id` FK on `chat_messages` |
+| `20260330000005_add_user_id_indexes.sql` | DB-6: 12 composite user-scoped indexes |
+
+`src/lib/database.types.ts` regenerated via `supabase gen types typescript --project-id qsihlcmjjwarxrnmmsse`. All 10 tables present. All 50 test suites (395 tests) pass.
 
 ### Phase 2: Authentication, Invites, and Profiles Lifecycle
 
