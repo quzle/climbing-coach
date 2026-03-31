@@ -9,6 +9,7 @@ import { GET } from './route'
 // =============================================================================
 
 const mockExchangeCodeForSession = jest.fn()
+const mockFinalizeInvitedUserProfile = jest.fn()
 const mockSet = jest.fn()
 const mockGetAll = jest.fn()
 
@@ -16,6 +17,12 @@ jest.mock('@supabase/ssr', () => ({
   createServerClient: jest.fn(() => ({
     auth: { exchangeCodeForSession: mockExchangeCodeForSession },
   })),
+}))
+
+jest.mock('@/services/auth/authLifecycleService', () => ({
+  finalizeInvitedUserProfile: jest.fn((...args) =>
+    mockFinalizeInvitedUserProfile(...args),
+  ),
 }))
 
 jest.mock('next/headers', () => ({
@@ -45,15 +52,28 @@ describe('GET /auth/callback', () => {
   beforeEach(() => {
     jest.clearAllMocks()
     mockGetAll.mockReturnValue([])
-    mockExchangeCodeForSession.mockResolvedValue({ error: null })
+    mockExchangeCodeForSession.mockResolvedValue({
+      data: {
+        user: {
+          id: 'user-123',
+          email: 'climber@example.com',
+        },
+      },
+      error: null,
+    })
+    mockFinalizeInvitedUserProfile.mockResolvedValue({ data: true, error: null })
   })
 
-  it('exchanges code for session and redirects to home', async () => {
+  it('exchanges code for session, finalizes profile, and redirects to home', async () => {
     const request = makeRequest({ code: 'valid-auth-code' })
 
     const response = await GET(request)
 
     expect(mockExchangeCodeForSession).toHaveBeenCalledWith('valid-auth-code')
+    expect(mockFinalizeInvitedUserProfile).toHaveBeenCalledWith({
+      id: 'user-123',
+      email: 'climber@example.com',
+    })
     expect(response.status).toBe(307)
     expect(response.headers.get('location')).toBe('http://localhost/')
   })
@@ -93,12 +113,53 @@ describe('GET /auth/callback', () => {
 
   it('redirects to login with error when code exchange fails', async () => {
     mockExchangeCodeForSession.mockResolvedValue({
+      data: { user: null },
       error: { message: 'invalid JWT' },
     })
     const request = makeRequest({ code: 'expired-code' })
 
     const response = await GET(request)
 
+    expect(response.status).toBe(307)
+    expect(response.headers.get('location')).toBe(
+      'http://localhost/auth/login?error=callback_failed',
+    )
+  })
+
+  it('redirects to login with error when email is missing after code exchange', async () => {
+    mockExchangeCodeForSession.mockResolvedValue({
+      data: {
+        user: {
+          id: 'user-123',
+          email: null,
+        },
+      },
+      error: null,
+    })
+    const request = makeRequest({ code: 'valid-auth-code' })
+
+    const response = await GET(request)
+
+    expect(mockFinalizeInvitedUserProfile).not.toHaveBeenCalled()
+    expect(response.status).toBe(307)
+    expect(response.headers.get('location')).toBe(
+      'http://localhost/auth/login?error=callback_failed',
+    )
+  })
+
+  it('redirects to login with error when profile finalization fails', async () => {
+    mockFinalizeInvitedUserProfile.mockResolvedValue({
+      data: null,
+      error: 'Failed to finalize profile lifecycle',
+    })
+    const request = makeRequest({ code: 'valid-auth-code' })
+
+    const response = await GET(request)
+
+    expect(mockFinalizeInvitedUserProfile).toHaveBeenCalledWith({
+      id: 'user-123',
+      email: 'climber@example.com',
+    })
     expect(response.status).toBe(307)
     expect(response.headers.get('location')).toBe(
       'http://localhost/auth/login?error=callback_failed',

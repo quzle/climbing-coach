@@ -1,6 +1,7 @@
 import { NextResponse, type NextRequest } from 'next/server'
 import { createServerClient } from '@supabase/ssr'
 import { cookies } from 'next/headers'
+import { finalizeInvitedUserProfile } from '@/services/auth/authLifecycleService'
 
 /**
  * @description Exchanges a Supabase auth code for a session. Called when a
@@ -39,9 +40,32 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
       },
     )
 
-    const { error } = await supabase.auth.exchangeCodeForSession(code)
+    const {
+      data: { user },
+      error,
+    } = await supabase.auth.exchangeCodeForSession(code)
 
     if (!error) {
+      if (!user?.email) {
+        console.error('[auth/callback] missing user email after code exchange', {
+          userId: user?.id ?? null,
+        })
+        return NextResponse.redirect(`${origin}/auth/login?error=callback_failed`)
+      }
+
+      const finalizeResult = await finalizeInvitedUserProfile({
+        id: user.id,
+        email: user.email,
+      })
+
+      if (finalizeResult.error !== null) {
+        console.error(
+          '[auth/callback] finalizeInvitedUserProfile failed:',
+          finalizeResult.error,
+        )
+        return NextResponse.redirect(`${origin}/auth/login?error=callback_failed`)
+      }
+
       // Validate the `next` parameter to prevent open redirect attacks.
       const safeNext = next.startsWith('/') ? next : '/'
       return NextResponse.redirect(`${origin}${safeNext}`)

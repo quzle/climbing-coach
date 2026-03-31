@@ -170,8 +170,29 @@ Test coverage added in `src/middleware.test.ts`:
 - [ ] **AUTH-4** Add shared server auth helper for `getCurrentUser()`
   - Depends on: AUTH-1
 
-- [ ] **AUTH-5** Create or finalize `profiles` row on first successful invited sign-in
+- [x] **AUTH-5** Create or finalize `profiles` row on first successful invited sign-in
   - Depends on: DB-1, AUTH-4
+
+#### Phase 2 Implementation Notes (AUTH-5 completed 2026-03-31)
+
+Implemented invited-user profile lifecycle finalization during auth callback:
+
+- Added `src/services/auth/authLifecycleService.ts` with `finalizeInvitedUserProfile()`.
+- `src/app/auth/callback/route.ts` now calls `finalizeInvitedUserProfile()` after successful `exchangeCodeForSession`.
+- The profile is upserted using authenticated `id` + `email` and normalized to `role: 'user'` and `invite_status: 'active'`.
+- If profile finalization fails (or email is unexpectedly missing), callback redirects to `/auth/login?error=callback_failed`.
+
+Test coverage updates:
+
+- Added `src/services/auth/authLifecycleService.test.ts` (3 unit tests).
+- Updated `src/app/auth/callback/route.test.ts` with profile finalization success/failure coverage.
+
+Executed test commands:
+
+- `npx jest src/services/auth/authLifecycleService.test.ts src/app/auth/callback/route.test.ts --no-coverage`
+- `npx jest --no-coverage`
+
+Results: all 56 suites, 449 tests passed.
 
 - [ ] **AUTH-6** Add `requireSuperuser()` server-side helper
   - Depends on: AUTH-4, REPO-0

@@ -101,7 +101,7 @@ The middleware uses the anon key (`NEXT_PUBLIC_SUPABASE_ANON_KEY`) and **not** t
 Authentication entry points for invited users live under `src/app/auth/`:
 
 - `GET /auth/login`: email/password sign-in page backed by Supabase Auth client sign-in.
-- `GET /auth/callback`: exchanges Supabase auth codes for a cookie-backed session, then redirects to a validated local `next` path (or `/`).
+- `GET /auth/callback`: exchanges Supabase auth codes for a cookie-backed session, finalizes the user's `profiles` row (`invite_status: active`, `role: user`), then redirects to a validated local `next` path (or `/`).
 
 The callback route validates `next` to local paths only (`/something`) to prevent open redirect attacks.
 

@@ -42,6 +42,14 @@ Climbing-specific domain logic. Pure functions where possible.
 | `periodisation.ts` | Block logic: deload detection, mesocycle progression rules (Phase 2) |
 | `progressionRules.ts` | Determines when intensity should increase based on recent performance (Phase 2) |
 
+### `services/auth/`
+
+Authentication lifecycle orchestration. Business logic that runs around auth events.
+
+| File | Responsibility |
+|---|---|
+| `authLifecycleService.ts` | Finalizes invited-user profile lifecycle after auth callback sign-in |
+
 ## Testing
 
 - Every function in `services/` must have a unit test.
@@ -51,7 +59,7 @@ Climbing-specific domain logic. Pure functions where possible.
 
 ## Adding a New Service Function
 
-1. Identify the correct layer: data access → `services/data/`, business logic → `services/ai/` or `services/training/`
+1. Identify the correct layer: data access → `services/data/`, business logic → `services/ai/`, `services/training/`, or `services/auth/`
 2. Export a named function with an explicit return type
 3. Write the unit test alongside the file
 4. Add a thin API route in `src/app/api/` that calls the function — do not put logic in the route
