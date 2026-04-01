@@ -245,7 +245,7 @@ Goal: explicitly scope all data access by authenticated user.
 - [x] **REPO-6** Refactor `injuryAreasRepository`
   - Depends on: DB-3, DB-7, AUTH-4, LOG-1
 
-- [ ] **REPO-7** Refactor `weeklyTemplateRepository`
+- [x] **REPO-7** Refactor `weeklyTemplateRepository` ✅ — implemented 2026-04-01. Added `user_id` scoping to weekly template repository read/update/delete operations and updated dependent call sites/tests.
   - Depends on: DB-3, DB-7, AUTH-4, LOG-1
 
 - [ ] **REPO-8** Add chat thread and chat message repositories

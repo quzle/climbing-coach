@@ -279,6 +279,10 @@ describe('buildProgrammeContext', () => {
     expect(mockGetActiveProgramme).toHaveBeenCalledWith(SINGLE_USER_PLACEHOLDER_ID)
     expect(mockGetActiveMesocycle).toHaveBeenCalledWith(SINGLE_USER_PLACEHOLDER_ID)
     expect(mockGetUpcomingPlannedSessions).toHaveBeenCalledWith(7, SINGLE_USER_PLACEHOLDER_ID)
+    expect(mockGetWeeklyTemplateByMesocycle).toHaveBeenCalledWith(
+      'mesocycle-1',
+      SINGLE_USER_PLACEHOLDER_ID,
+    )
     expect(result.currentProgramme?.name).toBe('Summer Multipitch Season')
     expect(result.activeMesocycle?.name).toBe('Power Block')
     expect(result.currentWeeklyTemplate).toHaveLength(1)

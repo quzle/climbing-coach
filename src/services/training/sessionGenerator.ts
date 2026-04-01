@@ -95,7 +95,7 @@ export async function generatePlannedSessionsForActiveMesocycle(
     // Fetch templates and existing sessions in parallel now that we have the
     // mesocycle end date for the range query.
     const [templatesResult, existingSessionsResult] = await Promise.all([
-      getWeeklyTemplateByMesocycle(activeMesocycle.id),
+      getWeeklyTemplateByMesocycle(activeMesocycle.id, SINGLE_USER_PLACEHOLDER_ID),
       getPlannedSessionsInRange(
         toIsoDate(fromDate),
         activeMesocycle.planned_end,

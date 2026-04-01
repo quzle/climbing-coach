@@ -4,7 +4,7 @@ import {
   createWeeklyTemplate,
   getWeeklyTemplateByMesocycle,
 } from '@/services/data/weeklyTemplateRepository'
-import { SINGLE_USER_PLACEHOLDER_ID } from '@/lib/placeholder-user-id'
+import { getCurrentUser } from '@/lib/supabase/get-current-user'
 import type { ApiResponse, WeeklyTemplate } from '@/types'
 
 const querySchema = z.object({ mesocycle_id: z.string().uuid() })
@@ -37,6 +37,7 @@ export async function GET(
   request: NextRequest,
 ): Promise<NextResponse<ApiResponse<{ weeklyTemplates: WeeklyTemplate[] }>>> {
   try {
+    const user = await getCurrentUser()
     const parsed = querySchema.safeParse({
       mesocycle_id: request.nextUrl.searchParams.get('mesocycle_id'),
     })
@@ -48,7 +49,7 @@ export async function GET(
       )
     }
 
-    const result = await getWeeklyTemplateByMesocycle(parsed.data.mesocycle_id)
+    const result = await getWeeklyTemplateByMesocycle(parsed.data.mesocycle_id, user.id)
     if (result.error !== null) {
       console.error('[GET /api/weekly-templates]', result.error)
       return NextResponse.json(
@@ -75,6 +76,7 @@ export async function POST(
   request: NextRequest,
 ): Promise<NextResponse<ApiResponse<{ weeklyTemplate: WeeklyTemplate }>>> {
   try {
+    const user = await getCurrentUser()
     const parsed = createWeeklyTemplateSchema.safeParse(await request.json())
 
     if (!parsed.success) {
@@ -90,7 +92,7 @@ export async function POST(
       duration_mins: parsed.data.duration_mins ?? null,
       primary_focus: parsed.data.primary_focus ?? null,
       notes: parsed.data.notes ?? null,
-      user_id: SINGLE_USER_PLACEHOLDER_ID,
+      user_id: user.id,
     })
 
     if (result.error !== null || result.data === null) {

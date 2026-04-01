@@ -524,6 +524,7 @@ Weekly setup wizard — step 2. Replaces all existing weekly templates for the m
 ## Weekly Templates
 
 Weekly templates define the intended session structure for each day of the week within a mesocycle. `day_of_week` uses `0 = Monday … 6 = Sunday`.
+All weekly template endpoints are scoped to the authenticated user.
 
 ### `GET /api/weekly-templates`
 

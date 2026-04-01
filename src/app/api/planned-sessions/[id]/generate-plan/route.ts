@@ -120,7 +120,7 @@ export async function POST(
     // Fetch mesocycle, template, and athlete context in parallel.
     const [mesocycleResult, templateResult, athleteContext] = await Promise.all([
       getMesocycleById(session.mesocycle_id, user.id),
-      getWeeklyTemplateById(session.template_id),
+      getWeeklyTemplateById(session.template_id, user.id),
       buildAthleteContext(),
     ])
 

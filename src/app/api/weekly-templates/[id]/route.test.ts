@@ -6,6 +6,7 @@ import {
   getWeeklyTemplateById,
   updateWeeklyTemplate,
 } from '@/services/data/weeklyTemplateRepository'
+import { getCurrentUser } from '@/lib/supabase/get-current-user'
 import { GET, PUT } from './route'
 
 jest.mock('@/services/data/weeklyTemplateRepository', () => ({
@@ -13,8 +14,13 @@ jest.mock('@/services/data/weeklyTemplateRepository', () => ({
   updateWeeklyTemplate: jest.fn(),
 }))
 
+jest.mock('@/lib/supabase/get-current-user', () => ({
+  getCurrentUser: jest.fn(),
+}))
+
 const mockGetWeeklyTemplateById = getWeeklyTemplateById as jest.Mock
 const mockUpdateWeeklyTemplate = updateWeeklyTemplate as jest.Mock
+const mockGetCurrentUser = getCurrentUser as jest.Mock
 
 const id = 'c42df97b-26a8-44f2-b923-2546f0f81116'
 const template = {
@@ -31,6 +37,7 @@ const template = {
 
 beforeEach(() => {
   jest.clearAllMocks()
+  mockGetCurrentUser.mockResolvedValue({ id: 'user-1', email: 'user@example.com' })
   mockGetWeeklyTemplateById.mockResolvedValue({ data: template, error: null })
   mockUpdateWeeklyTemplate.mockResolvedValue({ data: template, error: null })
 })
@@ -41,6 +48,7 @@ describe('GET /api/weekly-templates/:id', () => {
       params: Promise.resolve({ id }),
     })
     expect(response.status).toBe(200)
+    expect(mockGetWeeklyTemplateById).toHaveBeenCalledWith(id, 'user-1')
   })
 })
 
@@ -54,8 +62,10 @@ describe('PUT /api/weekly-templates/:id', () => {
 
     const response = await PUT(request, { params: Promise.resolve({ id }) })
     expect(response.status).toBe(200)
-    expect(mockUpdateWeeklyTemplate).toHaveBeenCalledWith(id, {
-      session_label: 'Updated label',
-    })
+    expect(mockUpdateWeeklyTemplate).toHaveBeenCalledWith(
+      id,
+      { session_label: 'Updated label' },
+      'user-1',
+    )
   })
 })

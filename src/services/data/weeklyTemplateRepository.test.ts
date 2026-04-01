@@ -49,6 +49,7 @@ function makeWeeklyTemplate(overrides?: Partial<WeeklyTemplate>): WeeklyTemplate
 
 describe('weeklyTemplateRepository', () => {
   let mockChain: ReturnType<typeof makeSupabaseMock>['mockChain']
+  const TEST_USER_ID = 'user-1'
 
   beforeEach(() => {
     const mock = makeSupabaseMock()
@@ -60,9 +61,10 @@ describe('weeklyTemplateRepository', () => {
     const templates = [makeWeeklyTemplate()]
     mockChain.order.mockResolvedValue({ data: templates, error: null })
 
-    const result = await getWeeklyTemplateByMesocycle('mesocycle-1')
+    const result = await getWeeklyTemplateByMesocycle('mesocycle-1', TEST_USER_ID)
 
     expect(mockChain.eq).toHaveBeenCalledWith('mesocycle_id', 'mesocycle-1')
+    expect(mockChain.eq).toHaveBeenCalledWith('user_id', TEST_USER_ID)
     expect(mockChain.order).toHaveBeenCalledWith('day_of_week', { ascending: true })
     expect(result.data).toEqual(templates)
   })
@@ -90,9 +92,10 @@ describe('weeklyTemplateRepository', () => {
     const template = makeWeeklyTemplate()
     mockChain.single.mockResolvedValue({ data: template, error: null })
 
-    const result = await getWeeklyTemplateById('template-1')
+    const result = await getWeeklyTemplateById('template-1', TEST_USER_ID)
 
     expect(mockChain.eq).toHaveBeenCalledWith('id', 'template-1')
+    expect(mockChain.eq).toHaveBeenCalledWith('user_id', TEST_USER_ID)
     expect(result.data).toEqual(template)
   })
 
@@ -101,9 +104,10 @@ describe('weeklyTemplateRepository', () => {
     const template = makeWeeklyTemplate({ session_label: 'Fingerboard' })
     mockChain.single.mockResolvedValue({ data: template, error: null })
 
-    const result = await updateWeeklyTemplate('template-1', updates)
+    const result = await updateWeeklyTemplate('template-1', updates, TEST_USER_ID)
 
     expect(mockChain.update).toHaveBeenCalledWith(updates)
+    expect(mockChain.eq).toHaveBeenCalledWith('user_id', TEST_USER_ID)
     expect(result.data?.session_label).toBe('Fingerboard')
   })
 })

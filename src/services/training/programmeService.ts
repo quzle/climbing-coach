@@ -53,7 +53,7 @@ export async function getProgrammeBuilderSnapshot(): Promise<
         ? getMesocyclesByProgramme(currentProgramme.id, SINGLE_USER_PLACEHOLDER_ID)
         : Promise.resolve({ data: [], error: null }),
       activeMesocycle !== null
-        ? getWeeklyTemplateByMesocycle(activeMesocycle.id)
+        ? getWeeklyTemplateByMesocycle(activeMesocycle.id, SINGLE_USER_PLACEHOLDER_ID)
         : Promise.resolve({ data: [], error: null }),
     ])
 

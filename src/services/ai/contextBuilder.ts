@@ -246,7 +246,10 @@ export async function buildProgrammeContext(): Promise<
 
   let currentWeeklyTemplate: WeeklyTemplate[] = []
   if (activeMesocycle !== null) {
-    const weeklyTemplateResult = await getWeeklyTemplateByMesocycle(activeMesocycle.id)
+    const weeklyTemplateResult = await getWeeklyTemplateByMesocycle(
+      activeMesocycle.id,
+      SINGLE_USER_PLACEHOLDER_ID,
+    )
     if (weeklyTemplateResult.error !== null) {
       logContextDependencyFailure(
         'programme',

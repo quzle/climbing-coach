@@ -487,7 +487,7 @@ async function rollbackSeedRows(
   }
 
   for (const templateId of [...createdWeeklyTemplateIds].reverse()) {
-    const deleteResult = await deleteWeeklyTemplate(templateId)
+    const deleteResult = await deleteWeeklyTemplate(templateId, SINGLE_USER_PLACEHOLDER_ID)
     if (deleteResult.error !== null) {
       console.error(
         '[programmeSeed.rollbackSeedRows] deleteWeeklyTemplate:',

@@ -6,6 +6,7 @@ import {
   createWeeklyTemplate,
   getWeeklyTemplateByMesocycle,
 } from '@/services/data/weeklyTemplateRepository'
+import { getCurrentUser } from '@/lib/supabase/get-current-user'
 import { GET, POST } from './route'
 
 jest.mock('@/services/data/weeklyTemplateRepository', () => ({
@@ -13,8 +14,13 @@ jest.mock('@/services/data/weeklyTemplateRepository', () => ({
   createWeeklyTemplate: jest.fn(),
 }))
 
+jest.mock('@/lib/supabase/get-current-user', () => ({
+  getCurrentUser: jest.fn(),
+}))
+
 const mockGetWeeklyTemplateByMesocycle = getWeeklyTemplateByMesocycle as jest.Mock
 const mockCreateWeeklyTemplate = createWeeklyTemplate as jest.Mock
+const mockGetCurrentUser = getCurrentUser as jest.Mock
 
 const template = {
   id: 'c42df97b-26a8-44f2-b923-2546f0f81116',
@@ -30,6 +36,7 @@ const template = {
 
 beforeEach(() => {
   jest.clearAllMocks()
+  mockGetCurrentUser.mockResolvedValue({ id: 'user-1', email: 'user@example.com' })
   mockGetWeeklyTemplateByMesocycle.mockResolvedValue({ data: [template], error: null })
   mockCreateWeeklyTemplate.mockResolvedValue({ data: template, error: null })
 })
@@ -43,7 +50,10 @@ describe('GET /api/weekly-templates', () => {
     )
 
     expect(response.status).toBe(200)
-    expect(mockGetWeeklyTemplateByMesocycle).toHaveBeenCalledWith(template.mesocycle_id)
+    expect(mockGetWeeklyTemplateByMesocycle).toHaveBeenCalledWith(
+      template.mesocycle_id,
+      'user-1',
+    )
   })
 })
 
