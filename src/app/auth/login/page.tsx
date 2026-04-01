@@ -17,7 +17,6 @@ import { createClient } from '@/lib/supabase/client'
 
 const loginSchema = z.object({
   email: z.string().email('Enter a valid email address'),
-  password: z.string().min(1, 'Password is required'),
 })
 
 type LoginFormData = z.infer<typeof loginSchema>
@@ -37,10 +36,11 @@ function LoginPageContent(): React.JSX.Element {
   const callbackError = searchParams.get('error')
 
   const [serverError, setServerError] = useState<string | null>(
-    callbackError === 'callback_failed'
+    callbackError === 'callback_failed' || callbackError === 'confirm_failed'
       ? 'The sign-in link has expired or is invalid. Please try again.'
       : null,
   )
+  const [successMessage, setSuccessMessage] = useState<string | null>(null)
   const [isSubmitting, setIsSubmitting] = useState(false)
 
   const {
@@ -53,24 +53,23 @@ function LoginPageContent(): React.JSX.Element {
 
   async function onSubmit(data: LoginFormData): Promise<void> {
     setServerError(null)
+    setSuccessMessage(null)
     setIsSubmitting(true)
 
     try {
       const supabase = createClient()
-      const { error } = await supabase.auth.signInWithPassword({
+      const { error } = await supabase.auth.signInWithOtp({
         email: data.email,
-        password: data.password,
       })
 
       if (error) {
         // Never expose the raw Supabase error to the user.
-        console.error('[LoginPage] signInWithPassword failed:', error.message)
-        setServerError('Invalid email or password.')
+        console.error('[LoginPage] signInWithOtp failed:', error.message)
+        setServerError('Unable to send sign-in link. Please try again.')
         return
       }
 
-      router.push('/')
-      router.refresh()
+      setSuccessMessage('Check your email for a sign-in link.')
     } finally {
       setIsSubmitting(false)
     }
@@ -86,6 +85,14 @@ function LoginPageContent(): React.JSX.Element {
           {serverError && (
             <p role="alert" className="rounded-md bg-red-50 px-3 py-2 text-sm text-red-700">
               {serverError}
+            </p>
+          )}
+          {successMessage && (
+            <p
+              role="status"
+              className="rounded-md bg-green-50 px-3 py-2 text-sm text-green-700"
+            >
+              {successMessage}
             </p>
           )}
 
@@ -104,27 +111,12 @@ function LoginPageContent(): React.JSX.Element {
             )}
           </div>
 
-          <div className="space-y-1">
-            <Label htmlFor="password">Password</Label>
-            <Input
-              id="password"
-              type="password"
-              autoComplete="current-password"
-              placeholder="password"
-              className="min-h-[44px]"
-              {...register('password')}
-            />
-            {errors.password && (
-              <p className="text-sm text-red-600">{errors.password.message}</p>
-            )}
-          </div>
-
           <Button
             type="submit"
             className="min-h-[44px] w-full"
             disabled={isSubmitting}
           >
-            {isSubmitting ? 'Signing in...' : 'Sign in'}
+            {isSubmitting ? 'Sending link...' : 'Send sign-in link'}
           </Button>
         </form>
       </CardContent>

@@ -227,14 +227,14 @@ Results: all 56 suites, 449 tests passed.
     - Middleware updated to allow `/auth/confirm` as a public path (alongside `/auth/login` and `/auth/callback`) ✅
     - Unit tests covering success, invite finalization, recovery redirect, missing token, and failed verification paths ✅
 
-- [ ] **AUTH-9** Replace password login form with magic link login
+- [x] **AUTH-9** Replace password login form with magic link login ✅ _2026-04-01_
   - Depends on: AUTH-2, AUTH-8
   - Deliverables:
-    - **Replace `/auth/login` form**: swap the email + password fields for an email-only input; on submit call `supabase.auth.signInWithOtp({ email })`; show a confirmation message (e.g. "Check your email for a sign-in link"); show a safe generic error on failure; in-flight submit state reflected in UI
-    - **Handle `type=magiclink` in `/auth/confirm`**: `verifyOtp` already supports this type; ensure the route's success path redirects to `next` or `/` (same as `type=invite`) and does not attempt profile finalization for returning users
-    - Unit tests for the updated login page covering confirmation message, error state, and in-flight state
-    - Unit tests for the `/auth/confirm` `type=magiclink` path
-    - `docs/ux/00-account-creation.md` updated to reflect magic link as the login mechanism
+    - **Replace `/auth/login` form**: swapped email + password fields for an email-only input; submit now calls `supabase.auth.signInWithOtp({ email })`; success confirmation, safe generic error, and in-flight submit state are implemented ✅
+    - **Handle `type=magiclink` in `/auth/confirm`**: success path now redirects to `next` or `/` and does not call `finalizeInvitedUserProfile()` ✅
+    - Unit tests for the updated login page covering confirmation message, error state, and in-flight state ✅
+    - Unit tests for the `/auth/confirm` `type=magiclink` path ✅
+    - `docs/ux/00-account-creation.md` updated to reflect magic link as the login mechanism ✅
 
 ### Phase 3: Logging Baseline
 

@@ -81,7 +81,7 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
     error,
   } = await supabase.auth.verifyOtp({
     token_hash: tokenHash,
-    type: type as 'invite' | 'recovery',
+    type: type as 'invite' | 'recovery' | 'magiclink',
   })
 
   if (error) {
@@ -151,6 +151,25 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
       return NextResponse.redirect(`${origin}/auth/login?error=confirm_failed`)
     }
 
+    // Validate the `next` parameter to prevent open redirect attacks.
+    const safeNext = next.startsWith('/') ? next : '/'
+
+    logInfo({
+      event: 'token_confirmation_success',
+      outcome: 'success',
+      route: '/auth/confirm',
+      userId: user.id,
+      data: {
+        confirmation_type: type,
+        redirect_path: safeNext,
+      },
+    })
+
+    return NextResponse.redirect(`${origin}${safeNext}`)
+  }
+
+  // Handle magic link type: redirect to home or next without profile finalization.
+  if (type === 'magiclink') {
     // Validate the `next` parameter to prevent open redirect attacks.
     const safeNext = next.startsWith('/') ? next : '/'
 

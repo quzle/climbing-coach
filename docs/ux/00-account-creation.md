@@ -91,11 +91,11 @@ sequenceDiagram
 - **Password setup via Supabase reset flow removed.** The original approach of setting a password via "Forgot password" was replaced by magic link authentication — simpler and consistent with the invite flow.
 
 ### Resolved
+- **Magic link login (`AUTH-9`).** `/auth/login` now uses an email-only form that sends a sign-in link via Supabase OTP (`signInWithOtp`). Return visits now follow the documented magic link flow through `/auth/confirm` with `type=magiclink`.
 - **`/auth/confirm` OTP route (`AUTH-8`).** Implemented with support for invite-type (profile finalization + redirect) and recovery-type (redirect to change-password page) flows. Handles safe `next` parameter validation and structured error logging.
 
 ### Open
 - **No in-app invite sending.** Invites must currently be sent directly from the Supabase dashboard. The `/dev` invite UI (`DEV-2`) is not yet built. (`POST /api/invites` is implemented as `API-0`.)
-- **Magic link login not yet implemented.** `AUTH-9` (replace password form with magic link entry) is pending. Until then the login page has a password form that no user has credentials for.
 - **Generic invite email.** The email is sent with Supabase default branding and copy. Customisation requires a Supabase Pro plan or custom SMTP configuration.
 - **Silent confirmation failures.** If `verifyOtp` or profile finalization fails, the user is redirected to `/auth/login?error=confirm_failed` with no explanation in the UI.
 - **No logout surface.** Once logged in, the user has no way to log out. `CLIENT-2` (logout action) and `CLIENT-3` (user indicator) are pending.

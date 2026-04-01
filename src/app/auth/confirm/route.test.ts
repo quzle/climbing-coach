@@ -249,6 +249,35 @@ describe('GET /auth/confirm', () => {
     })
   })
 
+  describe('magiclink type', () => {
+    it('verifies token, skips profile finalization, and redirects to home on success', async () => {
+      const request = makeRequest({
+        token_hash: 'valid-magiclink-token',
+        type: 'magiclink',
+      })
+
+      const response = await GET(request)
+
+      expect(mockVerifyOtp).toHaveBeenCalledWith({
+        token_hash: 'valid-magiclink-token',
+        type: 'magiclink',
+      })
+      expect(mockFinalizeInvitedUserProfile).not.toHaveBeenCalled()
+      expect(response.status).toBe(307)
+      expect(response.headers.get('location')).toBe('http://localhost/')
+      expect(mockLogInfo).toHaveBeenCalledWith({
+        event: 'token_confirmation_success',
+        outcome: 'success',
+        route: '/auth/confirm',
+        userId: 'user-123',
+        data: {
+          confirmation_type: 'magiclink',
+          redirect_path: '/',
+        },
+      })
+    })
+  })
+
   describe('error cases', () => {
     it('redirects to login with error when token_hash is missing', async () => {
       const request = makeRequest({
