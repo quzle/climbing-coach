@@ -277,7 +277,7 @@ Goal: resolve the authenticated user in every route and propagate ownership chec
 - [x] **API-6** Refactor `src/app/api/injury-areas/route.ts` ✅ — implemented 2026-04-01. Added structured logging and explicit unauthenticated (401) handling to injury-areas routes, with expanded GET/POST/DELETE route test coverage.
   - Depends on: AUTH-4, REPO-6, LOG-3
 
-- [ ] **API-7** Refactor `src/app/api/weekly-templates/route.ts`
+- [x] **API-7** Refactor `src/app/api/weekly-templates/route.ts` ✅ — implemented 2026-04-01. Added structured logging and explicit unauthenticated (401) handling for GET/POST, and expanded route tests for validation/auth/repository failure paths.
   - Depends on: AUTH-4, REPO-7, LOG-3
 
 - [ ] **API-8** Refactor `src/app/api/chat/route.ts`

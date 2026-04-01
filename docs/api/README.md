@@ -553,7 +553,7 @@ List weekly templates for a mesocycle, ordered by `day_of_week`.
 |---|---|---|
 | `mesocycle_id` | UUID | Yes |
 
-**Response** `200`
+**Response** `200` · `400` if `mesocycle_id` is missing/invalid · `401` if unauthenticated
 
 ```ts
 { data: { weeklyTemplates: WeeklyTemplate[] } }
@@ -580,7 +580,7 @@ Create a weekly template slot.
 }
 ```
 
-**Response** `201`
+**Response** `201` · `400` on validation error · `401` if unauthenticated
 
 ```ts
 { data: { weeklyTemplate: WeeklyTemplate } }
