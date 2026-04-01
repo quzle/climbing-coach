@@ -2,6 +2,18 @@
     "chat.tools.terminal.autoApprove": {
         "npx jest": true,
         "npx tsc": true,
-        "supabase": true
+        "supabase": true,
+        "/^find\\s/": true,
+        "/^cat\\s/": true,
+        "/^ls(\\s|$)/": true,
+        "/^echo\\s/": true,
+        "/^sort(\\s|$)/": true,
+        "/^git\\s+(status|diff|log|show)\\b/": true,
+        "rm": false,
+        "rmdir": false,
+        "chmod": false,
+        "curl": false,
+        "wget": false,
+        "eval": false
     }
 }
