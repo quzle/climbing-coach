@@ -167,7 +167,7 @@ Test coverage added in `src/middleware.test.ts`:
 
 55 test suites, 444 tests pass.
 
-- [ ] **AUTH-4** Add shared server auth helper for `getCurrentUser()`
+- [x] **AUTH-4** Add shared server auth helper for `getCurrentUser()`
   - Depends on: AUTH-1
 
 - [x] **AUTH-5** Create or finalize `profiles` row on first successful invited sign-in
@@ -194,10 +194,10 @@ Executed test commands:
 
 Results: all 56 suites, 449 tests passed.
 
-- [ ] **AUTH-6** Add `requireSuperuser()` server-side helper
+- [x] **AUTH-6** Add `requireSuperuser()` server-side helper
   - Depends on: AUTH-4, REPO-0
 
-- [ ] **AUTH-7** Implement invite action using Supabase native invite flow
+- [x] **AUTH-7** Implement invite action using Supabase native invite flow
   - Depends on: AUTH-6, LOG-1
 
 ### Phase 3: Logging Baseline
@@ -227,22 +227,22 @@ Goal: make profile access available for role checks and lifecycle hooks.
 
 Goal: explicitly scope all data access by authenticated user.
 
-- [ ] **REPO-1** Refactor `programmeRepository`
+- [x] **REPO-1** Refactor `programmeRepository`
   - Depends on: DB-3, DB-5, DB-7, AUTH-4, LOG-1
 
-- [ ] **REPO-2** Refactor `mesocycleRepository`
+- [x] **REPO-2** Refactor `mesocycleRepository`
   - Depends on: DB-3, DB-7, AUTH-4, LOG-1
 
-- [ ] **REPO-3** Refactor `plannedSessionRepository`
+- [x] **REPO-3** Refactor `plannedSessionRepository`
   - Depends on: DB-3, DB-7, AUTH-4, LOG-1
 
-- [ ] **REPO-4** Refactor `sessionRepository`
+- [x] **REPO-4** Refactor `sessionRepository`
   - Depends on: DB-3, DB-7, AUTH-4, LOG-1
 
-- [ ] **REPO-5** Refactor `readinessRepository`
+- [x] **REPO-5** Refactor `readinessRepository`
   - Depends on: DB-3, DB-7, AUTH-4, LOG-1
 
-- [ ] **REPO-6** Refactor `injuryAreasRepository`
+- [x] **REPO-6** Refactor `injuryAreasRepository`
   - Depends on: DB-3, DB-7, AUTH-4, LOG-1
 
 - [ ] **REPO-7** Refactor `weeklyTemplateRepository`
