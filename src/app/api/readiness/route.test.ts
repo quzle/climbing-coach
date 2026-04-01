@@ -4,6 +4,7 @@
 import { NextRequest } from 'next/server'
 import {
   createCheckin,
+  deleteTodaysCheckin,
   getTodaysCheckin,
   getRecentCheckins,
   getAverageReadiness,
@@ -13,7 +14,7 @@ import { buildAthleteContext, computeWarnings, parseInjuryAreaHealth } from '@/s
 import { getLastSessionDate } from '@/services/data/sessionRepository'
 import { getActiveInjuryAreas } from '@/services/data/injuryAreasRepository'
 import { getCurrentUser } from '@/lib/supabase/get-current-user'
-import { POST, GET } from './route'
+import { DELETE, POST, GET } from './route'
 
 // =============================================================================
 // MODULE MOCKS
@@ -21,6 +22,7 @@ import { POST, GET } from './route'
 
 jest.mock('@/services/data/readinessRepository', () => ({
   createCheckin: jest.fn(),
+  deleteTodaysCheckin: jest.fn(),
   getTodaysCheckin: jest.fn(),
   getRecentCheckins: jest.fn(),
   getAverageReadiness: jest.fn(),
@@ -45,11 +47,18 @@ jest.mock('@/lib/supabase/get-current-user', () => ({
   getCurrentUser: jest.fn(),
 }))
 
+jest.mock('@/lib/logger', () => ({
+  logInfo: jest.fn(),
+  logWarn: jest.fn(),
+  logError: jest.fn(),
+}))
+
 // =============================================================================
 // TYPED MOCK REFERENCES
 // =============================================================================
 
 const mockCreateCheckin = createCheckin as jest.Mock
+const mockDeleteTodaysCheckin = deleteTodaysCheckin as jest.Mock
 const mockGetTodaysCheckin = getTodaysCheckin as jest.Mock
 const mockGetRecentCheckins = getRecentCheckins as jest.Mock
 const mockGetAverageReadiness = getAverageReadiness as jest.Mock
@@ -91,6 +100,7 @@ beforeEach(() => {
   jest.clearAllMocks()
   mockHasCheckedInToday.mockResolvedValue({ data: false, error: null })
   mockCreateCheckin.mockResolvedValue({ data: mockCheckin, error: null })
+  mockDeleteTodaysCheckin.mockResolvedValue({ data: true, error: null })
   mockGetTodaysCheckin.mockResolvedValue({ data: null, error: null })
   mockGetRecentCheckins.mockResolvedValue({ data: [], error: null })
   mockGetAverageReadiness.mockResolvedValue({ data: 3.5, error: null })
@@ -211,6 +221,17 @@ describe('POST /api/readiness', () => {
     expect(mockCreateCheckin).not.toHaveBeenCalled()
   })
 
+  it('returns 401 when unauthenticated', async () => {
+    mockGetCurrentUser.mockRejectedValue(new Error('Unauthenticated'))
+
+    const response = await POST(makePostRequest(validBody))
+    const body = await response.json()
+
+    expect(response.status).toBe(401)
+    expect(body).toEqual({ data: null, error: 'Unauthenticated.' })
+    expect(mockCreateCheckin).not.toHaveBeenCalled()
+  })
+
   it('returns 409 when createCheckin reports duplicate-day conflict', async () => {
     mockCreateCheckin.mockResolvedValue({
       data: null,
@@ -304,5 +325,47 @@ describe('GET /api/readiness', () => {
     await GET(new NextRequest('http://localhost:3000/api/readiness?days=200'))
 
     expect(mockGetRecentCheckins).toHaveBeenCalledWith(90, 'user-1')
+  })
+
+  it('returns 401 when unauthenticated', async () => {
+    mockGetCurrentUser.mockRejectedValue(new Error('Unauthenticated'))
+
+    const response = await GET(new NextRequest('http://localhost:3000/api/readiness'))
+    const body = await response.json()
+
+    expect(response.status).toBe(401)
+    expect(body).toEqual({ data: null, error: 'Unauthenticated.' })
+  })
+})
+
+describe('DELETE /api/readiness', () => {
+  it('returns 200 when today\'s check-in is deleted', async () => {
+    const response = await DELETE()
+    const body = await response.json()
+
+    expect(response.status).toBe(200)
+    expect(body).toEqual({ data: { deleted: true }, error: null })
+    expect(mockDeleteTodaysCheckin).toHaveBeenCalledWith('user-1')
+  })
+
+  it('returns 404 when no check-in exists for today', async () => {
+    mockDeleteTodaysCheckin.mockResolvedValue({ data: null, error: 'No check-in found for today.' })
+
+    const response = await DELETE()
+    const body = await response.json()
+
+    expect(response.status).toBe(404)
+    expect(body).toEqual({ data: null, error: 'No check-in found for today.' })
+  })
+
+  it('returns 401 when unauthenticated', async () => {
+    mockGetCurrentUser.mockRejectedValue(new Error('Unauthenticated'))
+
+    const response = await DELETE()
+    const body = await response.json()
+
+    expect(response.status).toBe(401)
+    expect(body).toEqual({ data: null, error: 'Unauthenticated.' })
+    expect(mockDeleteTodaysCheckin).not.toHaveBeenCalled()
   })
 })

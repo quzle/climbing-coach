@@ -147,6 +147,7 @@ Returns active training warnings (same set the AI coach sees) so the UI can surf
 |---|---|
 | `201` | Check-in saved |
 | `400` | Validation failure |
+| `401` | Not authenticated |
 | `409` | Already checked in today |
 | `500` | Database error |
 
@@ -162,7 +163,7 @@ Retrieve recent check-ins for the authenticated user with today's summary and a 
 |---|---|---|---|
 | `days` | number | `7` | 1–90 |
 
-**Response** `200` · `400` for invalid type · `401` if unauthenticated
+**Response** `200` · `401` if unauthenticated
 
 ```ts
 {
@@ -176,6 +177,18 @@ Retrieve recent check-ins for the authenticated user with today's summary and a 
 ```
 
 Individual query failures return partial results rather than a `500` — missing fields default to `null` / `[]` / `false`.
+
+---
+
+### `DELETE /api/readiness`
+
+Delete today's readiness check-in for the authenticated user so it can be resubmitted.
+
+**Response** `200` · `401` if unauthenticated · `404` if no check-in exists for today
+
+```ts
+{ data: { deleted: true }, error: null }
+```
 
 ---
 
