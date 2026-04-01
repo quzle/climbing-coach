@@ -139,8 +139,11 @@ async function saveMessageToDatabase(message: ChatMessageInsert): Promise<void> 
 export async function sendChatMessage(
   userMessage: string,
   existingHistory: ChatMessage[],
+  context?: { userId: string; threadId: string | null },
 ): Promise<{ response: string; warnings: string[] }> {
   const startedAt = Date.now()
+  const resolvedUserId = context?.userId ?? SINGLE_USER_PLACEHOLDER_ID
+  const resolvedThreadId = context?.threadId ?? null
 
   try {
     // Step 1: Build athlete context
@@ -175,23 +178,26 @@ export async function sendChatMessage(
       role: 'user',
       content: userMessage,
       context_snapshot: null,
-      user_id: SINGLE_USER_PLACEHOLDER_ID,
+      user_id: resolvedUserId,
+      thread_id: resolvedThreadId,
     })
     void saveMessageToDatabase({
       role: 'assistant',
       content: responseText,
       context_snapshot: null,
-      user_id: SINGLE_USER_PLACEHOLDER_ID,
+      user_id: resolvedUserId,
+      thread_id: resolvedThreadId,
     })
 
     // Step 8: Return response with active warnings
     logInfo({
       event: 'ai_chat_request_executed',
       outcome: 'success',
-      userId: SINGLE_USER_PLACEHOLDER_ID,
+      userId: resolvedUserId,
       entityType: 'ai_chat_request',
       durationMs: Date.now() - startedAt,
       data: {
+        thread_id: resolvedThreadId,
         history_count: existingHistory.length,
         message_length: userMessage.length,
         model: MODEL_NAME,
@@ -208,10 +214,11 @@ export async function sendChatMessage(
     logError({
       event: 'ai_chat_request_executed',
       outcome: 'failure',
-      userId: SINGLE_USER_PLACEHOLDER_ID,
+      userId: resolvedUserId,
       entityType: 'ai_chat_request',
       durationMs: Date.now() - startedAt,
       data: {
+        thread_id: resolvedThreadId,
         history_count: existingHistory.length,
         message_length: userMessage.length,
         model: MODEL_NAME,

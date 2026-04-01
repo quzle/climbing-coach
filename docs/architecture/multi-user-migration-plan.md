@@ -280,7 +280,7 @@ Goal: resolve the authenticated user in every route and propagate ownership chec
 - [x] **API-7** Refactor `src/app/api/weekly-templates/route.ts` ✅ — implemented 2026-04-01. Added structured logging and explicit unauthenticated (401) handling for GET/POST, and expanded route tests for validation/auth/repository failure paths.
   - Depends on: AUTH-4, REPO-7, LOG-3
 
-- [ ] **API-8** Refactor `src/app/api/chat/route.ts`
+- [x] **API-8** Refactor `src/app/api/chat/route.ts` ✅ — implemented 2026-04-01. Route now resolves authenticated user, validates/reuses or creates chat threads, persists chat messages with thread scope, and returns `thread_id` with explicit 401/404 handling.
   - Depends on: AUTH-4, REPO-8, LOG-3, LOG-4
 
 - [ ] **API-9** Refactor the programme setup flow route

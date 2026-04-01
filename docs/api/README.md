@@ -62,20 +62,22 @@ Operational logging for this route records request outcome, duration, message le
 {
   message: string        // 1–2000 chars
   history: ChatMessage[] // previous messages; defaults to []
+  thread_id?: string     // UUID; optional existing thread id
 }
 ```
 
-`history` is the full conversation so far, passed from client state. The last 20 messages are sent to Gemini as conversation history. Both the user message and the AI response are saved as a fire-and-forget operation through the chat message repository layer (`chat_messages` table).
+`history` is the full conversation so far, passed from client state. The last 20 messages are sent to Gemini as conversation history. The route resolves the authenticated user and persists both user/assistant messages with a thread id. If no `thread_id` is supplied, the user's most recent thread is reused or a new thread is created.
 
 Chat persistence is now repository-backed for both `chat_threads` and `chat_messages`, establishing thread-aware storage primitives ahead of the `/api/chat` route refactor.
 
-**Response** `200`
+**Response** `200` · `400` on validation error · `401` if unauthenticated · `404` if supplied thread is not found
 
 ```ts
 {
   data: {
     response: string    // AI coach reply (markdown)
     warnings: string[]  // active training warnings derived from today's readiness
+    thread_id: string   // UUID of thread used for persistence
   }
 }
 ```
