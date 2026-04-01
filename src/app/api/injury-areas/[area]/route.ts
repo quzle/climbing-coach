@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server'
 import { archiveInjuryArea } from '@/services/data/injuryAreasRepository'
+import { getCurrentUser } from '@/lib/supabase/get-current-user'
 import type { ApiResponse, InjuryAreaRow } from '@/types'
 
 /**
@@ -17,7 +18,8 @@ export async function DELETE(
 ): Promise<NextResponse<ApiResponse<InjuryAreaRow>>> {
   const { area } = await params
   try {
-    const result = await archiveInjuryArea(area)
+    const user = await getCurrentUser()
+    const result = await archiveInjuryArea(area, user.id)
     if (result.error) {
       console.error('[DELETE /api/injury-areas/[area]]', result.error)
       return NextResponse.json(

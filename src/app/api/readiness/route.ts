@@ -185,7 +185,7 @@ export async function GET(
       getTodaysCheckin(user.id),
       getAverageReadiness(7, user.id),
       getLastSessionDate(user.id),
-      getActiveInjuryAreas(),
+      getActiveInjuryAreas(user.id),
     ])
 
     if (checkinsResult.error) {

@@ -733,7 +733,7 @@ Injury areas are user-managed tracked body parts (e.g. `finger_a2_left`, `should
 
 ### `GET /api/injury-areas`
 
-List all currently active (non-archived) injury areas.
+List all currently active (non-archived) injury areas for the authenticated user.
 
 **Response** `200`
 
@@ -745,7 +745,7 @@ List all currently active (non-archived) injury areas.
 
 ### `POST /api/injury-areas`
 
-Add a new injury area to track. If the area was previously archived, it is reactivated. Idempotent — adding an already-active area is a no-op.
+Add a new injury area to track for the authenticated user. If the area was previously archived, it is reactivated. Idempotent — adding an already-active area is a no-op.
 
 **Request body**
 
@@ -765,7 +765,7 @@ Add a new injury area to track. If the area was previously archived, it is react
 
 ### `DELETE /api/injury-areas/[area]`
 
-Archive an injury area (soft delete). The area name is URL-encoded in the path.
+Archive an authenticated user's injury area (soft delete). The area name is URL-encoded in the path.
 
 **Response** `200`
 

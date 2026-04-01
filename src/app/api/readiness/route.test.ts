@@ -280,7 +280,7 @@ describe('GET /api/readiness', () => {
     await GET(new NextRequest('http://localhost:3000/api/readiness'))
 
     expect(mockGetLastSessionDate).toHaveBeenCalledWith('user-1')
-    expect(mockGetActiveInjuryAreas).toHaveBeenCalled()
+    expect(mockGetActiveInjuryAreas).toHaveBeenCalledWith('user-1')
   })
 
   it('continues with warnings=[] when getLastSessionDate errors', async () => {

@@ -1,5 +1,4 @@
 import { createClient } from '@/lib/supabase/server'
-import { SINGLE_USER_PLACEHOLDER_ID } from '@/lib/placeholder-user-id'
 import type { ApiResponse, InjuryAreaRow, InjuryAreaInsert } from '@/types'
 
 // =============================================================================
@@ -12,7 +11,7 @@ import type { ApiResponse, InjuryAreaRow, InjuryAreaInsert } from '@/types'
  *
  * @returns Array of active injury area records ordered by added_at ascending
  */
-export async function getActiveInjuryAreas(): Promise<
+export async function getActiveInjuryAreas(userId: string): Promise<
   ApiResponse<InjuryAreaRow[]>
 > {
   try {
@@ -21,6 +20,7 @@ export async function getActiveInjuryAreas(): Promise<
       .from('injury_areas')
       .select('*')
       .eq('is_active', true)
+      .eq('user_id', userId)
       .order('added_at', { ascending: true })
 
     if (error) {
@@ -47,6 +47,7 @@ export async function getActiveInjuryAreas(): Promise<
  */
 export async function addInjuryArea(
   area: string,
+  userId: string,
 ): Promise<ApiResponse<InjuryAreaRow>> {
   try {
     const supabase = await createClient()
@@ -58,7 +59,7 @@ export async function addInjuryArea(
       is_active: true,
       added_at: new Date().toISOString(),
       archived_at: null,
-      user_id: SINGLE_USER_PLACEHOLDER_ID,
+      user_id: userId,
     }
 
     const { data, error } = await supabase
@@ -91,6 +92,7 @@ export async function addInjuryArea(
  */
 export async function archiveInjuryArea(
   area: string,
+  userId: string,
 ): Promise<ApiResponse<InjuryAreaRow>> {
   try {
     const supabase = await createClient()
@@ -98,6 +100,7 @@ export async function archiveInjuryArea(
       .from('injury_areas')
       .update({ is_active: false, archived_at: new Date().toISOString() })
       .eq('area', area)
+      .eq('user_id', userId)
       .select()
       .single()
 

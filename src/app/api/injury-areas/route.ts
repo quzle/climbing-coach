@@ -4,6 +4,7 @@ import {
   getActiveInjuryAreas,
   addInjuryArea,
 } from '@/services/data/injuryAreasRepository'
+import { getCurrentUser } from '@/lib/supabase/get-current-user'
 import type { ApiResponse, InjuryAreaRow } from '@/types'
 
 const addAreaSchema = z.object({
@@ -17,7 +18,8 @@ const addAreaSchema = z.object({
  */
 export async function GET(): Promise<NextResponse<ApiResponse<InjuryAreaRow[]>>> {
   try {
-    const result = await getActiveInjuryAreas()
+    const user = await getCurrentUser()
+    const result = await getActiveInjuryAreas(user.id)
     if (result.error) {
       console.error('[GET /api/injury-areas]', result.error)
       return NextResponse.json(
@@ -46,6 +48,7 @@ export async function POST(
   request: NextRequest,
 ): Promise<NextResponse<ApiResponse<InjuryAreaRow>>> {
   try {
+    const user = await getCurrentUser()
     const body: unknown = await request.json()
     const parsed = addAreaSchema.safeParse(body)
 
@@ -57,7 +60,7 @@ export async function POST(
       )
     }
 
-    const result = await addInjuryArea(parsed.data.area)
+    const result = await addInjuryArea(parsed.data.area, user.id)
     if (result.error) {
       console.error('[POST /api/injury-areas]', result.error)
       return NextResponse.json(

@@ -633,6 +633,7 @@ describe('buildAthleteContext', () => {
     expect(mockGetRecentSessions).toHaveBeenCalledWith(30, SINGLE_USER_PLACEHOLDER_ID)
     expect(mockGetSessionCountThisWeek).toHaveBeenCalledWith(SINGLE_USER_PLACEHOLDER_ID)
     expect(mockGetLastSessionDate).toHaveBeenCalledWith(SINGLE_USER_PLACEHOLDER_ID)
+    expect(mockGetActiveInjuryAreas).toHaveBeenCalledWith(SINGLE_USER_PLACEHOLDER_ID)
     expect(mockGetTodaysCheckin).toHaveBeenCalledWith(SINGLE_USER_PLACEHOLDER_ID)
     expect(mockGetRecentCheckins).toHaveBeenCalledWith(14, SINGLE_USER_PLACEHOLDER_ID)
     expect(mockGetAverageReadiness).toHaveBeenCalledWith(7, SINGLE_USER_PLACEHOLDER_ID)

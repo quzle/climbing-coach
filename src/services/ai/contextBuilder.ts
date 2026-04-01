@@ -294,7 +294,7 @@ export async function buildAthleteContext(): Promise<AthleteContext> {
     getRecentSessions(30, SINGLE_USER_PLACEHOLDER_ID),
     getSessionCountThisWeek(SINGLE_USER_PLACEHOLDER_ID),
     getLastSessionDate(SINGLE_USER_PLACEHOLDER_ID),
-    getActiveInjuryAreas(),
+    getActiveInjuryAreas(SINGLE_USER_PLACEHOLDER_ID),
     buildProgrammeContext(),
   ])
 
