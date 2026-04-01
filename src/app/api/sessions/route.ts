@@ -152,6 +152,7 @@ export async function POST(
           await updateSessionDeviation(
             session.id,
             'Session duration differed from plan by more than 20%',
+            SINGLE_USER_PLACEHOLDER_ID,
           )
         }
       }
@@ -190,8 +191,8 @@ export async function GET(
 
     const result =
       type !== null
-        ? await getSessionsByType(type, safeDays)
-        : await getRecentSessions(safeDays)
+        ? await getSessionsByType(type, safeDays, SINGLE_USER_PLACEHOLDER_ID)
+        : await getRecentSessions(safeDays, SINGLE_USER_PLACEHOLDER_ID)
 
     if (result.error) {
       console.error('[GET /api/sessions]', result.error)

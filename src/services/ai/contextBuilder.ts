@@ -291,9 +291,9 @@ export async function buildAthleteContext(): Promise<AthleteContext> {
     getTodaysCheckin(),
     getRecentCheckins(14),
     getAverageReadiness(7),
-    getRecentSessions(30),
-    getSessionCountThisWeek(),
-    getLastSessionDate(),
+    getRecentSessions(30, SINGLE_USER_PLACEHOLDER_ID),
+    getSessionCountThisWeek(SINGLE_USER_PLACEHOLDER_ID),
+    getLastSessionDate(SINGLE_USER_PLACEHOLDER_ID),
     getActiveInjuryAreas(),
     buildProgrammeContext(),
   ])

@@ -12,6 +12,7 @@ import {
 import { buildAthleteContext, computeWarnings, parseInjuryAreaHealth } from '@/services/ai/contextBuilder'
 import { getLastSessionDate } from '@/services/data/sessionRepository'
 import { getActiveInjuryAreas } from '@/services/data/injuryAreasRepository'
+import { SINGLE_USER_PLACEHOLDER_ID } from '@/lib/placeholder-user-id'
 import { POST, GET } from './route'
 
 // =============================================================================
@@ -265,7 +266,7 @@ describe('GET /api/readiness', () => {
   it('calls getLastSessionDate and getActiveInjuryAreas', async () => {
     await GET(new NextRequest('http://localhost:3000/api/readiness'))
 
-    expect(mockGetLastSessionDate).toHaveBeenCalled()
+    expect(mockGetLastSessionDate).toHaveBeenCalledWith(SINGLE_USER_PLACEHOLDER_ID)
     expect(mockGetActiveInjuryAreas).toHaveBeenCalled()
   })
 

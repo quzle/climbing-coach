@@ -185,7 +185,11 @@ describe('GET /api/sessions', () => {
   it('filters by type when type param provided', async () => {
     await GET(new NextRequest('http://localhost:3000/api/sessions?type=bouldering'))
 
-    expect(mockGetSessionsByType).toHaveBeenCalledWith('bouldering', expect.any(Number))
+    expect(mockGetSessionsByType).toHaveBeenCalledWith(
+      'bouldering',
+      expect.any(Number),
+      SINGLE_USER_PLACEHOLDER_ID,
+    )
     expect(mockGetRecentSessions).not.toHaveBeenCalled()
   })
 
@@ -198,12 +202,12 @@ describe('GET /api/sessions', () => {
   it('defaults to 30 days when no days param', async () => {
     await GET(new NextRequest('http://localhost:3000/api/sessions'))
 
-    expect(mockGetRecentSessions).toHaveBeenCalledWith(30)
+    expect(mockGetRecentSessions).toHaveBeenCalledWith(30, SINGLE_USER_PLACEHOLDER_ID)
   })
 
   it('clamps days param to maximum of 365', async () => {
     await GET(new NextRequest('http://localhost:3000/api/sessions?days=400'))
 
-    expect(mockGetRecentSessions).toHaveBeenCalledWith(365)
+    expect(mockGetRecentSessions).toHaveBeenCalledWith(365, SINGLE_USER_PLACEHOLDER_ID)
   })
 })

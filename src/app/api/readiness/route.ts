@@ -181,7 +181,7 @@ export async function GET(
       getRecentCheckins(safeDays),
       getTodaysCheckin(),
       getAverageReadiness(7),
-      getLastSessionDate(),
+      getLastSessionDate(SINGLE_USER_PLACEHOLDER_ID),
       getActiveInjuryAreas(),
     ])
 

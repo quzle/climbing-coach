@@ -181,7 +181,7 @@ Individual query failures return partial results rather than a `500` — missing
 
 ### `POST /api/sessions`
 
-Log a completed training session.
+Log a completed training session for the authenticated user.
 
 If `planned_session_id` is supplied and the planned session has status `planned`, it is automatically marked `completed`. If the logged duration deviates from the planned duration by more than 20%, a note is appended to the session record.
 
@@ -222,7 +222,7 @@ If `planned_session_id` is supplied and the planned session has status `planned`
 
 ### `GET /api/sessions`
 
-Retrieve recent sessions, optionally filtered by type.
+Retrieve recent sessions for the authenticated user, optionally filtered by type.
 
 **Query parameters**
 
