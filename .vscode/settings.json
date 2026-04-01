@@ -14,6 +14,9 @@
         "chmod": false,
         "curl": false,
         "wget": false,
-        "eval": false
+        "eval": false,
+        "gh": true,
+        "git add": true,
+        "git commit": true
     }
 }
