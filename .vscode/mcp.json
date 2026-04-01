@@ -1,8 +1,7 @@
 {
 	"servers": {
-		"my-mcp-server-9336c64f": {
-			"url": "https://www.shadcn.io/api/mcp",
-			"type": "http"
+		"shadcn": {
+			"url": "https://www.shadcn.io/api/mcp"
 		},
 		"io.github.github/github-mcp-server": {
 			"type": "stdio",
