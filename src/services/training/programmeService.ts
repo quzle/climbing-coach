@@ -1,5 +1,4 @@
 import { getActiveProgramme } from '@/services/data/programmeRepository'
-import { SINGLE_USER_PLACEHOLDER_ID } from '@/lib/placeholder-user-id'
 import {
   getActiveMesocycle,
   getMesocyclesByProgramme,
@@ -15,15 +14,15 @@ import type { ApiResponse, ProgrammeBuilderSnapshot } from '@/types'
  *
  * @returns ProgrammeBuilderSnapshot with safe empty/null fallbacks
  */
-export async function getProgrammeBuilderSnapshot(): Promise<
-  ApiResponse<ProgrammeBuilderSnapshot>
-> {
+export async function getProgrammeBuilderSnapshot(
+  userId: string,
+): Promise<ApiResponse<ProgrammeBuilderSnapshot>> {
   try {
     const [activeProgrammeResult, activeMesocycleResult, upcomingSessionsResult] =
       await Promise.all([
-        getActiveProgramme(SINGLE_USER_PLACEHOLDER_ID),
-        getActiveMesocycle(SINGLE_USER_PLACEHOLDER_ID),
-        getUpcomingPlannedSessions(7, SINGLE_USER_PLACEHOLDER_ID),
+        getActiveProgramme(userId),
+        getActiveMesocycle(userId),
+        getUpcomingPlannedSessions(7, userId),
       ])
 
     if (activeProgrammeResult.error !== null) {
@@ -50,10 +49,10 @@ export async function getProgrammeBuilderSnapshot(): Promise<
 
     const [mesocyclesResult, templateResult] = await Promise.all([
       currentProgramme !== null
-        ? getMesocyclesByProgramme(currentProgramme.id, SINGLE_USER_PLACEHOLDER_ID)
+        ? getMesocyclesByProgramme(currentProgramme.id, userId)
         : Promise.resolve({ data: [], error: null }),
       activeMesocycle !== null
-        ? getWeeklyTemplateByMesocycle(activeMesocycle.id, SINGLE_USER_PLACEHOLDER_ID)
+        ? getWeeklyTemplateByMesocycle(activeMesocycle.id, userId)
         : Promise.resolve({ data: [], error: null }),
     ])
 

@@ -283,7 +283,7 @@ Goal: resolve the authenticated user in every route and propagate ownership chec
 - [x] **API-8** Refactor `src/app/api/chat/route.ts` ✅ — implemented 2026-04-01. Route now resolves authenticated user, validates/reuses or creates chat threads, persists chat messages with thread scope, and returns `thread_id` with explicit 401/404 handling.
   - Depends on: AUTH-4, REPO-8, LOG-3, LOG-4
 
-- [ ] **API-9** Refactor the programme setup flow route
+- [x] **API-9** Refactor the programme setup flow route ✅ — implemented 2026-04-01. Added session user resolution, user-scoped persistence, structured logging, and explicit unauthenticated (401) handling across programme setup routes.
   - Depends on: AUTH-4, REPO-1, LOG-3
 
 ### Phase 7: Client Auth UI and State Isolation

@@ -1,8 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { GoogleGenerativeAI } from '@google/generative-ai'
+import { logError, logInfo, logWarn } from '@/lib/logger'
 import { getActiveProgramme } from '@/services/data/programmeRepository'
-import { SINGLE_USER_PLACEHOLDER_ID } from '@/lib/placeholder-user-id'
 import { getMesocyclesByProgramme } from '@/services/data/mesocycleRepository'
+import { getCurrentUser } from '@/lib/supabase/get-current-user'
 import { wizardInputSchema, generatedPlanSchema } from '@/lib/programme-wizard'
 import type { WizardInput, GeneratedPlan } from '@/lib/programme-wizard'
 import type { ApiResponse } from '@/types'
@@ -89,11 +90,25 @@ Output the JSON plan now.`
 export async function POST(
   request: NextRequest,
 ): Promise<NextResponse<ApiResponse<GeneratedPlan>>> {
+  const startedAt = Date.now()
+
   try {
+    const user = await getCurrentUser()
     const body: unknown = await request.json()
     const parsed = wizardInputSchema.safeParse(body)
     if (!parsed.success) {
       const messages = parsed.error.issues.map((e) => e.message).join(', ')
+
+      logWarn({
+        event: 'programme_generate_failed',
+        outcome: 'failure',
+        route: '/api/programme/generate',
+        userId: user.id,
+        entityType: 'programme',
+        durationMs: Date.now() - startedAt,
+        data: { reason: 'validation_failed', messages },
+      })
+
       return NextResponse.json(
         { data: null, error: `Invalid request: ${messages}` },
         { status: 400 },
@@ -105,11 +120,11 @@ export async function POST(
     // Fetch completed mesocycles to give AI historical context
     let historyText = 'No prior mesocycles recorded.'
     try {
-      const programmeResult = await getActiveProgramme(SINGLE_USER_PLACEHOLDER_ID)
+      const programmeResult = await getActiveProgramme(user.id)
       if (programmeResult.data) {
         const mesocyclesResult = await getMesocyclesByProgramme(
           programmeResult.data.id,
-          SINGLE_USER_PLACEHOLDER_ID,
+          user.id,
         )
         const completed = (mesocyclesResult.data ?? []).filter((m) => m.status === 'completed')
         if (completed.length > 0) {
@@ -127,6 +142,16 @@ export async function POST(
 
     const apiKey = process.env.GEMINI_API_KEY
     if (!apiKey) {
+      logWarn({
+        event: 'programme_generate_failed',
+        outcome: 'failure',
+        route: '/api/programme/generate',
+        userId: user.id,
+        entityType: 'programme',
+        durationMs: Date.now() - startedAt,
+        data: { reason: 'missing_gemini_key' },
+      })
+
       return NextResponse.json(
         { data: null, error: 'AI service is not configured.' },
         { status: 503 },
@@ -158,7 +183,16 @@ export async function POST(
     try {
       rawJson = JSON.parse(jsonText)
     } catch {
-      console.error('[POST /api/programme/generate] JSON parse failed. Raw:', rawText.slice(0, 600))
+      logWarn({
+        event: 'programme_generate_failed',
+        outcome: 'failure',
+        route: '/api/programme/generate',
+        userId: user.id,
+        entityType: 'programme',
+        durationMs: Date.now() - startedAt,
+        data: { reason: 'invalid_ai_json' },
+      })
+
       return NextResponse.json(
         { data: null, error: 'AI returned an invalid response. Please try again.' },
         { status: 502 },
@@ -167,7 +201,16 @@ export async function POST(
 
     const planResult = generatedPlanSchema.safeParse(rawJson)
     if (!planResult.success) {
-      console.error('[POST /api/programme/generate] Schema validation failed:', planResult.error.issues)
+      logWarn({
+        event: 'programme_generate_failed',
+        outcome: 'failure',
+        route: '/api/programme/generate',
+        userId: user.id,
+        entityType: 'programme',
+        durationMs: Date.now() - startedAt,
+        data: { reason: 'invalid_ai_schema', issueCount: planResult.error.issues.length },
+      })
+
       return NextResponse.json(
         {
           data: null,
@@ -177,9 +220,43 @@ export async function POST(
       )
     }
 
+    logInfo({
+      event: 'programme_generated',
+      outcome: 'success',
+      route: '/api/programme/generate',
+      userId: user.id,
+      entityType: 'programme',
+      durationMs: Date.now() - startedAt,
+      data: {
+        mesocycleCount: planResult.data.mesocycles.length,
+        durationWeeks: input.duration_weeks,
+      },
+    })
+
     return NextResponse.json({ data: planResult.data, error: null })
   } catch (error) {
-    console.error('[POST /api/programme/generate]', error)
+    if (error instanceof Error && error.message === 'Unauthenticated') {
+      logWarn({
+        event: 'programme_generate_failed',
+        outcome: 'failure',
+        route: '/api/programme/generate',
+        entityType: 'programme',
+        durationMs: Date.now() - startedAt,
+        data: { reason: 'unauthenticated' },
+      })
+
+      return NextResponse.json({ data: null, error: 'Unauthenticated.' }, { status: 401 })
+    }
+
+    logError({
+      event: 'programme_generate_failed',
+      outcome: 'failure',
+      route: '/api/programme/generate',
+      entityType: 'programme',
+      durationMs: Date.now() - startedAt,
+      error,
+    })
+
     return NextResponse.json(
       { data: null, error: 'Failed to generate plan. Please try again.' },
       { status: 500 },

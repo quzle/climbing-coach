@@ -328,7 +328,7 @@ Partial update (authenticated user's programme only) — all fields optional, at
 
 Aggregated planning snapshot — returns the active programme, the active mesocycle, the active mesocycle's weekly template, and the next 7 days of planned sessions in a single round-trip. Used by the programme page.
 
-**Response** `200`
+**Response** `200` · `401` if unauthenticated
 
 ```ts
 {
@@ -367,7 +367,7 @@ AI wizard — step 1. Accepts a training goal description and generates a period
 }
 ```
 
-**Response** `200`
+**Response** `200` · `400` on validation error · `401` if unauthenticated · `502` for invalid AI output · `503` if AI service not configured
 
 ```ts
 {
@@ -403,7 +403,7 @@ AI wizard — step 2. Persists the reviewed plan: creates the programme row and 
 }
 ```
 
-**Response** `201`
+**Response** `201` · `400` on validation error · `401` if unauthenticated
 
 ```ts
 { data: { programme_id: string; first_mesocycle_id: string } }

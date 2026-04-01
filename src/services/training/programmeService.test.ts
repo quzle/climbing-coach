@@ -5,7 +5,6 @@ import {
 } from '@/services/data/mesocycleRepository'
 import { getWeeklyTemplateByMesocycle } from '@/services/data/weeklyTemplateRepository'
 import { getUpcomingPlannedSessions } from '@/services/data/plannedSessionRepository'
-import { SINGLE_USER_PLACEHOLDER_ID } from '@/lib/placeholder-user-id'
 import type {
   Mesocycle,
   PlannedSession,
@@ -124,19 +123,19 @@ beforeEach(() => {
 
 describe('getProgrammeBuilderSnapshot', () => {
   it('returns the aggregated planning snapshot', async () => {
-    const result = await getProgrammeBuilderSnapshot()
+    const result = await getProgrammeBuilderSnapshot('user-1')
 
     expect(result.error).toBeNull()
-    expect(mockGetActiveProgramme).toHaveBeenCalledWith(SINGLE_USER_PLACEHOLDER_ID)
-    expect(mockGetActiveMesocycle).toHaveBeenCalledWith(SINGLE_USER_PLACEHOLDER_ID)
-    expect(mockGetUpcomingPlannedSessions).toHaveBeenCalledWith(7, SINGLE_USER_PLACEHOLDER_ID)
+    expect(mockGetActiveProgramme).toHaveBeenCalledWith('user-1')
+    expect(mockGetActiveMesocycle).toHaveBeenCalledWith('user-1')
+    expect(mockGetUpcomingPlannedSessions).toHaveBeenCalledWith(7, 'user-1')
     expect(mockGetMesocyclesByProgramme).toHaveBeenCalledWith(
       'programme-1',
-      SINGLE_USER_PLACEHOLDER_ID,
+      'user-1',
     )
     expect(mockGetWeeklyTemplateByMesocycle).toHaveBeenCalledWith(
       'mesocycle-1',
-      SINGLE_USER_PLACEHOLDER_ID,
+      'user-1',
     )
     expect(result.data?.currentProgramme?.name).toBe('Summer Multipitch Season')
     expect(result.data?.mesocycles).toHaveLength(1)
@@ -148,7 +147,7 @@ describe('getProgrammeBuilderSnapshot', () => {
     mockGetActiveProgramme.mockResolvedValue({ data: null, error: null })
     mockGetActiveMesocycle.mockResolvedValue({ data: null, error: null })
 
-    const result = await getProgrammeBuilderSnapshot()
+    const result = await getProgrammeBuilderSnapshot('user-1')
 
     expect(result.error).toBeNull()
     expect(result.data?.currentProgramme).toBeNull()
