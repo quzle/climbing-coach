@@ -12,13 +12,13 @@ function isPublicPath(pathname: string): boolean {
 }
 
 /**
- * @description Next.js middleware that refreshes the Supabase session on every
+ * @description Next.js proxy that refreshes the Supabase session on every
  * request and redirects unauthenticated users to the login page for all
  * protected routes.
  * @param request The incoming Next.js request
  * @returns Either a pass-through response or a redirect to /auth/login
  */
-export async function middleware(request: NextRequest): Promise<NextResponse> {
+export async function proxy(request: NextRequest): Promise<NextResponse> {
   let supabaseResponse = NextResponse.next({
     request,
   })
@@ -32,18 +32,16 @@ export async function middleware(request: NextRequest): Promise<NextResponse> {
           return request.cookies.getAll()
         },
         setAll(cookiesToSet) {
-          cookiesToSet.forEach(({ name, value }) =>
-            request.cookies.set(name, value)
-          )
+          cookiesToSet.forEach(({ name, value }) => request.cookies.set(name, value))
           supabaseResponse = NextResponse.next({
             request,
           })
           cookiesToSet.forEach(({ name, value, options }) =>
-            supabaseResponse.cookies.set(name, value, options)
+            supabaseResponse.cookies.set(name, value, options),
           )
         },
       },
-    }
+    },
   )
 
   // Refresh the session — do not remove this call.

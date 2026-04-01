@@ -7,6 +7,7 @@ import {
   updateSessionDeviation,
 } from '@/services/data/sessionRepository'
 import { updatePlannedSession } from '@/services/data/plannedSessionRepository'
+import type { Json } from '@/lib/database.types'
 import { getCurrentUser } from '@/lib/supabase/get-current-user'
 import { logError, logInfo, logWarn } from '@/lib/logger'
 import type { ApiResponse, SessionLog, SessionType } from '@/types'
