@@ -753,7 +753,7 @@ Injury areas are user-managed tracked body parts (e.g. `finger_a2_left`, `should
 
 List all currently active (non-archived) injury areas for the authenticated user.
 
-**Response** `200`
+**Response** `200` · `401` if unauthenticated
 
 ```ts
 { data: InjuryAreaRow[] }
@@ -773,7 +773,7 @@ Add a new injury area to track for the authenticated user. If the area was previ
 }
 ```
 
-**Response** `201`
+**Response** `201` · `400` on validation error · `401` if unauthenticated
 
 ```ts
 { data: InjuryAreaRow }
@@ -785,7 +785,7 @@ Add a new injury area to track for the authenticated user. If the area was previ
 
 Archive an authenticated user's injury area (soft delete). The area name is URL-encoded in the path.
 
-**Response** `200`
+**Response** `200` · `401` if unauthenticated
 
 ```ts
 { data: InjuryAreaRow } // the archived row

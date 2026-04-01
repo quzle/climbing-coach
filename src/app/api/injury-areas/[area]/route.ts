@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server'
 import { archiveInjuryArea } from '@/services/data/injuryAreasRepository'
 import { getCurrentUser } from '@/lib/supabase/get-current-user'
+import { logError, logInfo, logWarn } from '@/lib/logger'
 import type { ApiResponse, InjuryAreaRow } from '@/types'
 
 /**
@@ -17,19 +18,65 @@ export async function DELETE(
   { params }: { params: Promise<{ area: string }> },
 ): Promise<NextResponse<ApiResponse<InjuryAreaRow>>> {
   const { area } = await params
+  const startedAt = Date.now()
+
   try {
     const user = await getCurrentUser()
     const result = await archiveInjuryArea(area, user.id)
     if (result.error) {
-      console.error('[DELETE /api/injury-areas/[area]]', result.error)
+      logWarn({
+        event: 'injury_area_archive_failed',
+        outcome: 'failure',
+        route: '/api/injury-areas/[area]',
+        userId: user.id,
+        entityType: 'injury_area',
+        entityId: area,
+        durationMs: Date.now() - startedAt,
+        data: { reason: result.error },
+      })
+
       return NextResponse.json(
         { data: null, error: 'Failed to archive injury area.' },
         { status: 500 },
       )
     }
+
+    logInfo({
+      event: 'injury_area_archived',
+      outcome: 'success',
+      route: '/api/injury-areas/[area]',
+      userId: user.id,
+      entityType: 'injury_area',
+      entityId: area,
+      durationMs: Date.now() - startedAt,
+    })
+
     return NextResponse.json({ data: result.data, error: null })
   } catch (error) {
-    console.error('[DELETE /api/injury-areas/[area]]', error)
+    if (error instanceof Error && error.message === 'Unauthenticated') {
+      logWarn({
+        event: 'injury_area_archive_failed',
+        outcome: 'failure',
+        route: '/api/injury-areas/[area]',
+        entityType: 'injury_area',
+        entityId: area,
+        durationMs: Date.now() - startedAt,
+        data: { reason: 'unauthenticated' },
+      })
+
+      return NextResponse.json({ data: null, error: 'Unauthenticated.' }, { status: 401 })
+    }
+
+    logError({
+      event: 'injury_area_archive_failed',
+      outcome: 'failure',
+      route: '/api/injury-areas/[area]',
+      entityType: 'injury_area',
+      entityId: area,
+      durationMs: Date.now() - startedAt,
+      error,
+    })
+
     return NextResponse.json(
       { data: null, error: 'Failed to archive injury area.' },
       { status: 500 },

@@ -22,6 +22,12 @@ jest.mock('@/lib/supabase/get-current-user', () => ({
   getCurrentUser: jest.fn(),
 }))
 
+jest.mock('@/lib/logger', () => ({
+  logInfo: jest.fn(),
+  logWarn: jest.fn(),
+  logError: jest.fn(),
+}))
+
 const mockGetActiveInjuryAreas = getActiveInjuryAreas as jest.Mock
 const mockAddInjuryArea = addInjuryArea as jest.Mock
 const mockGetCurrentUser = getCurrentUser as jest.Mock
@@ -36,6 +42,7 @@ const mockArea = {
   is_active: true,
   added_at: '2026-03-25T10:00:00Z',
   archived_at: null,
+  user_id: 'user-1',
 }
 
 // =============================================================================
@@ -95,6 +102,17 @@ describe('GET /api/injury-areas', () => {
     expect(response.status).toBe(500)
     expect(body.error).toContain('Failed to fetch')
   })
+
+  it('returns 401 when unauthenticated', async () => {
+    mockGetCurrentUser.mockRejectedValue(new Error('Unauthenticated'))
+
+    const response = await GET()
+    const body = await response.json()
+
+    expect(response.status).toBe(401)
+    expect(body).toEqual({ data: null, error: 'Unauthenticated.' })
+    expect(mockGetActiveInjuryAreas).not.toHaveBeenCalled()
+  })
 })
 
 describe('POST /api/injury-areas', () => {
@@ -136,5 +154,16 @@ describe('POST /api/injury-areas', () => {
 
     expect(response.status).toBe(500)
     expect(body.error).toContain('Failed to add')
+  })
+
+  it('returns 401 when unauthenticated', async () => {
+    mockGetCurrentUser.mockRejectedValue(new Error('Unauthenticated'))
+
+    const response = await POST(makePostRequest({ area: 'shoulder_left' }))
+    const body = await response.json()
+
+    expect(response.status).toBe(401)
+    expect(body).toEqual({ data: null, error: 'Unauthenticated.' })
+    expect(mockAddInjuryArea).not.toHaveBeenCalled()
   })
 })

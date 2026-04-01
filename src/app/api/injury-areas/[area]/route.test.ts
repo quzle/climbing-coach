@@ -10,6 +10,12 @@ jest.mock('@/lib/supabase/get-current-user', () => ({
   getCurrentUser: jest.fn(),
 }))
 
+jest.mock('@/lib/logger', () => ({
+  logInfo: jest.fn(),
+  logWarn: jest.fn(),
+  logError: jest.fn(),
+}))
+
 import { archiveInjuryArea } from '@/services/data/injuryAreasRepository'
 
 const mockArchiveInjuryArea = archiveInjuryArea as jest.Mock
@@ -26,6 +32,7 @@ function makeRow(area: string) {
     is_active: false,
     added_at: '2024-01-01T00:00:00Z',
     archived_at: '2024-06-01T00:00:00Z',
+    user_id: 'user-1',
   }
 }
 
@@ -74,5 +81,16 @@ describe('DELETE /api/injury-areas/[area]', () => {
 
     expect(response.status).toBe(500)
     expect(body).toEqual({ data: null, error: 'Failed to archive injury area.' })
+  })
+
+  it('returns 401 when unauthenticated', async () => {
+    mockGetCurrentUser.mockRejectedValue(new Error('Unauthenticated'))
+
+    const response = await DELETE(new Request('http://localhost'), makeParams('shoulder_left'))
+    const body = await response.json()
+
+    expect(response.status).toBe(401)
+    expect(body).toEqual({ data: null, error: 'Unauthenticated.' })
+    expect(mockArchiveInjuryArea).not.toHaveBeenCalled()
   })
 })
