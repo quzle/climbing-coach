@@ -30,6 +30,11 @@ beforeEach(() => {
   jest.clearAllMocks()
 })
 
+const TEST_USER_ID = 'user-test-456'
+const TEST_THREAD_ID = 'thread-test-789'
+const EXPECTED_KEY = `climbing-coach:chat-history:${TEST_USER_ID}`
+const EXPECTED_THREAD_KEY = `climbing-coach:chat-history:${TEST_USER_ID}:${TEST_THREAD_ID}`
+
 // =============================================================================
 // HELPERS
 // =============================================================================
@@ -51,7 +56,7 @@ function makeMessage(overrides: Partial<StoredChatMessage> = {}): StoredChatMess
 
 describe('useChatHistory — initial state', () => {
   it('returns empty messages array when localStorage is empty', () => {
-    const { result } = renderHook(() => useChatHistory())
+    const { result } = renderHook(() => useChatHistory(TEST_USER_ID))
     expect(result.current.messages).toEqual([])
   })
 
@@ -59,7 +64,7 @@ describe('useChatHistory — initial state', () => {
     const stored = [makeMessage({ id: 'msg-1', content: 'Loaded message' })]
     localStorageMock.getItem.mockReturnValueOnce(JSON.stringify(stored))
 
-    const { result } = renderHook(() => useChatHistory())
+    const { result } = renderHook(() => useChatHistory(TEST_USER_ID))
 
     expect(result.current.messages).toHaveLength(1)
     expect(result.current.messages[0]!.content).toBe('Loaded message')
@@ -68,16 +73,28 @@ describe('useChatHistory — initial state', () => {
   it('handles corrupted localStorage data gracefully', () => {
     localStorageMock.getItem.mockReturnValueOnce('not valid json {{{')
 
-    const { result } = renderHook(() => useChatHistory())
+    const { result } = renderHook(() => useChatHistory(TEST_USER_ID))
 
     expect(result.current.messages).toEqual([])
     // No error thrown — hook renders successfully
+  })
+
+  it('uses a per-thread key when threadId is provided', () => {
+    const stored = [makeMessage({ id: 'thread-msg', content: 'Thread message' })]
+    localStorageMock.getItem.mockImplementation((key: string) =>
+      key === EXPECTED_THREAD_KEY ? JSON.stringify(stored) : null,
+    )
+
+    const { result } = renderHook(() => useChatHistory(TEST_USER_ID, TEST_THREAD_ID))
+
+    expect(result.current.messages).toHaveLength(1)
+    expect(result.current.messages[0]!.content).toBe('Thread message')
   })
 })
 
 describe('useChatHistory — addMessage', () => {
   it('appends a message to the messages array', () => {
-    const { result } = renderHook(() => useChatHistory())
+    const { result } = renderHook(() => useChatHistory(TEST_USER_ID))
 
     act(() => {
       result.current.addMessage(makeMessage({ id: 'msg-1', content: 'Hello coach' }))
@@ -87,21 +104,34 @@ describe('useChatHistory — addMessage', () => {
     expect(result.current.messages[0]!.content).toBe('Hello coach')
   })
 
-  it('persists messages to localStorage', () => {
-    const { result } = renderHook(() => useChatHistory())
+  it('persists messages to localStorage using the user-scoped key', () => {
+    const { result } = renderHook(() => useChatHistory(TEST_USER_ID))
 
     act(() => {
       result.current.addMessage(makeMessage({ id: 'msg-1' }))
     })
 
     expect(localStorageMock.setItem).toHaveBeenCalledWith(
-      'climbing-coach:chat-history',
+      EXPECTED_KEY,
       expect.stringContaining('msg-1'),
     )
   })
 
+  it('persists messages using the thread-scoped key when threadId is provided', () => {
+    const { result } = renderHook(() => useChatHistory(TEST_USER_ID, TEST_THREAD_ID))
+
+    act(() => {
+      result.current.addMessage(makeMessage({ id: 'msg-thread' }))
+    })
+
+    expect(localStorageMock.setItem).toHaveBeenCalledWith(
+      EXPECTED_THREAD_KEY,
+      expect.stringContaining('msg-thread'),
+    )
+  })
+
   it('preserves message order with oldest first', () => {
-    const { result } = renderHook(() => useChatHistory())
+    const { result } = renderHook(() => useChatHistory(TEST_USER_ID))
 
     act(() => {
       result.current.addMessage(makeMessage({ id: 'first', content: 'First' }))
@@ -121,7 +151,7 @@ describe('useChatHistory — addMessage', () => {
     )
     localStorageMock.getItem.mockReturnValueOnce(JSON.stringify(initial))
 
-    const { result } = renderHook(() => useChatHistory())
+    const { result } = renderHook(() => useChatHistory(TEST_USER_ID))
 
     act(() => {
       result.current.addMessage(makeMessage({ id: 'msg-new', content: 'New' }))
@@ -134,7 +164,7 @@ describe('useChatHistory — addMessage', () => {
   })
 
   it('stores assistant warnings on the message', () => {
-    const { result } = renderHook(() => useChatHistory())
+    const { result } = renderHook(() => useChatHistory(TEST_USER_ID))
 
     act(() => {
       result.current.addMessage(
@@ -151,8 +181,8 @@ describe('useChatHistory — addMessage', () => {
 })
 
 describe('useChatHistory — clearHistory', () => {
-  it('removes all messages from state and localStorage', () => {
-    const { result } = renderHook(() => useChatHistory())
+  it('removes all messages from state and localStorage using the user-scoped key', () => {
+    const { result } = renderHook(() => useChatHistory(TEST_USER_ID))
 
     act(() => {
       result.current.addMessage(makeMessage({ id: 'msg-1' }))
@@ -162,6 +192,6 @@ describe('useChatHistory — clearHistory', () => {
     })
 
     expect(result.current.messages).toEqual([])
-    expect(localStorageMock.removeItem).toHaveBeenCalledWith('climbing-coach:chat-history')
+    expect(localStorageMock.removeItem).toHaveBeenCalledWith(EXPECTED_KEY)
   })
 })

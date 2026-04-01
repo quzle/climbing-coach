@@ -30,6 +30,11 @@ jest.mock('sonner', () => ({
   },
 }))
 
+const mockClearUserStorage = jest.fn()
+jest.mock('@/lib/user-storage', () => ({
+  clearUserStorage: (...args: unknown[]) => mockClearUserStorage(...args),
+}))
+
 function makeUser(overrides?: Partial<ClientAuthUser>): ClientAuthUser {
   return {
     id: 'user-123',
@@ -70,12 +75,13 @@ describe('LogoutButton', () => {
 
     await waitFor(() => {
       expect(mockSignOut).toHaveBeenCalled()
+      expect(mockClearUserStorage).toHaveBeenCalledWith('user-123')
       expect(mockPush).toHaveBeenCalledWith('/auth/login')
       expect(mockRefresh).toHaveBeenCalled()
     })
   })
 
-  it('shows a generic error toast when sign out fails', async () => {
+  it('does not clear storage when sign out fails', async () => {
     mockSignOut.mockResolvedValue({ error: { message: 'network error' } })
     const user = userEvent.setup()
     renderLogoutButton()
@@ -85,6 +91,7 @@ describe('LogoutButton', () => {
     await waitFor(() => {
       expect(toast.error).toHaveBeenCalledWith('Failed to sign out. Please try again.')
     })
+    expect(mockClearUserStorage).not.toHaveBeenCalled()
     expect(mockPush).not.toHaveBeenCalled()
   })
 

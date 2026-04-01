@@ -6,6 +6,7 @@ import { LogOut } from 'lucide-react'
 import { toast } from 'sonner'
 import { useAuth } from '@/hooks/useAuth'
 import { createClient } from '@/lib/supabase/client'
+import { clearUserStorage } from '@/lib/user-storage'
 import { Button } from '@/components/ui/button'
 
 /**
@@ -15,11 +16,12 @@ import { Button } from '@/components/ui/button'
  */
 export function LogoutButton(): React.JSX.Element {
   const router = useRouter()
-  const { clearUser } = useAuth()
+  const { clearUser, user } = useAuth()
   const [isSubmitting, setIsSubmitting] = useState(false)
 
   async function handleLogout(): Promise<void> {
     setIsSubmitting(true)
+    const userId = user?.id
 
     try {
       const supabase = createClient()
@@ -31,6 +33,9 @@ export function LogoutButton(): React.JSX.Element {
         return
       }
 
+      if (userId) {
+        clearUserStorage(userId)
+      }
       clearUser()
       router.push('/auth/login')
       router.refresh()

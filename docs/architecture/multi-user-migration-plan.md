@@ -348,16 +348,16 @@ Goal: add user-facing auth controls, account management, and ensure browser stat
   - Deliverables:
     - Page showing email and display name ✅
 
-- [ ] **CLIENT-5** Update `useDraftSession` local storage key to include `userId`
+- [x] **CLIENT-5** Update `useDraftSession` local storage key to include `userId` ✅ — implemented 2026-04-01. Key is now `climbing-coach:session-draft:${userId}`; hook accepts `userId` parameter; `SessionLogForm` sources userId from `useAuth()`.
   - Depends on: CLIENT-1
 
-- [ ] **CLIENT-6** Update `useChatHistory` local storage key to include `userId` and `threadId`
+- [x] **CLIENT-6** Update `useChatHistory` local storage key to include `userId` and `threadId` ✅ — implemented 2026-04-01. Key is now `climbing-coach:chat-history:${userId}` (or `:${threadId}` suffix when provided); hook accepts `userId` and optional `threadId`; chat page sources userId from `useAuth()`.
   - Depends on: CLIENT-1, REPO-8
 
-- [ ] **CLIENT-7** Clear user-scoped local storage on logout
+- [x] **CLIENT-7** Clear user-scoped local storage on logout ✅ — implemented 2026-04-01. Added `src/lib/user-storage.ts` with `clearUserStorage(userId)` and `getUserStorageKeys(userId)`; `LogoutButton` calls `clearUserStorage` on successful sign-out.
   - Depends on: CLIENT-2, CLIENT-5, CLIENT-6
 
-- [ ] **CLIENT-8** Verify same-browser account switching isolation
+- [x] **CLIENT-8** Verify same-browser account switching isolation ✅ — implemented 2026-04-01. Four tests in `src/lib/user-storage.test.ts` confirm: (a) user A draft absent from user B keys, (b) user A chat history absent from user B keys, (c) clearing user A does not affect user B, (d) all thread-scoped keys for user A are removed.
   - Depends on: CLIENT-7
 
 ### Phase 8: `/dev` Superuser Tooling
