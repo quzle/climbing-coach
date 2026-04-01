@@ -16,6 +16,7 @@ import {
   deleteWeeklyTemplate,
 } from '@/services/data/weeklyTemplateRepository'
 import type { Mesocycle, PlannedSession, Programme, WeeklyTemplate } from '@/types'
+import { SINGLE_USER_PLACEHOLDER_ID } from '@/lib/placeholder-user-id'
 import { seedSummerMultipitchProgramme } from './programmeSeed'
 
 jest.mock('@/services/data/programmeRepository', () => ({
@@ -186,6 +187,7 @@ describe('seedSummerMultipitchProgramme', () => {
     const result = await seedSummerMultipitchProgramme()
 
     expect(result.error).toBeNull()
+    expect(mockGetProgrammes).toHaveBeenCalledWith(SINGLE_USER_PLACEHOLDER_ID)
     expect(result.data).toEqual({
       seeded: true,
       programmeId: 'programme-1',

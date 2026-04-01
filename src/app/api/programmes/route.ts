@@ -1,7 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { z } from 'zod'
 import { createProgramme, getProgrammes } from '@/services/data/programmeRepository'
-import { SINGLE_USER_PLACEHOLDER_ID } from '@/lib/placeholder-user-id'
+import { getCurrentUser } from '@/lib/supabase/get-current-user'
+import { logError, logInfo, logWarn } from '@/lib/logger'
 import type { ApiResponse, Programme } from '@/types'
 
 const createProgrammeSchema = z.object({
@@ -19,22 +20,53 @@ const createProgrammeSchema = z.object({
 export async function GET(): Promise<
   NextResponse<ApiResponse<{ programmes: Programme[] }>>
 > {
+  const startedAt = Date.now()
+
   try {
-    const result = await getProgrammes()
+    const user = await getCurrentUser()
+    const result = await getProgrammes(user.id)
+
     if (result.error !== null) {
-      console.error('[GET /api/programmes]', result.error)
+      logWarn({
+        event: 'programmes_list_failed',
+        outcome: 'failure',
+        route: '/api/programmes',
+        userId: user.id,
+        entityType: 'programme',
+        durationMs: Date.now() - startedAt,
+        data: { reason: result.error },
+      })
+
       return NextResponse.json(
         { data: null, error: 'Failed to load programmes.' },
         { status: 500 },
       )
     }
 
+    logInfo({
+      event: 'programmes_list_fetched',
+      outcome: 'success',
+      route: '/api/programmes',
+      userId: user.id,
+      entityType: 'programme',
+      durationMs: Date.now() - startedAt,
+      data: { count: (result.data ?? []).length },
+    })
+
     return NextResponse.json({
       data: { programmes: result.data ?? [] },
       error: null,
     })
   } catch (error) {
-    console.error('[GET /api/programmes]', error)
+    logError({
+      event: 'programmes_list_failed',
+      outcome: 'failure',
+      route: '/api/programmes',
+      entityType: 'programme',
+      durationMs: Date.now() - startedAt,
+      error,
+    })
+
     return NextResponse.json(
       { data: null, error: 'Failed to load programmes.' },
       { status: 500 },
@@ -49,7 +81,10 @@ export async function GET(): Promise<
 export async function POST(
   request: NextRequest,
 ): Promise<NextResponse<ApiResponse<{ programme: Programme }>>> {
+  const startedAt = Date.now()
+
   try {
+    const user = await getCurrentUser()
     const body: unknown = await request.json()
     const parsed = createProgrammeSchema.safeParse(body)
 
@@ -64,20 +99,51 @@ export async function POST(
     const result = await createProgramme({
       ...parsed.data,
       notes: parsed.data.notes ?? null,
-      user_id: SINGLE_USER_PLACEHOLDER_ID,
+      user_id: user.id,
     })
 
     if (result.error !== null || result.data === null) {
-      console.error('[POST /api/programmes]', result.error)
+      logWarn({
+        event: 'programme_create_failed',
+        outcome: 'failure',
+        route: '/api/programmes',
+        userId: user.id,
+        entityType: 'programme',
+        durationMs: Date.now() - startedAt,
+        data: {
+          reason: result.error,
+          requestedStartDate: parsed.data.start_date,
+          requestedTargetDate: parsed.data.target_date,
+        },
+      })
+
       return NextResponse.json(
         { data: null, error: 'Failed to create programme.' },
         { status: 500 },
       )
     }
 
+    logInfo({
+      event: 'programme_created',
+      outcome: 'success',
+      route: '/api/programmes',
+      userId: user.id,
+      entityType: 'programme',
+      entityId: result.data.id,
+      durationMs: Date.now() - startedAt,
+    })
+
     return NextResponse.json({ data: { programme: result.data }, error: null }, { status: 201 })
   } catch (error) {
-    console.error('[POST /api/programmes]', error)
+    logError({
+      event: 'programme_create_failed',
+      outcome: 'failure',
+      route: '/api/programmes',
+      entityType: 'programme',
+      durationMs: Date.now() - startedAt,
+      error,
+    })
+
     return NextResponse.json(
       { data: null, error: 'Failed to create programme.' },
       { status: 500 },

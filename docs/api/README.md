@@ -245,7 +245,7 @@ Returns `400` if `type` is not a valid `SessionType`.
 
 ### `GET /api/programmes`
 
-List all programmes, ordered by most recent `start_date` first.
+List programmes for the authenticated user, ordered by most recent `start_date` first.
 
 **Response** `200`
 
@@ -257,7 +257,7 @@ List all programmes, ordered by most recent `start_date` first.
 
 ### `POST /api/programmes`
 
-Create a new programme.
+Create a new programme for the authenticated user.
 
 **Request body**
 
@@ -281,7 +281,7 @@ Create a new programme.
 
 ### `GET /api/programmes/[id]`
 
-Fetch one programme by UUID.
+Fetch one programme by UUID, scoped to the authenticated user.
 
 **Response** `200` · `404` if not found.
 
@@ -293,7 +293,7 @@ Fetch one programme by UUID.
 
 ### `PUT /api/programmes/[id]`
 
-Partial update — all fields optional, at least one required.
+Partial update (authenticated user's programme only) — all fields optional, at least one required.
 
 **Request body:** any subset of the `POST` fields above.
 

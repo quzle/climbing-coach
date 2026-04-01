@@ -507,7 +507,7 @@ async function rollbackSeedRows(
   }
 
   if (programmeId !== null) {
-    const deleteResult = await deleteProgramme(programmeId)
+    const deleteResult = await deleteProgramme(programmeId, SINGLE_USER_PLACEHOLDER_ID)
     if (deleteResult.error !== null) {
       console.error('[programmeSeed.rollbackSeedRows] deleteProgramme:', deleteResult.error)
     }
@@ -539,7 +539,7 @@ export async function seedSummerMultipitchProgramme(): Promise<
   }
 
   try {
-    const existingProgrammesResult = await getProgrammes()
+    const existingProgrammesResult = await getProgrammes(SINGLE_USER_PLACEHOLDER_ID)
     if (existingProgrammesResult.error !== null) {
       console.error(
         '[programmeSeed.seedSummerMultipitchProgramme] getProgrammes:',

@@ -5,6 +5,7 @@ import {
 } from '@/services/data/mesocycleRepository'
 import { getWeeklyTemplateByMesocycle } from '@/services/data/weeklyTemplateRepository'
 import { getUpcomingPlannedSessions } from '@/services/data/plannedSessionRepository'
+import { SINGLE_USER_PLACEHOLDER_ID } from '@/lib/placeholder-user-id'
 import type {
   Mesocycle,
   PlannedSession,
@@ -126,6 +127,7 @@ describe('getProgrammeBuilderSnapshot', () => {
     const result = await getProgrammeBuilderSnapshot()
 
     expect(result.error).toBeNull()
+    expect(mockGetActiveProgramme).toHaveBeenCalledWith(SINGLE_USER_PLACEHOLDER_ID)
     expect(result.data?.currentProgramme?.name).toBe('Summer Multipitch Season')
     expect(result.data?.mesocycles).toHaveLength(1)
     expect(result.data?.currentWeeklyTemplate).toHaveLength(1)

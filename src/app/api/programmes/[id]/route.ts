@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { z } from 'zod'
 import { getProgrammeById, updateProgramme } from '@/services/data/programmeRepository'
+import { getCurrentUser } from '@/lib/supabase/get-current-user'
+import { logError, logInfo, logWarn } from '@/lib/logger'
 import type { ApiResponse, Programme } from '@/types'
 
 const paramsSchema = z.object({ id: z.string().uuid() })
@@ -25,7 +27,10 @@ export async function GET(
   _request: NextRequest,
   context: { params: Promise<{ id: string }> },
 ): Promise<NextResponse<ApiResponse<{ programme: Programme }>>> {
+  const startedAt = Date.now()
+
   try {
+    const user = await getCurrentUser()
     const rawParams = await context.params
     const parsedParams = paramsSchema.safeParse(rawParams)
 
@@ -33,14 +38,43 @@ export async function GET(
       return NextResponse.json({ data: null, error: 'Invalid programme id.' }, { status: 400 })
     }
 
-    const result = await getProgrammeById(parsedParams.data.id)
+    const result = await getProgrammeById(parsedParams.data.id, user.id)
     if (result.error !== null || result.data === null) {
+      logWarn({
+        event: 'programme_fetch_failed',
+        outcome: 'failure',
+        route: '/api/programmes/[id]',
+        userId: user.id,
+        entityType: 'programme',
+        entityId: parsedParams.data.id,
+        durationMs: Date.now() - startedAt,
+        data: { reason: result.error },
+      })
+
       return NextResponse.json({ data: null, error: 'Failed to load programme.' }, { status: 500 })
     }
 
+    logInfo({
+      event: 'programme_fetched',
+      outcome: 'success',
+      route: '/api/programmes/[id]',
+      userId: user.id,
+      entityType: 'programme',
+      entityId: result.data.id,
+      durationMs: Date.now() - startedAt,
+    })
+
     return NextResponse.json({ data: { programme: result.data }, error: null })
   } catch (error) {
-    console.error('[GET /api/programmes/:id]', error)
+    logError({
+      event: 'programme_fetch_failed',
+      outcome: 'failure',
+      route: '/api/programmes/[id]',
+      entityType: 'programme',
+      durationMs: Date.now() - startedAt,
+      error,
+    })
+
     return NextResponse.json({ data: null, error: 'Failed to load programme.' }, { status: 500 })
   }
 }
@@ -53,7 +87,10 @@ export async function PUT(
   request: NextRequest,
   context: { params: Promise<{ id: string }> },
 ): Promise<NextResponse<ApiResponse<{ programme: Programme }>>> {
+  const startedAt = Date.now()
+
   try {
+    const user = await getCurrentUser()
     const rawParams = await context.params
     const parsedParams = paramsSchema.safeParse(rawParams)
     if (!parsedParams.success) {
@@ -70,17 +107,46 @@ export async function PUT(
       )
     }
 
-    const result = await updateProgramme(parsedParams.data.id, parsedBody.data)
+    const result = await updateProgramme(parsedParams.data.id, parsedBody.data, user.id)
     if (result.error !== null || result.data === null) {
+      logWarn({
+        event: 'programme_update_failed',
+        outcome: 'failure',
+        route: '/api/programmes/[id]',
+        userId: user.id,
+        entityType: 'programme',
+        entityId: parsedParams.data.id,
+        durationMs: Date.now() - startedAt,
+        data: { reason: result.error },
+      })
+
       return NextResponse.json(
         { data: null, error: 'Failed to update programme.' },
         { status: 500 },
       )
     }
 
+    logInfo({
+      event: 'programme_updated',
+      outcome: 'success',
+      route: '/api/programmes/[id]',
+      userId: user.id,
+      entityType: 'programme',
+      entityId: result.data.id,
+      durationMs: Date.now() - startedAt,
+    })
+
     return NextResponse.json({ data: { programme: result.data }, error: null })
   } catch (error) {
-    console.error('[PUT /api/programmes/:id]', error)
+    logError({
+      event: 'programme_update_failed',
+      outcome: 'failure',
+      route: '/api/programmes/[id]',
+      entityType: 'programme',
+      durationMs: Date.now() - startedAt,
+      error,
+    })
+
     return NextResponse.json(
       { data: null, error: 'Failed to update programme.' },
       { status: 500 },

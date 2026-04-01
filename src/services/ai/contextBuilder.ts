@@ -219,7 +219,7 @@ export async function buildProgrammeContext(): Promise<
 > {
   const [activeProgrammeResult, activeMesocycleResult, upcomingPlannedSessionsResult] =
     await Promise.all([
-      getActiveProgramme(),
+      getActiveProgramme(SINGLE_USER_PLACEHOLDER_ID),
       getActiveMesocycle(),
       getUpcomingPlannedSessions(7),
     ])

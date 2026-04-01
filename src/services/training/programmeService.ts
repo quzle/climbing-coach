@@ -1,4 +1,5 @@
 import { getActiveProgramme } from '@/services/data/programmeRepository'
+import { SINGLE_USER_PLACEHOLDER_ID } from '@/lib/placeholder-user-id'
 import {
   getActiveMesocycle,
   getMesocyclesByProgramme,
@@ -20,7 +21,7 @@ export async function getProgrammeBuilderSnapshot(): Promise<
   try {
     const [activeProgrammeResult, activeMesocycleResult, upcomingSessionsResult] =
       await Promise.all([
-        getActiveProgramme(),
+        getActiveProgramme(SINGLE_USER_PLACEHOLDER_ID),
         getActiveMesocycle(),
         getUpcomingPlannedSessions(7),
       ])

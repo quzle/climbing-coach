@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { GoogleGenerativeAI } from '@google/generative-ai'
 import { getActiveProgramme } from '@/services/data/programmeRepository'
+import { SINGLE_USER_PLACEHOLDER_ID } from '@/lib/placeholder-user-id'
 import { getMesocyclesByProgramme } from '@/services/data/mesocycleRepository'
 import { wizardInputSchema, generatedPlanSchema } from '@/lib/programme-wizard'
 import type { WizardInput, GeneratedPlan } from '@/lib/programme-wizard'
@@ -104,7 +105,7 @@ export async function POST(
     // Fetch completed mesocycles to give AI historical context
     let historyText = 'No prior mesocycles recorded.'
     try {
-      const programmeResult = await getActiveProgramme()
+      const programmeResult = await getActiveProgramme(SINGLE_USER_PLACEHOLDER_ID)
       if (programmeResult.data) {
         const mesocyclesResult = await getMesocyclesByProgramme(programmeResult.data.id)
         const completed = (mesocyclesResult.data ?? []).filter((m) => m.status === 'completed')
