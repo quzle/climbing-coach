@@ -102,6 +102,9 @@ export type ReadinessCheckinUpdate = Database['public']['Tables']['readiness_che
 /** Partial update payload for a chat thread (e.g. updating the title). */
 export type ChatThreadUpdate = Database['public']['Tables']['chat_threads']['Update']
 
+/** Partial update payload for a chat message (e.g. correcting message metadata). */
+export type ChatMessageUpdate = Database['public']['Tables']['chat_messages']['Update']
+
 /** Partial update payload for a user profile (e.g. updating display_name). */
 export type ProfileUpdate = Database['public']['Tables']['profiles']['Update']
 

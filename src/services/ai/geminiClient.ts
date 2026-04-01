@@ -1,8 +1,8 @@
 import { GoogleGenerativeAI } from '@google/generative-ai'
-import { createClient } from '@/lib/supabase/server'
 import { logError, logInfo, logWarn } from '@/lib/logger'
 import { buildAthleteContext } from '@/services/ai/contextBuilder'
 import { buildSystemPrompt, buildSessionPlanSystemPrompt } from '@/services/ai/promptBuilder'
+import { createChatMessage } from '@/services/data/chatMessagesRepository'
 import { SINGLE_USER_PLACEHOLDER_ID } from '@/lib/placeholder-user-id'
 import type { ChatMessage, ChatMessageInsert } from '@/types'
 
@@ -92,9 +92,8 @@ function formatHistoryForGemini(
  */
 async function saveMessageToDatabase(message: ChatMessageInsert): Promise<void> {
   try {
-    const supabase = await createClient()
-    const { error } = await supabase.from('chat_messages').insert(message)
-    if (error) {
+    const result = await createChatMessage(message)
+    if (result.error !== null) {
       logWarn({
         event: 'chat_message_persist_failed',
         outcome: 'failure',
@@ -103,7 +102,7 @@ async function saveMessageToDatabase(message: ChatMessageInsert): Promise<void> 
         data: {
           role: message.role,
         },
-        error,
+        error: result.error,
       })
     }
   } catch (err) {

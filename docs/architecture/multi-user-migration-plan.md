@@ -12,6 +12,7 @@ This plan covers:
 - invite-only authentication
 - `profiles` and `chat_threads` schema additions
 - user-scoped repository and API refactors
+- login, logout, and user account UI
 - browser state isolation
 - `/dev` superuser tooling changes
 - logging baseline
@@ -248,7 +249,7 @@ Goal: explicitly scope all data access by authenticated user.
 - [x] **REPO-7** Refactor `weeklyTemplateRepository` ✅ — implemented 2026-04-01. Added `user_id` scoping to weekly template repository read/update/delete operations and updated dependent call sites/tests.
   - Depends on: DB-3, DB-7, AUTH-4, LOG-1
 
-- [ ] **REPO-8** Add chat thread and chat message repositories
+- [x] **REPO-8** Add chat thread and chat message repositories ✅ — implemented 2026-04-01. Added user-scoped repositories for `chat_threads` and `chat_messages`, added unit coverage, and wired existing chat persistence/history callsites to use the new data layer.
   - Depends on: DB-2, DB-4, DB-7, AUTH-4, LOG-1, LOG-4
 
 ### Phase 6: API Route Refactor
@@ -285,24 +286,45 @@ Goal: resolve the authenticated user in every route and propagate ownership chec
 - [ ] **API-9** Refactor the programme setup flow route
   - Depends on: AUTH-4, REPO-1, LOG-3
 
-### Phase 7: Client State Isolation
+### Phase 7: Client Auth UI and State Isolation
 
-Goal: ensure browser state does not leak across users.
+Goal: add user-facing auth controls, account management, and ensure browser state does not leak across users.
 
 - [ ] **CLIENT-1** Add auth/profile context for client components
   - Depends on: AUTH-2, AUTH-4, REPO-0
+  - Deliverables:
+    - React context provider exposing authenticated user identity (id, email, display name, role) to client components
+    - Wraps the app layout so all authenticated pages have access
 
-- [ ] **CLIENT-2** Update `useDraftSession` local storage key to include `userId`
+- [ ] **CLIENT-2** Add logout action and UI trigger
+  - Depends on: CLIENT-1
+  - Deliverables:
+    - Call `supabase.auth.signOut()` and redirect to `/auth/login`
+    - Accessible logout button in the navigation or user menu
+
+- [ ] **CLIENT-3** Add user indicator to navigation
+  - Depends on: CLIENT-1, CLIENT-2
+  - Deliverables:
+    - Display the logged-in user's email or display name in the app chrome
+    - Provide access to logout and account settings from the indicator
+
+- [ ] **CLIENT-4** Add user account/settings page
+  - Depends on: CLIENT-1
+  - Deliverables:
+    - Page showing email, display name
+    - Password change flow via Supabase Auth `updateUser`
+
+- [ ] **CLIENT-5** Update `useDraftSession` local storage key to include `userId`
   - Depends on: CLIENT-1
 
-- [ ] **CLIENT-3** Update `useChatHistory` local storage key to include `userId` and `threadId`
+- [ ] **CLIENT-6** Update `useChatHistory` local storage key to include `userId` and `threadId`
   - Depends on: CLIENT-1, REPO-8
 
-- [ ] **CLIENT-4** Clear user-scoped local storage on logout
-  - Depends on: CLIENT-2, CLIENT-3
+- [ ] **CLIENT-7** Clear user-scoped local storage on logout
+  - Depends on: CLIENT-2, CLIENT-5, CLIENT-6
 
-- [ ] **CLIENT-5** Verify same-browser account switching isolation
-  - Depends on: CLIENT-4
+- [ ] **CLIENT-8** Verify same-browser account switching isolation
+  - Depends on: CLIENT-7
 
 ### Phase 8: `/dev` Superuser Tooling
 
@@ -355,6 +377,52 @@ Goal: keep repository documentation consistent with the architecture changes.
 - [ ] **DOCS-4** Create ADR 005 for this migration and access model
   - Depends on: none for drafting
 
+## Staging Deployment and Regression Test Points
+
+These are non-production deployments for verifying multi-user migration progress. Each checkpoint targets the delta introduced since the previous checkpoint.
+
+### Deploy 1: After Phase 6 (API Route Refactor)
+
+Trigger: all API routes resolve `getCurrentUser()` and pass `userId` through; `SINGLE_USER_PLACEHOLDER_ID` fully removed.
+
+Delta test targets:
+- Invite a test user, complete the login flow, verify profile is created
+- Exercise every CRUD flow (programme, mesocycle, sessions, readiness, injuries, chat, weekly templates) as the authenticated user
+- Verify unauthenticated requests to all `/api/*` endpoints return 401/redirect
+- Create two test users; verify User B cannot see or modify User A's data via API calls
+- Verify the programme setup and AI generation flows pass `userId` end-to-end
+
+### Deploy 2: After Phase 7 (Client Auth UI and State Isolation)
+
+Trigger: auth context, logout, user indicator, account page, and scoped localStorage are all in place.
+
+Delta test targets:
+- Verify logged-in user's identity is visible in the navigation
+- Logout redirects to `/auth/login` and clears the session
+- Account/settings page displays correct user info; password change works
+- Login as User A, create a draft session and send chat messages, logout, login as User B — no draft or chat history leaks
+- Rapidly switch between two accounts in the same browser; verify complete state isolation
+
+### Deploy 3: After Phase 8 (Dev Tooling)
+
+Trigger: `/dev` routes enforce `requireSuperuser()`, seed/clear are user-targeted.
+
+Delta test targets:
+- Non-superuser receives 403 on all `/dev` and `/api/dev/*` endpoints
+- Superuser can send invites from the `/dev` UI
+- Seed demo data for a specific target user; verify it does not appear for other users
+- Clear-and-reseed does not affect other users' data
+
+### Deploy 4: After Phase 9 (MVP Security Baseline)
+
+Trigger: RLS policies active on all user-owned tables; error handling standardized.
+
+Delta test targets:
+- Manually craft a Supabase client query using User A's JWT against User B's rows — verify RLS blocks it
+- Verify RLS on `profiles` and `chat_threads` tables
+- Confirm 401/403 responses are consistent across all routes
+- Run the full integration test suite for auth and authorization rules
+
 ## Critical Path
 
 ```text
@@ -366,7 +434,7 @@ DB-1, DB-2, DB-3
   -> AUTH-5 -> AUTH-6 -> AUTH-7
   -> REPO-1 through REPO-8
   -> API-0 through API-9
-  -> CLIENT-1 through CLIENT-5
+  -> CLIENT-1 through CLIENT-8
   -> DEV-1 through DEV-4
   -> SEC-1 through SEC-5
   -> DOCS-1 through DOCS-4
@@ -379,12 +447,15 @@ These tasks can run in parallel once their prerequisites are complete:
 - DB-1, DB-2, DB-3
 - REPO-1 through REPO-8
 - API-1 through API-9
-- CLIENT-2 and CLIENT-3
+- CLIENT-4 can run in parallel with CLIENT-2 and CLIENT-3
+- CLIENT-5 and CLIENT-6 can run in parallel
 
 These tasks should remain sequential because they define access-control boundaries or destructive behaviour:
 
 - AUTH-4 before AUTH-6
 - AUTH-6 before AUTH-7
+- CLIENT-1 before CLIENT-2 before CLIENT-3
+- CLIENT-5 and CLIENT-6 before CLIENT-7 before CLIENT-8
 - DEV-1 before DEV-2, DEV-3, DEV-4
 - DEV-3 before DEV-4
 - security phase after route and repository verification
@@ -397,7 +468,8 @@ This plan is complete when:
 2. invite-only onboarding works end-to-end
 3. all user data access is explicitly scoped by `userId`
 4. browser state is isolated by user
-5. `/dev` privileged actions require a server-side superuser check
-6. deletion behaviour is implemented according to the approved archive and reset rules
-7. logging is present before feature rollout
-8. baseline RLS and auth tests are in place after the happy path is working
+5. users can log out, see their identity, and manage their account
+6. `/dev` privileged actions require a server-side superuser check
+7. deletion behaviour is implemented according to the approved archive and reset rules
+8. logging is present before feature rollout
+9. baseline RLS and auth tests are in place after the happy path is working

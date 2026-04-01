@@ -1,8 +1,8 @@
 import { GoogleGenerativeAI } from '@google/generative-ai'
 import { logError, logInfo, logWarn } from '@/lib/logger'
-import { createClient } from '@/lib/supabase/server'
 import type { AthleteContext, ChatMessage } from '@/types'
 import { buildAthleteContext } from '@/services/ai/contextBuilder'
+import { createChatMessage } from '@/services/data/chatMessagesRepository'
 import { buildSystemPrompt, buildSessionPlanSystemPrompt } from '@/services/ai/promptBuilder'
 import { sendChatMessage, generateSessionPlan } from './geminiClient'
 
@@ -48,22 +48,16 @@ jest.mock('@/services/ai/promptBuilder', () => ({
   buildSessionPlanSystemPrompt: jest.fn().mockReturnValue('Mock session plan system prompt'),
 }))
 
-// Mock 4 — Supabase server client
-jest.mock('@/lib/supabase/server', () => ({
-  createClient: jest.fn().mockResolvedValue({
-    from: jest.fn().mockReturnValue({
-      insert: jest.fn().mockReturnValue({
-        select: jest.fn().mockResolvedValue({ data: null, error: null }),
-      }),
-    }),
-  }),
+// Mock 4 — Chat message repository
+jest.mock('@/services/data/chatMessagesRepository', () => ({
+  createChatMessage: jest.fn().mockResolvedValue({ data: null, error: null }),
 }))
 
 // Typed references to the mocked functions we assert against
 const mockBuildAthleteContext = buildAthleteContext as jest.Mock
 const mockBuildSystemPrompt = buildSystemPrompt as jest.Mock
 const mockBuildSessionPlanSystemPrompt = buildSessionPlanSystemPrompt as jest.Mock
-const mockCreateClient = createClient as jest.Mock
+const mockCreateChatMessage = createChatMessage as jest.Mock
 const mockLogError = logError as jest.Mock
 const mockLogInfo = logInfo as jest.Mock
 const mockLogWarn = logWarn as jest.Mock
@@ -311,13 +305,7 @@ describe('sendChatMessage', () => {
   })
 
   it('logs a warning when chat message persistence fails', async () => {
-    mockCreateClient.mockResolvedValue({
-      from: jest.fn().mockReturnValue({
-        insert: jest.fn().mockResolvedValue({
-          error: { message: 'insert failed' },
-        }),
-      }),
-    })
+    mockCreateChatMessage.mockResolvedValue({ data: null, error: 'insert failed' })
 
     await sendChatMessage('Hello', [])
     await new Promise((resolve) => setTimeout(resolve, 0))

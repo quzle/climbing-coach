@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { createClient } from '@/lib/supabase/server'
+import { SINGLE_USER_PLACEHOLDER_ID } from '@/lib/placeholder-user-id'
+import { getRecentChatMessages } from '@/services/data/chatMessagesRepository'
 import type { ApiResponse, ChatMessage } from '@/types'
 
 /**
@@ -17,22 +18,17 @@ export async function GET(
     const limit = Number(request.nextUrl.searchParams.get('limit') ?? '20')
     const safeLimit = Math.min(Math.max(limit, 1), 50)
 
-    const supabase = await createClient()
-    const { data, error } = await supabase
-      .from('chat_messages')
-      .select('*')
-      .order('created_at', { ascending: false })
-      .limit(safeLimit)
+    const result = await getRecentChatMessages(safeLimit, SINGLE_USER_PLACEHOLDER_ID)
 
-    if (error) {
-      console.error('[GET /api/chat/history]', error)
+    if (result.error !== null) {
+      console.error('[GET /api/chat/history]', result.error)
       return NextResponse.json(
         { data: null, error: 'Failed to load chat history. Please try again.' },
         { status: 500 },
       )
     }
 
-    const messages = (data as ChatMessage[]).reverse()
+    const messages = result.data ?? []
 
     return NextResponse.json({
       data: { messages },

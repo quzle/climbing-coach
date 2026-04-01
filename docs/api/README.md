@@ -65,7 +65,9 @@ Operational logging for this route records request outcome, duration, message le
 }
 ```
 
-`history` is the full conversation so far, passed from client state. The last 20 messages are sent to Gemini as conversation history. Both the user message and the AI response are saved to `chat_messages` as a fire-and-forget operation.
+`history` is the full conversation so far, passed from client state. The last 20 messages are sent to Gemini as conversation history. Both the user message and the AI response are saved as a fire-and-forget operation through the chat message repository layer (`chat_messages` table).
+
+Chat persistence is now repository-backed for both `chat_threads` and `chat_messages`, establishing thread-aware storage primitives ahead of the `/api/chat` route refactor.
 
 **Response** `200`
 
