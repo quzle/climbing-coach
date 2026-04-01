@@ -214,18 +214,27 @@ Results: all 56 suites, 449 tests passed.
     - Change the link href to: `{{ .SiteURL }}/auth/confirm?token_hash={{ .TokenHash }}&type=invite`
   - This ensures dashboard-sent invites route to the OTP verification endpoint rather than the app root. Once `API-0` is implemented, `inviteUserByEmail` will pass `options.redirectTo` explicitly and this template customisation remains valid.
 
-- [ ] **AUTH-8** Add `/auth/confirm` OTP verification route
+- [x] **AUTH-8** Add `/auth/confirm` OTP verification route ✅ _2026-04-01_
   - Depends on: AUTH-2, AUTH-5, MANUAL-1
   - Deliverables:
-    - Server-side Route Handler at `src/app/auth/confirm/route.ts`
-    - Reads `token_hash`, `type`, and optional `next` from query parameters
-    - Calls `supabase.auth.verifyOtp({ token_hash, type })` — the correct method for invite and recovery OTP links (distinct from `exchangeCodeForSession` used in `/auth/callback` for OAuth PKCE codes)
-    - When `type === 'invite'`: calls `finalizeInvitedUserProfile()` after session is established
-    - When `type === 'recovery'`: redirects to a change-password page (required by CLIENT-4)
-    - On success: redirects to `next` parameter or `/`
-    - On failure: redirects to `/auth/login?error=confirm_failed`
-    - Middleware updated to allow `/auth/confirm` as a public path (alongside `/auth/login` and `/auth/callback`)
-    - Unit tests covering success, invite finalization, recovery redirect, missing token, and failed verification paths
+    - Server-side Route Handler at `src/app/auth/confirm/route.ts` ✅
+    - Reads `token_hash`, `type`, and optional `next` from query parameters ✅
+    - Calls `supabase.auth.verifyOtp({ token_hash, type })` — the correct method for invite and recovery OTP links (distinct from `exchangeCodeForSession` used in `/auth/callback` for OAuth PKCE codes) ✅
+    - When `type === 'invite'`: calls `finalizeInvitedUserProfile()` after session is established ✅
+    - When `type === 'recovery'`: redirects to a change-password page (required by CLIENT-4) ✅
+    - On success: redirects to `next` parameter or `/` ✅
+    - On failure: redirects to `/auth/login?error=confirm_failed` ✅
+    - Middleware updated to allow `/auth/confirm` as a public path (alongside `/auth/login` and `/auth/callback`) ✅
+    - Unit tests covering success, invite finalization, recovery redirect, missing token, and failed verification paths ✅
+
+- [ ] **AUTH-9** Add password recovery flow — "Forgot password" entry point and change-password page
+  - Depends on: AUTH-2, AUTH-8
+  - Deliverables:
+    - **"Forgot password" form on `/auth/login`**: link that reveals an email input; calls `supabase.auth.resetPasswordForEmail(email, { redirectTo: '/auth/confirm' })` so the recovery link routes through the `type=recovery` OTP flow; shows confirmation message on success and safe generic error on failure
+    - **`/auth/change-password` page**: the dedicated page AUTH-8 redirects to after a successful `type=recovery` verification; form calls `supabase.auth.updateUser({ password: newPassword })`; redirects to `/` on success; accessible only with a valid recovery session (middleware must allow the route until the session is set)
+    - The change-password component is also referenced by CLIENT-4 (account settings); extract as a shared component if appropriate
+    - Unit tests for both surfaces covering success, validation, error, and in-flight states
+    - `docs/ux/00-account-creation.md` updated to document the recovery flow
 
 ### Phase 3: Logging Baseline
 
@@ -335,10 +344,10 @@ Goal: add user-facing auth controls, account management, and ensure browser stat
     - Provide access to logout and account settings from the indicator
 
 - [ ] **CLIENT-4** Add user account/settings page
-  - Depends on: CLIENT-1
+  - Depends on: CLIENT-1, AUTH-9
   - Deliverables:
-    - Page showing email, display name
-    - Password change flow via Supabase Auth `updateUser`
+    - Page showing email and display name
+    - Password change flow via Supabase Auth `updateUser` (reuses change-password component from AUTH-9)
 
 - [ ] **CLIENT-5** Update `useDraftSession` local storage key to include `userId`
   - Depends on: CLIENT-1
@@ -458,7 +467,7 @@ DB-1, DB-2, DB-3
   -> AUTH-1, AUTH-4, REPO-0
   -> AUTH-2 -> AUTH-3
   -> AUTH-5 -> AUTH-6 -> AUTH-7
-  -> MANUAL-1 -> MANUAL-2 -> AUTH-8
+  -> MANUAL-1 -> MANUAL-2 -> AUTH-8 -> AUTH-9
   -> REPO-1 through REPO-8
   -> API-0 through API-9
   -> CLIENT-1 through CLIENT-8

@@ -95,9 +95,10 @@ sequenceDiagram
 ### Accepted / by design
 - **Password setup via Supabase reset flow.** The invite magic link does not set a password. Users set their password via "Forgot password" on `/auth/login` before their first session expires. No in-app password setup screen is planned for MVP.
 
+### Resolved
+- **`/auth/confirm` OTP route (`AUTH-8`).** Implemented with support for invite-type (profile finalization + redirect) and recovery-type (redirect to change-password page) flows. Handles safe `next` parameter validation and structured error logging.
+
 ### Open
-- **`/auth/confirm` OTP route not yet implemented (`AUTH-8`).** The invite link requires a server-side `verifyOtp({ token_hash, type })` handler at `/auth/confirm`. The existing `/auth/callback` route uses `exchangeCodeForSession(code)` and handles OAuth PKCE codes only — it cannot process invite or recovery OTP links. Until `AUTH-8` is done the invite flow will not work.
-- **Supabase dashboard not yet configured (`MANUAL-1`, `MANUAL-2`).** `/auth/confirm` must be added to the Allowed Redirect URLs allowlist, and the invite email template must be updated to route to `/auth/confirm`. See configuration section above.
 - **No in-app invite sending.** Invites must currently be sent directly from the Supabase dashboard. The `/dev` invite UI (`DEV-2`) and `POST /api/invites` (`API-0`) are not yet built.
 - **No "Forgot password" link on the login page.** The password reset entry point does not yet exist in the login UI. Users cannot self-serve into the reset flow without knowing the URL directly.
 - **No prompt to set a password after first login.** The user lands on the home screen with no guidance that they need to set a password before their session expires.

@@ -158,5 +158,10 @@ describe('proxy', () => {
       const response = await proxy(makeRequest('/auth/callback'))
       expect(response.headers.get('location')).toBeNull()
     })
+
+    it('allows access to /auth/confirm without redirecting', async () => {
+      const response = await proxy(makeRequest('/auth/confirm'))
+      expect(response.headers.get('location')).toBeNull()
+    })
   })
 })
