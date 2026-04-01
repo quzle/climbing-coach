@@ -48,6 +48,9 @@ receive only its summary when done.
 ### 3. Handle subagent outcome
 
 **If the subagent completes successfully:**
+- Before posting completion, ensure relevant documentation under `docs/` is updated for the implemented change.
+- Do not treat the issue as complete until at least one relevant `docs/` file is edited in the same unit of work.
+- If no clear doc target is obvious, stop and ask the user which `docs/` file should be updated.
 - Post a completion comment on the issue (see format below)
 - Close the issue via MCP or `gh issue close <NUMBER> --repo <REPO>`
 - Report back to the user: "Issue #N done. Changes: [summary]."
@@ -79,6 +82,7 @@ Stop and ask the user (do not proceed) if:
 
 **Completion comment:**
 > ✅ Done. Changed: `path/to/file.ts`, `path/to/other.ts`
+> Docs updated: `docs/path/to/doc.md`
 > [One sentence summary of what was implemented]
 
 **Blocker comment:**
