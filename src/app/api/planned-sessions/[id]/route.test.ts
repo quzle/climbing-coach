@@ -7,6 +7,7 @@ import {
   getPlannedSessionById,
   updatePlannedSession,
 } from '@/services/data/plannedSessionRepository'
+import { getCurrentUser } from '@/lib/supabase/get-current-user'
 import { DELETE, GET, PUT } from './route'
 
 jest.mock('@/services/data/plannedSessionRepository', () => ({
@@ -15,9 +16,14 @@ jest.mock('@/services/data/plannedSessionRepository', () => ({
   deletePlannedSession: jest.fn(),
 }))
 
+jest.mock('@/lib/supabase/get-current-user', () => ({
+  getCurrentUser: jest.fn(),
+}))
+
 const mockGetPlannedSessionById = getPlannedSessionById as jest.Mock
 const mockUpdatePlannedSession = updatePlannedSession as jest.Mock
 const mockDeletePlannedSession = deletePlannedSession as jest.Mock
+const mockGetCurrentUser = getCurrentUser as jest.Mock
 
 const id = '559f2dc4-e2a2-463a-8aef-acdb94fe74ec'
 const plannedSession = {
@@ -34,6 +40,7 @@ const plannedSession = {
 
 beforeEach(() => {
   jest.clearAllMocks()
+  mockGetCurrentUser.mockResolvedValue({ id: 'user-1', email: 'user@example.com' })
   mockGetPlannedSessionById.mockResolvedValue({ data: plannedSession, error: null })
   mockUpdatePlannedSession.mockResolvedValue({ data: plannedSession, error: null })
   mockDeletePlannedSession.mockResolvedValue({ data: plannedSession, error: null })
@@ -46,7 +53,7 @@ describe('GET /api/planned-sessions/:id', () => {
     })
 
     expect(response.status).toBe(200)
-    expect(mockGetPlannedSessionById).toHaveBeenCalledWith(id)
+    expect(mockGetPlannedSessionById).toHaveBeenCalledWith(id, 'user-1')
   })
 })
 
@@ -60,7 +67,7 @@ describe('PUT /api/planned-sessions/:id', () => {
 
     const response = await PUT(request, { params: Promise.resolve({ id }) })
     expect(response.status).toBe(200)
-    expect(mockUpdatePlannedSession).toHaveBeenCalledWith(id, { status: 'completed' })
+    expect(mockUpdatePlannedSession).toHaveBeenCalledWith(id, { status: 'completed' }, 'user-1')
   })
 })
 
@@ -71,6 +78,6 @@ describe('DELETE /api/planned-sessions/:id', () => {
     })
 
     expect(response.status).toBe(200)
-    expect(mockDeletePlannedSession).toHaveBeenCalledWith(id)
+    expect(mockDeletePlannedSession).toHaveBeenCalledWith(id, 'user-1')
   })
 })

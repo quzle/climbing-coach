@@ -126,7 +126,7 @@ export async function POST(
     if (validated.planned_session_id !== null) {
       const plannedSessionResult = await updatePlannedSession(validated.planned_session_id, {
         status: 'completed',
-      })
+      }, SINGLE_USER_PLACEHOLDER_ID)
 
       if (plannedSessionResult.error) {
         console.error(

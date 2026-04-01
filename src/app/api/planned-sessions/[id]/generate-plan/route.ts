@@ -93,7 +93,7 @@ export async function POST(
     const sessionId = parsedParams.data.id
 
     // Fetch the planned session.
-    const sessionResult = await getPlannedSessionById(sessionId)
+    const sessionResult = await getPlannedSessionById(sessionId, user.id)
     if (sessionResult.error !== null || sessionResult.data === null) {
       return NextResponse.json(
         { data: null, error: 'Planned session not found.' },
@@ -158,7 +158,7 @@ export async function POST(
 
     const updateResult = await updatePlannedSession(sessionId, {
       generated_plan: updatedPlan as unknown as Json,
-    })
+    }, user.id)
 
     if (updateResult.error !== null) {
       console.error('[POST /api/planned-sessions/:id/generate-plan] updatePlannedSession:', updateResult.error)

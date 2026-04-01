@@ -23,7 +23,7 @@ export async function getProgrammeBuilderSnapshot(): Promise<
       await Promise.all([
         getActiveProgramme(SINGLE_USER_PLACEHOLDER_ID),
         getActiveMesocycle(SINGLE_USER_PLACEHOLDER_ID),
-        getUpcomingPlannedSessions(7),
+        getUpcomingPlannedSessions(7, SINGLE_USER_PLACEHOLDER_ID),
       ])
 
     if (activeProgrammeResult.error !== null) {

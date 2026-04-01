@@ -477,7 +477,7 @@ async function rollbackSeedRows(
   createdPlannedSessionIds: string[],
 ): Promise<void> {
   for (const plannedSessionId of [...createdPlannedSessionIds].reverse()) {
-    const deleteResult = await deletePlannedSession(plannedSessionId)
+    const deleteResult = await deletePlannedSession(plannedSessionId, SINGLE_USER_PLACEHOLDER_ID)
     if (deleteResult.error !== null) {
       console.error(
         '[programmeSeed.rollbackSeedRows] deletePlannedSession:',

@@ -6,6 +6,7 @@ import {
   getPlannedSessionsInRange,
 } from '@/services/data/plannedSessionRepository'
 import { getWeeklyTemplateByMesocycle } from '@/services/data/weeklyTemplateRepository'
+import { SINGLE_USER_PLACEHOLDER_ID } from '@/lib/placeholder-user-id'
 import type {
   AthleteContext,
   Mesocycle,
@@ -13,7 +14,6 @@ import type {
   SessionLog,
   WeeklyTemplate,
 } from '@/types'
-import { SINGLE_USER_PLACEHOLDER_ID } from '@/lib/placeholder-user-id'
 import { generatePlannedSessionsForActiveMesocycle } from './sessionGenerator'
 
 jest.mock('@/services/data/mesocycleRepository', () => ({
@@ -175,6 +175,11 @@ describe('generatePlannedSessionsForActiveMesocycle', () => {
     expect(result.error).toBeNull()
     expect(result.data).toHaveLength(2)
     expect(mockGetActiveMesocycle).toHaveBeenCalledWith(SINGLE_USER_PLACEHOLDER_ID)
+    expect(mockGetPlannedSessionsInRange).toHaveBeenCalledWith(
+      '2026-03-30',
+      '2026-04-05',
+      SINGLE_USER_PLACEHOLDER_ID,
+    )
     expect(mockGenerateSessionPlan).not.toHaveBeenCalled()
     expect(mockCreatePlannedSession).toHaveBeenCalledWith(
       expect.objectContaining({

@@ -96,7 +96,11 @@ export async function generatePlannedSessionsForActiveMesocycle(
     // mesocycle end date for the range query.
     const [templatesResult, existingSessionsResult] = await Promise.all([
       getWeeklyTemplateByMesocycle(activeMesocycle.id),
-      getPlannedSessionsInRange(toIsoDate(fromDate), activeMesocycle.planned_end),
+      getPlannedSessionsInRange(
+        toIsoDate(fromDate),
+        activeMesocycle.planned_end,
+        SINGLE_USER_PLACEHOLDER_ID,
+      ),
     ])
 
     if (templatesResult.error !== null) {

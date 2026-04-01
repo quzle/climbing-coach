@@ -602,7 +602,7 @@ Planned sessions are AI-generated or manually created session outlines for a spe
 
 ### `GET /api/planned-sessions`
 
-List planned sessions by date range or upcoming days. Provide either a date range or `upcoming_days` — not both.
+List planned sessions for the authenticated user by date range or upcoming days. Provide either a date range or `upcoming_days` — not both.
 
 **Query parameters**
 
@@ -622,7 +622,7 @@ List planned sessions by date range or upcoming days. Provide either a date rang
 
 ### `POST /api/planned-sessions`
 
-Create a planned session row manually.
+Create a planned session row manually for the authenticated user.
 
 **Request body**
 
@@ -691,7 +691,7 @@ The session must have an associated `mesocycle_id` and `template_id`; standalone
 
 ### `GET /api/planned-sessions/[id]`
 
-Fetch one planned session by UUID. Returns `404` if not found.
+Fetch one planned session by UUID, scoped to the authenticated user. Returns `404` if not found.
 
 **Response** `200`
 
@@ -703,7 +703,7 @@ Fetch one planned session by UUID. Returns `404` if not found.
 
 ### `PUT /api/planned-sessions/[id]`
 
-Partial update — all fields optional, at least one required.
+Partial update (authenticated user's planned session only) — all fields optional, at least one required.
 
 **Request body:** any subset of the `POST` fields above.
 
@@ -717,7 +717,7 @@ Partial update — all fields optional, at least one required.
 
 ### `DELETE /api/planned-sessions/[id]`
 
-Delete a planned session row. Returns `404` if not found.
+Delete an authenticated user's planned session row. Returns `404` if not found.
 
 **Response** `200`
 

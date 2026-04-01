@@ -248,4 +248,12 @@ describe('seedSummerMultipitchProgramme', () => {
     expect(result.error).toBe('insert failed')
     expect(mockCreateMesocycle).not.toHaveBeenCalled()
   })
+
+  it('passes user scope when deleting planned sessions during rollback', async () => {
+    mockCreatePlannedSession.mockResolvedValueOnce({ data: null, error: 'insert failed' })
+
+    await seedSummerMultipitchProgramme()
+
+    expect(mockDeletePlannedSession.mock.calls.every((call) => call[1] === SINGLE_USER_PLACEHOLDER_ID)).toBe(true)
+  })
 })

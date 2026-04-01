@@ -7,6 +7,7 @@ import {
   getPlannedSessionsInRange,
   getUpcomingPlannedSessions,
 } from '@/services/data/plannedSessionRepository'
+import { getCurrentUser } from '@/lib/supabase/get-current-user'
 import { GET, POST } from './route'
 
 jest.mock('@/services/data/plannedSessionRepository', () => ({
@@ -15,9 +16,14 @@ jest.mock('@/services/data/plannedSessionRepository', () => ({
   createPlannedSession: jest.fn(),
 }))
 
+jest.mock('@/lib/supabase/get-current-user', () => ({
+  getCurrentUser: jest.fn(),
+}))
+
 const mockGetPlannedSessionsInRange = getPlannedSessionsInRange as jest.Mock
 const mockGetUpcomingPlannedSessions = getUpcomingPlannedSessions as jest.Mock
 const mockCreatePlannedSession = createPlannedSession as jest.Mock
+const mockGetCurrentUser = getCurrentUser as jest.Mock
 
 const plannedSession = {
   id: '559f2dc4-e2a2-463a-8aef-acdb94fe74ec',
@@ -33,6 +39,7 @@ const plannedSession = {
 
 beforeEach(() => {
   jest.clearAllMocks()
+  mockGetCurrentUser.mockResolvedValue({ id: 'user-1', email: 'user@example.com' })
   mockGetPlannedSessionsInRange.mockResolvedValue({ data: [plannedSession], error: null })
   mockGetUpcomingPlannedSessions.mockResolvedValue({ data: [plannedSession], error: null })
   mockCreatePlannedSession.mockResolvedValue({ data: plannedSession, error: null })
@@ -50,6 +57,7 @@ describe('GET /api/planned-sessions', () => {
     expect(mockGetPlannedSessionsInRange).toHaveBeenCalledWith(
       '2026-03-30',
       '2026-04-05',
+      'user-1',
     )
   })
 
@@ -74,6 +82,8 @@ describe('POST /api/planned-sessions', () => {
 
     const response = await POST(request)
     expect(response.status).toBe(201)
-    expect(mockCreatePlannedSession).toHaveBeenCalled()
+    expect(mockCreatePlannedSession).toHaveBeenCalledWith(
+      expect.objectContaining({ user_id: 'user-1' }),
+    )
   })
 })

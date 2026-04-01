@@ -9,6 +9,7 @@ import {
   updateSessionDeviation,
 } from '@/services/data/sessionRepository'
 import { updatePlannedSession } from '@/services/data/plannedSessionRepository'
+import { SINGLE_USER_PLACEHOLDER_ID } from '@/lib/placeholder-user-id'
 import { POST, GET } from './route'
 
 // =============================================================================
@@ -97,6 +98,20 @@ describe('POST /api/sessions', () => {
     expect(response.status).toBe(201)
     expect(body.data.session).not.toBeNull()
     expect(body.error).toBeNull()
+  })
+
+  it('marks linked planned session as completed using user scope', async () => {
+    const plannedSessionId = '559f2dc4-e2a2-463a-8aef-acdb94fe74ec'
+    const response = await POST(
+      makePostRequest({ ...validBody, planned_session_id: plannedSessionId }),
+    )
+
+    expect(response.status).toBe(201)
+    expect(mockUpdatePlannedSession).toHaveBeenCalledWith(
+      plannedSessionId,
+      { status: 'completed' },
+      SINGLE_USER_PLACEHOLDER_ID,
+    )
   })
 
   it('returns 400 when date format is invalid', async () => {

@@ -6,7 +6,7 @@ import {
   getUpcomingPlannedSessions,
 } from '@/services/data/plannedSessionRepository'
 import type { Json } from '@/lib/database.types'
-import { SINGLE_USER_PLACEHOLDER_ID } from '@/lib/placeholder-user-id'
+import { getCurrentUser } from '@/lib/supabase/get-current-user'
 import type { ApiResponse, PlannedSession, SessionStatus } from '@/types'
 
 const querySchema = z
@@ -52,6 +52,7 @@ export async function GET(
   request: NextRequest,
 ): Promise<NextResponse<ApiResponse<{ plannedSessions: PlannedSession[] }>>> {
   try {
+    const user = await getCurrentUser()
     const parsed = querySchema.safeParse({
       start_date: request.nextUrl.searchParams.get('start_date') ?? undefined,
       end_date: request.nextUrl.searchParams.get('end_date') ?? undefined,
@@ -67,8 +68,8 @@ export async function GET(
 
     const result =
       start_date !== undefined && end_date !== undefined
-        ? await getPlannedSessionsInRange(start_date, end_date)
-        : await getUpcomingPlannedSessions(upcoming_days ?? 7)
+        ? await getPlannedSessionsInRange(start_date, end_date, user.id)
+        : await getUpcomingPlannedSessions(upcoming_days ?? 7, user.id)
 
     if (result.error !== null) {
       console.error('[GET /api/planned-sessions]', result.error)
@@ -96,6 +97,7 @@ export async function POST(
   request: NextRequest,
 ): Promise<NextResponse<ApiResponse<{ plannedSession: PlannedSession }>>> {
   try {
+    const user = await getCurrentUser()
     const parsed = createPlannedSessionSchema.safeParse(await request.json())
     if (!parsed.success) {
       const messages = parsed.error.issues.map((issue) => issue.message).join(', ')
@@ -109,7 +111,7 @@ export async function POST(
       status: (parsed.data.status ?? 'planned') as SessionStatus,
       generation_notes: parsed.data.generation_notes ?? null,
       generated_plan: (parsed.data.generated_plan ?? null) as Json,
-      user_id: SINGLE_USER_PLACEHOLDER_ID,
+      user_id: user.id,
     })
 
     if (result.error !== null || result.data === null) {
