@@ -256,7 +256,7 @@ Goal: explicitly scope all data access by authenticated user.
 
 Goal: resolve the authenticated user in every route and propagate ownership checks consistently.
 
-- [ ] **API-0** Add `POST /api/invites`
+- [x] **API-0** Add `POST /api/invites` ✅ — implemented 2026-04-01. Added superuser-protected invite endpoint with Zod validation, standard API envelope, and structured route logging.
   - Depends on: AUTH-7, LOG-2, REPO-0
 
 - [ ] **API-1** Refactor `src/app/api/programmes/route.ts`

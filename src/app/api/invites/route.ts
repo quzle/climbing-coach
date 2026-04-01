@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { z } from 'zod'
-import { logError, logInfo } from '@/lib/logger'
+import { logError, logInfo, logWarn } from '@/lib/logger'
 import { requireSuperuser } from '@/lib/supabase/get-current-user'
 import { inviteUserByEmail } from '@/services/data/invitesRepository'
 import type { ApiResponse } from '@/types'
@@ -21,14 +21,31 @@ export type InviteResponse = {
 export async function POST(
   request: NextRequest,
 ): Promise<NextResponse<ApiResponse<InviteResponse>>> {
+  let authenticatedUserId: string | null = null
+
   try {
     const user = await requireSuperuser()
+    authenticatedUserId = user.id
 
     const body: unknown = await request.json()
     const parsed = inviteSchema.safeParse(body)
 
     if (!parsed.success) {
       const messages = parsed.error.issues.map((issue) => issue.message).join(', ')
+
+      logWarn({
+        event: 'invite_sent',
+        outcome: 'failure',
+        route: '/api/invites',
+        userId: user.id,
+        profileRole: 'superuser',
+        entityType: 'invite',
+        data: {
+          reason: 'validation_failed',
+          issueCount: parsed.error.issues.length,
+        },
+      })
+
       return NextResponse.json(
         { data: null, error: `Invalid request: ${messages}` },
         { status: 400 },
@@ -38,7 +55,7 @@ export async function POST(
     const result = await inviteUserByEmail({ email: parsed.data.email })
 
     if (result.error !== null || result.data === null) {
-      logError({
+      logWarn({
         event: 'invite_sent',
         outcome: 'failure',
         route: '/api/invites',
@@ -46,6 +63,9 @@ export async function POST(
         profileRole: 'superuser',
         entityType: 'invite',
         error: result.error,
+        data: {
+          reason: 'invite_service_failed',
+        },
       })
 
       return NextResponse.json(
@@ -61,6 +81,9 @@ export async function POST(
       userId: user.id,
       profileRole: 'superuser',
       entityType: 'invite',
+      data: {
+        inviteFlow: 'supabase_native',
+      },
     })
 
     return NextResponse.json(
@@ -69,6 +92,16 @@ export async function POST(
     )
   } catch (error) {
     if (error instanceof Error && error.message === 'Unauthenticated') {
+      logWarn({
+        event: 'invite_sent',
+        outcome: 'failure',
+        route: '/api/invites',
+        entityType: 'invite',
+        data: {
+          reason: 'unauthenticated',
+        },
+      })
+
       return NextResponse.json(
         { data: null, error: 'Authentication required.' },
         { status: 401 },
@@ -76,6 +109,18 @@ export async function POST(
     }
 
     if (error instanceof Error && error.message === 'Forbidden') {
+      logWarn({
+        event: 'invite_sent',
+        outcome: 'failure',
+        route: '/api/invites',
+        userId: authenticatedUserId,
+        entityType: 'invite',
+        data: {
+          reason: 'forbidden',
+          requiredRole: 'superuser',
+        },
+      })
+
       return NextResponse.json({ data: null, error: 'Forbidden.' }, { status: 403 })
     }
 

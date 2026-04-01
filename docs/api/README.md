@@ -784,6 +784,12 @@ Archive an authenticated user's injury area (soft delete). The area name is URL-
 
 Sends an invite email through Supabase native invite flow. Requires authenticated `superuser` role.
 
+This route logs `invite_sent` events with structured metadata at the route boundary:
+
+- `logInfo` for successful invite requests
+- `logWarn` for validation failures, unauthenticated or forbidden access, and handled invite service failures
+- `logError` only for unexpected exceptions
+
 **Request body**
 
 ```ts
