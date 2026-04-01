@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { Suspense, useState } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
@@ -27,13 +27,11 @@ type LoginFormData = z.infer<typeof loginSchema>
 // =============================================================================
 
 /**
- * @description Login page. Authenticates an invited user with their email and
- * password via Supabase Auth. On success, redirects to the home dashboard.
- * Displays a generic error message on failure to avoid leaking account details.
- *
- * @returns Login page element
+ * @description Login page content that reads query params and authenticates
+ * invited users with Supabase Auth.
+ * @returns Login page content element.
  */
-export default function LoginPage(): React.JSX.Element {
+function LoginPageContent(): React.JSX.Element {
   const router = useRouter()
   const searchParams = useSearchParams()
   const callbackError = searchParams.get('error')
@@ -131,5 +129,18 @@ export default function LoginPage(): React.JSX.Element {
         </form>
       </CardContent>
     </Card>
+  )
+}
+
+/**
+ * @description Login page wrapper. The inner client content reads search
+ * params, so it must render under Suspense for static prerender.
+ * @returns Login page element.
+ */
+export default function LoginPage(): React.JSX.Element {
+  return (
+    <Suspense fallback={<div className="min-h-[1px]" />}>
+      <LoginPageContent />
+    </Suspense>
   )
 }
