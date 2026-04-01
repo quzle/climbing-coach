@@ -249,6 +249,8 @@ Returns `400` if `type` is not a valid `SessionType`.
 
 List programmes for the authenticated user, ordered by most recent `start_date` first.
 
+All endpoints are scoped to the authenticated user. Returns `401` if the request is unauthenticated.
+
 **Response** `200`
 
 ```ts
@@ -273,7 +275,7 @@ Create a new programme for the authenticated user.
 }
 ```
 
-**Response** `201`
+**Response** `201` · `400` on validation error · `401` if unauthenticated
 
 ```ts
 { data: { programme: Programme } }

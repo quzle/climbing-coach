@@ -58,6 +58,21 @@ export async function GET(): Promise<
       error: null,
     })
   } catch (error) {
+    if (error instanceof Error && error.message === 'Unauthenticated') {
+      logWarn({
+        event: 'programmes_list_failed',
+        outcome: 'failure',
+        route: '/api/programmes',
+        entityType: 'programme',
+        data: { reason: 'unauthenticated' },
+      })
+
+      return NextResponse.json(
+        { data: null, error: 'Unauthenticated.' },
+        { status: 401 },
+      )
+    }
+
     logError({
       event: 'programmes_list_failed',
       outcome: 'failure',
@@ -135,6 +150,21 @@ export async function POST(
 
     return NextResponse.json({ data: { programme: result.data }, error: null }, { status: 201 })
   } catch (error) {
+    if (error instanceof Error && error.message === 'Unauthenticated') {
+      logWarn({
+        event: 'programme_create_failed',
+        outcome: 'failure',
+        route: '/api/programmes',
+        entityType: 'programme',
+        data: { reason: 'unauthenticated' },
+      })
+
+      return NextResponse.json(
+        { data: null, error: 'Unauthenticated.' },
+        { status: 401 },
+      )
+    }
+
     logError({
       event: 'programme_create_failed',
       outcome: 'failure',
