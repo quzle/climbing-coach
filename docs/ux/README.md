@@ -24,6 +24,7 @@ Gaps that were found to be already implemented: deduplication on session regener
 
 | File | Flow | Key question answered |
 |---|---|---|
+| [00-account-creation.md](./00-account-creation.md) | Account creation | How does a new user get invited and activate their account? |
 | [01-first-time-setup.md](./01-first-time-setup.md) | First-time setup | What does a brand new user experience with no data? |
 | [02-daily-training-loop.md](./02-daily-training-loop.md) | Daily training loop | How does a returning user get through a training day? |
 | [03-programme-setup.md](./03-programme-setup.md) | Programme & mesocycle setup | How does a user build a structured training programme? |
