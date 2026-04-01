@@ -107,7 +107,10 @@ export async function POST(
     try {
       const programmeResult = await getActiveProgramme(SINGLE_USER_PLACEHOLDER_ID)
       if (programmeResult.data) {
-        const mesocyclesResult = await getMesocyclesByProgramme(programmeResult.data.id)
+        const mesocyclesResult = await getMesocyclesByProgramme(
+          programmeResult.data.id,
+          SINGLE_USER_PLACEHOLDER_ID,
+        )
         const completed = (mesocyclesResult.data ?? []).filter((m) => m.status === 'completed')
         if (completed.length > 0) {
           historyText = completed

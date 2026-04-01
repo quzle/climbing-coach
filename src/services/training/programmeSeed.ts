@@ -497,7 +497,7 @@ async function rollbackSeedRows(
   }
 
   for (const mesocycleId of [...createdMesocycleIds].reverse()) {
-    const deleteResult = await deleteMesocycle(mesocycleId)
+      const deleteResult = await deleteMesocycle(mesocycleId, SINGLE_USER_PLACEHOLDER_ID)
     if (deleteResult.error !== null) {
       console.error(
         '[programmeSeed.rollbackSeedRows] deleteMesocycle:',

@@ -13,6 +13,7 @@ import type {
   SessionLog,
   WeeklyTemplate,
 } from '@/types'
+import { SINGLE_USER_PLACEHOLDER_ID } from '@/lib/placeholder-user-id'
 import { generatePlannedSessionsForActiveMesocycle } from './sessionGenerator'
 
 jest.mock('@/services/data/mesocycleRepository', () => ({
@@ -173,6 +174,7 @@ describe('generatePlannedSessionsForActiveMesocycle', () => {
 
     expect(result.error).toBeNull()
     expect(result.data).toHaveLength(2)
+    expect(mockGetActiveMesocycle).toHaveBeenCalledWith(SINGLE_USER_PLACEHOLDER_ID)
     expect(mockGenerateSessionPlan).not.toHaveBeenCalled()
     expect(mockCreatePlannedSession).toHaveBeenCalledWith(
       expect.objectContaining({

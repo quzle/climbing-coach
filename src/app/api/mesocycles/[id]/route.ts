@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { z } from 'zod'
 import { getMesocycleById, updateMesocycle } from '@/services/data/mesocycleRepository'
+import { getCurrentUser } from '@/lib/supabase/get-current-user'
+import { logError, logInfo, logWarn } from '@/lib/logger'
 import type { ApiResponse, Mesocycle } from '@/types'
 
 const paramsSchema = z.object({ id: z.string().uuid() })
@@ -38,20 +40,52 @@ export async function GET(
   _request: NextRequest,
   context: { params: Promise<{ id: string }> },
 ): Promise<NextResponse<ApiResponse<{ mesocycle: Mesocycle }>>> {
+  const startedAt = Date.now()
+
   try {
+    const user = await getCurrentUser()
     const parsedParams = paramsSchema.safeParse(await context.params)
     if (!parsedParams.success) {
       return NextResponse.json({ data: null, error: 'Invalid mesocycle id.' }, { status: 400 })
     }
 
-    const result = await getMesocycleById(parsedParams.data.id)
+    const result = await getMesocycleById(parsedParams.data.id, user.id)
     if (result.error !== null || result.data === null) {
+      logWarn({
+        event: 'mesocycle_fetch_failed',
+        outcome: 'failure',
+        route: '/api/mesocycles/[id]',
+        userId: user.id,
+        entityType: 'mesocycle',
+        entityId: parsedParams.data.id,
+        durationMs: Date.now() - startedAt,
+        data: { reason: result.error },
+      })
+
       return NextResponse.json({ data: null, error: 'Failed to load mesocycle.' }, { status: 500 })
     }
 
+    logInfo({
+      event: 'mesocycle_fetched',
+      outcome: 'success',
+      route: '/api/mesocycles/[id]',
+      userId: user.id,
+      entityType: 'mesocycle',
+      entityId: result.data.id,
+      durationMs: Date.now() - startedAt,
+    })
+
     return NextResponse.json({ data: { mesocycle: result.data }, error: null })
   } catch (error) {
-    console.error('[GET /api/mesocycles/:id]', error)
+    logError({
+      event: 'mesocycle_fetch_failed',
+      outcome: 'failure',
+      route: '/api/mesocycles/[id]',
+      entityType: 'mesocycle',
+      durationMs: Date.now() - startedAt,
+      error,
+    })
+
     return NextResponse.json({ data: null, error: 'Failed to load mesocycle.' }, { status: 500 })
   }
 }
@@ -64,7 +98,10 @@ export async function PUT(
   request: NextRequest,
   context: { params: Promise<{ id: string }> },
 ): Promise<NextResponse<ApiResponse<{ mesocycle: Mesocycle }>>> {
+  const startedAt = Date.now()
+
   try {
+    const user = await getCurrentUser()
     const parsedParams = paramsSchema.safeParse(await context.params)
     if (!parsedParams.success) {
       return NextResponse.json({ data: null, error: 'Invalid mesocycle id.' }, { status: 400 })
@@ -79,17 +116,46 @@ export async function PUT(
       )
     }
 
-    const result = await updateMesocycle(parsedParams.data.id, parsedBody.data)
+    const result = await updateMesocycle(parsedParams.data.id, parsedBody.data, user.id)
     if (result.error !== null || result.data === null) {
+      logWarn({
+        event: 'mesocycle_update_failed',
+        outcome: 'failure',
+        route: '/api/mesocycles/[id]',
+        userId: user.id,
+        entityType: 'mesocycle',
+        entityId: parsedParams.data.id,
+        durationMs: Date.now() - startedAt,
+        data: { reason: result.error },
+      })
+
       return NextResponse.json(
         { data: null, error: 'Failed to update mesocycle.' },
         { status: 500 },
       )
     }
 
+    logInfo({
+      event: 'mesocycle_updated',
+      outcome: 'success',
+      route: '/api/mesocycles/[id]',
+      userId: user.id,
+      entityType: 'mesocycle',
+      entityId: result.data.id,
+      durationMs: Date.now() - startedAt,
+    })
+
     return NextResponse.json({ data: { mesocycle: result.data }, error: null })
   } catch (error) {
-    console.error('[PUT /api/mesocycles/:id]', error)
+    logError({
+      event: 'mesocycle_update_failed',
+      outcome: 'failure',
+      route: '/api/mesocycles/[id]',
+      entityType: 'mesocycle',
+      durationMs: Date.now() - startedAt,
+      error,
+    })
+
     return NextResponse.json(
       { data: null, error: 'Failed to update mesocycle.' },
       { status: 500 },

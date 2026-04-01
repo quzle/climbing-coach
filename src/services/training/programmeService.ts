@@ -22,7 +22,7 @@ export async function getProgrammeBuilderSnapshot(): Promise<
     const [activeProgrammeResult, activeMesocycleResult, upcomingSessionsResult] =
       await Promise.all([
         getActiveProgramme(SINGLE_USER_PLACEHOLDER_ID),
-        getActiveMesocycle(),
+        getActiveMesocycle(SINGLE_USER_PLACEHOLDER_ID),
         getUpcomingPlannedSessions(7),
       ])
 
@@ -50,7 +50,7 @@ export async function getProgrammeBuilderSnapshot(): Promise<
 
     const [mesocyclesResult, templateResult] = await Promise.all([
       currentProgramme !== null
-        ? getMesocyclesByProgramme(currentProgramme.id)
+        ? getMesocyclesByProgramme(currentProgramme.id, SINGLE_USER_PLACEHOLDER_ID)
         : Promise.resolve({ data: [], error: null }),
       activeMesocycle !== null
         ? getWeeklyTemplateByMesocycle(activeMesocycle.id)

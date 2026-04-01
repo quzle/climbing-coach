@@ -3,6 +3,7 @@
  */
 import { NextRequest } from 'next/server'
 import { createMesocycle, getMesocyclesByProgramme } from '@/services/data/mesocycleRepository'
+import { getCurrentUser } from '@/lib/supabase/get-current-user'
 import { GET, POST } from './route'
 
 jest.mock('@/services/data/mesocycleRepository', () => ({
@@ -10,8 +11,19 @@ jest.mock('@/services/data/mesocycleRepository', () => ({
   createMesocycle: jest.fn(),
 }))
 
+jest.mock('@/lib/supabase/get-current-user', () => ({
+  getCurrentUser: jest.fn(),
+}))
+
+jest.mock('@/lib/logger', () => ({
+  logInfo: jest.fn(),
+  logWarn: jest.fn(),
+  logError: jest.fn(),
+}))
+
 const mockGetMesocyclesByProgramme = getMesocyclesByProgramme as jest.Mock
 const mockCreateMesocycle = createMesocycle as jest.Mock
+const mockGetCurrentUser = getCurrentUser as jest.Mock
 
 const mesocycle = {
   id: '11711946-7ec0-4640-9f03-2be6ac3cd571',
@@ -30,6 +42,7 @@ const mesocycle = {
 
 beforeEach(() => {
   jest.clearAllMocks()
+  mockGetCurrentUser.mockResolvedValue({ id: 'user-1', email: 'user@example.com' })
   mockGetMesocyclesByProgramme.mockResolvedValue({ data: [mesocycle], error: null })
   mockCreateMesocycle.mockResolvedValue({ data: mesocycle, error: null })
 })
@@ -43,7 +56,7 @@ describe('GET /api/mesocycles', () => {
     )
 
     expect(response.status).toBe(200)
-    expect(mockGetMesocyclesByProgramme).toHaveBeenCalledWith(mesocycle.programme_id)
+    expect(mockGetMesocyclesByProgramme).toHaveBeenCalledWith(mesocycle.programme_id, 'user-1')
   })
 
   it('returns 400 when programme_id is missing', async () => {
@@ -69,6 +82,8 @@ describe('POST /api/mesocycles', () => {
 
     const response = await POST(request)
     expect(response.status).toBe(201)
-    expect(mockCreateMesocycle).toHaveBeenCalled()
+    expect(mockCreateMesocycle).toHaveBeenCalledWith(
+      expect.objectContaining({ user_id: 'user-1' }),
+    )
   })
 })

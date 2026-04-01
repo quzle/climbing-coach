@@ -396,7 +396,7 @@ AI wizard — step 2. Persists the reviewed plan: creates the programme row and 
 
 ### `GET /api/mesocycles`
 
-List mesocycles for a programme.
+List mesocycles for a programme, scoped to the authenticated user.
 
 **Query parameters**
 
@@ -414,7 +414,7 @@ List mesocycles for a programme.
 
 ### `POST /api/mesocycles`
 
-Create a mesocycle within a programme.
+Create a mesocycle within a programme for the authenticated user.
 
 **Request body**
 
@@ -443,7 +443,7 @@ Create a mesocycle within a programme.
 
 ### `GET /api/mesocycles/[id]`
 
-Fetch one mesocycle by UUID. Returns `404` if not found.
+Fetch one mesocycle by UUID, scoped to the authenticated user. Returns `404` if not found.
 
 **Response** `200`
 
@@ -455,7 +455,7 @@ Fetch one mesocycle by UUID. Returns `404` if not found.
 
 ### `PUT /api/mesocycles/[id]`
 
-Partial update — all fields optional, at least one required.
+Partial update (authenticated user's mesocycle only) — all fields optional, at least one required.
 
 **Request body:** any subset of the `POST` fields above.
 

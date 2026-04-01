@@ -21,6 +21,7 @@ function makeSupabaseMock() {
     update: jest.fn().mockReturnThis(),
     delete: jest.fn().mockReturnThis(),
     eq: jest.fn().mockReturnThis(),
+    gt: jest.fn().mockReturnThis(),
     gte: jest.fn().mockReturnThis(),
     lte: jest.fn().mockReturnThis(),
     order: jest.fn().mockReturnThis(),
@@ -64,9 +65,10 @@ describe('mesocycleRepository', () => {
     const mesocycles = [makeMesocycle()]
     mockChain.order.mockResolvedValue({ data: mesocycles, error: null })
 
-    const result = await getMesocyclesByProgramme('programme-1')
+    const result = await getMesocyclesByProgramme('programme-1', 'user-1')
 
     expect(mockChain.eq).toHaveBeenCalledWith('programme_id', 'programme-1')
+    expect(mockChain.eq).toHaveBeenCalledWith('user_id', 'user-1')
     expect(result.data).toEqual(mesocycles)
   })
 
@@ -74,8 +76,9 @@ describe('mesocycleRepository', () => {
     const mesocycle = makeMesocycle()
     mockChain.maybeSingle.mockResolvedValue({ data: mesocycle, error: null })
 
-    const result = await getActiveMesocycle()
+    const result = await getActiveMesocycle('user-1')
 
+    expect(mockChain.eq).toHaveBeenCalledWith('user_id', 'user-1')
     expect(mockChain.lte).toHaveBeenCalled()
     expect(mockChain.gte).toHaveBeenCalled()
     expect(result.data).toEqual(mesocycle)
@@ -85,9 +88,10 @@ describe('mesocycleRepository', () => {
     const mesocycle = makeMesocycle()
     mockChain.single.mockResolvedValue({ data: mesocycle, error: null })
 
-    const result = await getMesocycleById('mesocycle-1')
+    const result = await getMesocycleById('mesocycle-1', 'user-1')
 
     expect(mockChain.eq).toHaveBeenCalledWith('id', 'mesocycle-1')
+    expect(mockChain.eq).toHaveBeenCalledWith('user_id', 'user-1')
     expect(result.data).toEqual(mesocycle)
   })
 
@@ -115,9 +119,10 @@ describe('mesocycleRepository', () => {
     const mesocycle = makeMesocycle({ status: 'completed' })
     mockChain.single.mockResolvedValue({ data: mesocycle, error: null })
 
-    const result = await updateMesocycle('mesocycle-1', updates)
+    const result = await updateMesocycle('mesocycle-1', updates, 'user-1')
 
     expect(mockChain.update).toHaveBeenCalledWith(updates)
+    expect(mockChain.eq).toHaveBeenCalledWith('user_id', 'user-1')
     expect(result.data?.status).toBe('completed')
   })
 
@@ -125,10 +130,11 @@ describe('mesocycleRepository', () => {
     const mesocycle = makeMesocycle()
     mockChain.single.mockResolvedValue({ data: mesocycle, error: null })
 
-    const result = await deleteMesocycle('mesocycle-1')
+    const result = await deleteMesocycle('mesocycle-1', 'user-1')
 
     expect(mockChain.delete).toHaveBeenCalled()
     expect(mockChain.eq).toHaveBeenCalledWith('id', 'mesocycle-1')
+    expect(mockChain.eq).toHaveBeenCalledWith('user_id', 'user-1')
     expect(result.data).toEqual(mesocycle)
   })
 })

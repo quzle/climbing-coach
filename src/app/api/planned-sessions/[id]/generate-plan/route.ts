@@ -3,6 +3,7 @@ import { z } from 'zod'
 import { buildAthleteContext } from '@/services/ai/contextBuilder'
 import { generateSessionPlan } from '@/services/ai/geminiClient'
 import { getMesocycleById } from '@/services/data/mesocycleRepository'
+import { getCurrentUser } from '@/lib/supabase/get-current-user'
 import { getPlannedSessionById, updatePlannedSession } from '@/services/data/plannedSessionRepository'
 import { getWeeklyTemplateById } from '@/services/data/weeklyTemplateRepository'
 import type { Json } from '@/lib/database.types'
@@ -80,6 +81,7 @@ export async function POST(
   context: { params: Promise<{ id: string }> },
 ): Promise<NextResponse<ApiResponse<{ ai_plan_text: string }>>> {
   try {
+    const user = await getCurrentUser()
     const parsedParams = paramsSchema.safeParse(await context.params)
     if (!parsedParams.success) {
       return NextResponse.json(
@@ -117,7 +119,7 @@ export async function POST(
 
     // Fetch mesocycle, template, and athlete context in parallel.
     const [mesocycleResult, templateResult, athleteContext] = await Promise.all([
-      getMesocycleById(session.mesocycle_id),
+      getMesocycleById(session.mesocycle_id, user.id),
       getWeeklyTemplateById(session.template_id),
       buildAthleteContext(),
     ])

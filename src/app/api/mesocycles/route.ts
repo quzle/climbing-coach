@@ -1,7 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { z } from 'zod'
 import { createMesocycle, getMesocyclesByProgramme } from '@/services/data/mesocycleRepository'
-import { SINGLE_USER_PLACEHOLDER_ID } from '@/lib/placeholder-user-id'
+import { getCurrentUser } from '@/lib/supabase/get-current-user'
+import { logError, logInfo, logWarn } from '@/lib/logger'
 import type { ApiResponse, Mesocycle } from '@/types'
 
 const querySchema = z.object({ programme_id: z.string().uuid() })
@@ -33,7 +34,10 @@ const createMesocycleSchema = z.object({
 export async function GET(
   request: NextRequest,
 ): Promise<NextResponse<ApiResponse<{ mesocycles: Mesocycle[] }>>> {
+  const startedAt = Date.now()
+
   try {
+    const user = await getCurrentUser()
     const parsed = querySchema.safeParse({
       programme_id: request.nextUrl.searchParams.get('programme_id'),
     })
@@ -45,18 +49,51 @@ export async function GET(
       )
     }
 
-    const result = await getMesocyclesByProgramme(parsed.data.programme_id)
+    const result = await getMesocyclesByProgramme(parsed.data.programme_id, user.id)
     if (result.error !== null) {
-      console.error('[GET /api/mesocycles]', result.error)
+      logWarn({
+        event: 'mesocycles_list_failed',
+        outcome: 'failure',
+        route: '/api/mesocycles',
+        userId: user.id,
+        entityType: 'mesocycle',
+        durationMs: Date.now() - startedAt,
+        data: {
+          programmeId: parsed.data.programme_id,
+          reason: result.error,
+        },
+      })
+
       return NextResponse.json(
         { data: null, error: 'Failed to load mesocycles.' },
         { status: 500 },
       )
     }
 
+    logInfo({
+      event: 'mesocycles_list_fetched',
+      outcome: 'success',
+      route: '/api/mesocycles',
+      userId: user.id,
+      entityType: 'mesocycle',
+      durationMs: Date.now() - startedAt,
+      data: {
+        programmeId: parsed.data.programme_id,
+        count: (result.data ?? []).length,
+      },
+    })
+
     return NextResponse.json({ data: { mesocycles: result.data ?? [] }, error: null })
   } catch (error) {
-    console.error('[GET /api/mesocycles]', error)
+    logError({
+      event: 'mesocycles_list_failed',
+      outcome: 'failure',
+      route: '/api/mesocycles',
+      entityType: 'mesocycle',
+      durationMs: Date.now() - startedAt,
+      error,
+    })
+
     return NextResponse.json({ data: null, error: 'Failed to load mesocycles.' }, { status: 500 })
   }
 }
@@ -68,7 +105,10 @@ export async function GET(
 export async function POST(
   request: NextRequest,
 ): Promise<NextResponse<ApiResponse<{ mesocycle: Mesocycle }>>> {
+  const startedAt = Date.now()
+
   try {
+    const user = await getCurrentUser()
     const body: unknown = await request.json()
     const parsed = createMesocycleSchema.safeParse(body)
 
@@ -80,18 +120,49 @@ export async function POST(
       )
     }
 
-    const result = await createMesocycle({ ...parsed.data, user_id: SINGLE_USER_PLACEHOLDER_ID })
+    const result = await createMesocycle({ ...parsed.data, user_id: user.id })
     if (result.error !== null || result.data === null) {
-      console.error('[POST /api/mesocycles]', result.error)
+      logWarn({
+        event: 'mesocycle_create_failed',
+        outcome: 'failure',
+        route: '/api/mesocycles',
+        userId: user.id,
+        entityType: 'mesocycle',
+        durationMs: Date.now() - startedAt,
+        data: {
+          programmeId: parsed.data.programme_id,
+          reason: result.error,
+        },
+      })
+
       return NextResponse.json(
         { data: null, error: 'Failed to create mesocycle.' },
         { status: 500 },
       )
     }
 
+    logInfo({
+      event: 'mesocycle_created',
+      outcome: 'success',
+      route: '/api/mesocycles',
+      userId: user.id,
+      entityType: 'mesocycle',
+      entityId: result.data.id,
+      durationMs: Date.now() - startedAt,
+      data: { programmeId: parsed.data.programme_id },
+    })
+
     return NextResponse.json({ data: { mesocycle: result.data }, error: null }, { status: 201 })
   } catch (error) {
-    console.error('[POST /api/mesocycles]', error)
+    logError({
+      event: 'mesocycle_create_failed',
+      outcome: 'failure',
+      route: '/api/mesocycles',
+      entityType: 'mesocycle',
+      durationMs: Date.now() - startedAt,
+      error,
+    })
+
     return NextResponse.json({ data: null, error: 'Failed to create mesocycle.' }, { status: 500 })
   }
 }

@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { GoogleGenerativeAI } from '@google/generative-ai'
 import { z } from 'zod'
 import { getMesocycleById } from '@/services/data/mesocycleRepository'
+import { getCurrentUser } from '@/lib/supabase/get-current-user'
 import {
   weeklyPlanInputSchema,
   generatedWeeklyTemplateSchema,
@@ -116,6 +117,7 @@ export async function POST(
 ): Promise<NextResponse<ApiResponse<GeneratedWeeklyTemplate[]>>> {
   try {
     const { id } = await params
+    const user = await getCurrentUser()
 
     // Validate request body
     const body: unknown = await request.json()
@@ -131,7 +133,7 @@ export async function POST(
     const input = parsed.data
 
     // Fetch mesocycle from DB
-    const mesocycleResult = await getMesocycleById(id)
+    const mesocycleResult = await getMesocycleById(id, user.id)
     if (mesocycleResult.error || !mesocycleResult.data) {
       return NextResponse.json(
         { data: null, error: 'Mesocycle not found.' },

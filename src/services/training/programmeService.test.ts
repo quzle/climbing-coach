@@ -128,6 +128,11 @@ describe('getProgrammeBuilderSnapshot', () => {
 
     expect(result.error).toBeNull()
     expect(mockGetActiveProgramme).toHaveBeenCalledWith(SINGLE_USER_PLACEHOLDER_ID)
+    expect(mockGetActiveMesocycle).toHaveBeenCalledWith(SINGLE_USER_PLACEHOLDER_ID)
+    expect(mockGetMesocyclesByProgramme).toHaveBeenCalledWith(
+      'programme-1',
+      SINGLE_USER_PLACEHOLDER_ID,
+    )
     expect(result.data?.currentProgramme?.name).toBe('Summer Multipitch Season')
     expect(result.data?.mesocycles).toHaveLength(1)
     expect(result.data?.currentWeeklyTemplate).toHaveLength(1)

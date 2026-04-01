@@ -78,7 +78,7 @@ export async function generatePlannedSessionsForActiveMesocycle(
     const fromDate = weekStartMonday(requestedDate)
 
     // Fetch the mesocycle first so we can use planned_end as the range boundary.
-    const mesocycleResult = await getActiveMesocycle()
+    const mesocycleResult = await getActiveMesocycle(SINGLE_USER_PLACEHOLDER_ID)
     if (mesocycleResult.error !== null) {
       console.error(
         '[sessionGenerator.generatePlannedSessionsForActiveMesocycle] getActiveMesocycle:',
