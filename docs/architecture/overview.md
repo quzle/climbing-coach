@@ -87,7 +87,7 @@ await requireSuperuser() // throws 'Unauthenticated' or 'Forbidden' for privileg
 
 ## Middleware and Route Gating
 
-`src/middleware.ts` runs on every request that is not a static asset. It:
+`src/proxy.ts` runs on every request that is not a static asset. It:
 
 1. Refreshes the user's Supabase session by calling `supabase.auth.getUser()`.
 2. Redirects any unauthenticated request to `/auth/login` (307) unless the path starts with `/auth/`.
@@ -95,17 +95,22 @@ await requireSuperuser() // throws 'Unauthenticated' or 'Forbidden' for privileg
 **Public routes** (accessible without a valid session):
 - `/auth/login` — sign-in page
 - `/auth/callback` — auth code exchange
+- `/auth/confirm` — OTP verification for invite, recovery, and magic link flows
 
 All other routes — including `/`, `/api/**`, `/chat`, `/dev`, `/history`, `/profile`, `/programme/**`, `/readiness`, and `/session/**` — require an authenticated session.
 
-The middleware uses the anon key (`NEXT_PUBLIC_SUPABASE_ANON_KEY`) and **not** the service role secret. This is intentional: the anon key is safe for Edge/middleware because session validation only reads the JWT from cookies.
+The proxy uses the anon key (`NEXT_PUBLIC_SUPABASE_ANON_KEY`) and **not** the service role secret. This is intentional: the anon key is safe for Edge/proxy because session validation only reads the JWT from cookies.
 
 ## Auth Entry Flow
 
 Authentication entry points for invited users live under `src/app/auth/`:
 
 - `GET /auth/login`: email/password sign-in page backed by Supabase Auth client sign-in.
+- `GET /auth/login`: email-only magic-link sign-in page backed by `supabase.auth.signInWithOtp({ email })`.
 - `GET /auth/callback`: exchanges Supabase auth codes for a cookie-backed session, finalizes the user's `profiles` row (`invite_status: active`, `role: user`), then redirects to a validated local `next` path (or `/`).
+- `GET /auth/confirm`: verifies Supabase OTP tokens for invite, magic-link, and recovery flows, then redirects to a validated local `next` path (or `/`).
+
+Client components that need identity or profile metadata read it from a shared auth provider mounted in the root layout. The provider is seeded server-side using `getCurrentUser()` plus `getProfile()` and exposes `id`, `email`, `displayName`, `role`, and `inviteStatus` to the navigation and account settings UI.
 
 The callback route validates `next` to local paths only (`/something`) to prevent open redirect attacks.
 

@@ -836,6 +836,42 @@ This route logs `invite_sent` events with structured metadata at the route bound
 | `403` | Authenticated but not a superuser |
 | `500` | Failed to send invite |
 
+## Profile
+
+### `GET /api/profile`
+
+Returns the authenticated user's profile metadata.
+
+**Response** `200` · `401` if unauthenticated
+
+```ts
+{
+  data: Profile,
+  error: null
+}
+```
+
+### `PATCH /api/profile`
+
+Updates the authenticated user's editable profile fields.
+
+**Request body**
+
+```ts
+{
+  display_name: string // 1-120 chars
+}
+```
+
+**Response** `200` · `400` invalid payload · `401` unauthenticated
+
+```ts
+{
+  data: Profile,
+  error: null
+}
+```
+
 ## Dev
 
 All `/api/dev/*` routes are disabled in production (`404`) and privileged handlers require a server-side superuser check.

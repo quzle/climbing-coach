@@ -1,12 +1,24 @@
 'use client'
 
 import { useState, useEffect } from 'react'
+import { useForm } from 'react-hook-form'
+import { zodResolver } from '@hookform/resolvers/zod'
+import { z } from 'zod'
 import { toast } from 'sonner'
 import { Button } from '@/components/ui/button'
-import { Card, CardContent } from '@/components/ui/card'
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
+import { Input } from '@/components/ui/input'
+import { Label } from '@/components/ui/label'
 import { Skeleton } from '@/components/ui/skeleton'
 import { formatAreaName, KNOWN_AREAS } from '@/components/forms/InjuryAreaSelector'
-import type { ApiResponse, InjuryAreaRow } from '@/types'
+import { useAuth } from '@/hooks/useAuth'
+import type { ApiResponse, InjuryAreaRow, Profile } from '@/types'
+
+const displayNameSchema = z.object({
+  displayName: z.string().trim().min(1, 'Display name is required').max(120),
+})
+
+type DisplayNameFormData = z.infer<typeof displayNameSchema>
 
 /**
  * @description Profile page for managing tracked injury areas. Allows the
@@ -16,11 +28,30 @@ import type { ApiResponse, InjuryAreaRow } from '@/types'
  * @returns The profile page React element.
  */
 export default function ProfilePage(): React.JSX.Element {
+  const { user, updateProfile } = useAuth()
   const [areas, setAreas] = useState<InjuryAreaRow[]>([])
   const [isLoading, setIsLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [selectedNewArea, setSelectedNewArea] = useState('')
   const [isAdding, setIsAdding] = useState(false)
+  const [profileMessage, setProfileMessage] = useState<string | null>(null)
+  const [isSavingProfile, setIsSavingProfile] = useState(false)
+
+  const {
+    register,
+    handleSubmit,
+    reset,
+    formState: { errors: profileErrors },
+  } = useForm<DisplayNameFormData>({
+    resolver: zodResolver(displayNameSchema),
+    defaultValues: {
+      displayName: user?.displayName ?? '',
+    },
+  })
+
+  useEffect(() => {
+    reset({ displayName: user?.displayName ?? '' })
+  }, [reset, user?.displayName])
 
   useEffect(() => {
     async function load(): Promise<void> {
@@ -40,6 +71,32 @@ export default function ProfilePage(): React.JSX.Element {
     }
     void load()
   }, [])
+
+  async function handleProfileSave(data: DisplayNameFormData): Promise<void> {
+    setProfileMessage(null)
+    setIsSavingProfile(true)
+
+    try {
+      const res = await fetch('/api/profile', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ display_name: data.displayName }),
+      })
+      const json = (await res.json()) as ApiResponse<Profile>
+
+      if (!res.ok || json.error !== null || json.data === null) {
+        setProfileMessage(json.error ?? 'Failed to update profile.')
+        return
+      }
+
+      updateProfile({ displayName: json.data.display_name ?? null })
+      setProfileMessage('Account details saved.')
+    } catch {
+      setProfileMessage('Failed to update profile.')
+    } finally {
+      setIsSavingProfile(false)
+    }
+  }
 
   async function handleArchive(area: string): Promise<void> {
     try {
@@ -95,6 +152,61 @@ export default function ProfilePage(): React.JSX.Element {
     <div className="min-h-screen bg-slate-50">
       <div className="mx-auto max-w-lg px-4 py-6">
         <h1 className="mb-6 text-2xl font-bold text-slate-900">Profile</h1>
+
+        <section className="mb-8">
+          <Card>
+            <CardHeader>
+              <CardTitle>Account</CardTitle>
+              <CardDescription>
+                View your signed-in email and update the display name shown in the app.
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <dl className="mb-4 space-y-2 text-sm text-slate-700">
+                <div>
+                  <dt className="font-medium text-slate-900">Email</dt>
+                  <dd>{user?.email ?? 'Unknown email'}</dd>
+                </div>
+              </dl>
+
+              <form onSubmit={handleSubmit(handleProfileSave)} className="space-y-3">
+                <div className="space-y-1">
+                  <Label htmlFor="displayName">Display name</Label>
+                  <Input
+                    id="displayName"
+                    className="min-h-[44px]"
+                    {...register('displayName')}
+                  />
+                  {profileErrors.displayName && (
+                    <p className="text-sm text-red-600">{profileErrors.displayName.message}</p>
+                  )}
+                </div>
+
+                {profileMessage && (
+                  <p
+                    role={profileMessage === 'Account details saved.' ? 'status' : 'alert'}
+                    className={
+                      profileMessage === 'Account details saved.'
+                        ? 'text-sm text-green-700'
+                        : 'text-sm text-red-600'
+                    }
+                  >
+                    {profileMessage}
+                  </p>
+                )}
+
+                <div className="flex flex-wrap gap-2">
+                  <Button type="submit" className="min-h-[44px]" disabled={isSavingProfile}>
+                    {isSavingProfile ? 'Saving...' : 'Save account'}
+                  </Button>
+                  <Button asChild type="button" variant="outline" className="min-h-[44px]">
+                    <a href="/auth/change-password">Change password</a>
+                  </Button>
+                </div>
+              </form>
+            </CardContent>
+          </Card>
+        </section>
 
         <section className="mb-8">
           <h2 className="mb-3 text-lg font-semibold text-slate-800">Tracked injury areas</h2>

@@ -1,5 +1,7 @@
 import React from 'react'
+import userEvent from '@testing-library/user-event'
 import { render, screen, waitFor, fireEvent } from '@/lib/test-utils'
+import { AuthProvider, type ClientAuthUser } from '@/components/providers/auth-provider'
 import ProfilePage from './page'
 
 // =============================================================================
@@ -37,6 +39,25 @@ function makeRow(area: string): FakeRow {
     added_at: '2024-01-01T00:00:00Z',
     archived_at: null,
   }
+}
+
+function makeUser(overrides?: Partial<ClientAuthUser>): ClientAuthUser {
+  return {
+    id: 'user-123',
+    email: 'climber@example.com',
+    displayName: 'Test Climber',
+    role: 'user',
+    inviteStatus: 'active',
+    ...overrides,
+  }
+}
+
+function renderProfilePage(initialUser: ClientAuthUser | null = makeUser()) {
+  return render(
+    <AuthProvider initialUser={initialUser}>
+      <ProfilePage />
+    </AuthProvider>,
+  )
 }
 
 function mockGetOk(areas: FakeRow[]) {
@@ -79,20 +100,23 @@ beforeEach(() => {
 describe('ProfilePage', () => {
   it('renders the page heading', async () => {
     mockGetOk([])
-    render(<ProfilePage />)
-    expect(screen.getByRole('heading', { name: /^profile$/i })).toBeInTheDocument()
+    renderProfilePage()
+
+    await waitFor(() => {
+      expect(screen.getByRole('heading', { name: /^profile$/i })).toBeInTheDocument()
+    })
   })
 
   it('shows skeleton loading state while fetching', () => {
     ;(global.fetch as jest.Mock).mockReturnValue(new Promise(() => {}))
-    render(<ProfilePage />)
+    renderProfilePage()
     const skeletons = document.querySelectorAll('[data-slot="skeleton"]')
     expect(skeletons.length).toBeGreaterThan(0)
   })
 
   it('renders tracked areas after successful fetch', async () => {
     mockGetOk([makeRow('shoulder_left'), makeRow('finger_a2_right')])
-    render(<ProfilePage />)
+    renderProfilePage()
 
     await waitFor(() => {
       expect(screen.getByText('Shoulder (left)')).toBeInTheDocument()
@@ -102,7 +126,7 @@ describe('ProfilePage', () => {
 
   it('shows empty state when no areas are tracked', async () => {
     mockGetOk([])
-    render(<ProfilePage />)
+    renderProfilePage()
 
     await waitFor(() => {
       expect(screen.getByText(/no areas tracked yet/i)).toBeInTheDocument()
@@ -111,7 +135,7 @@ describe('ProfilePage', () => {
 
   it('shows error message when initial fetch fails', async () => {
     mockGetError('Database unavailable')
-    render(<ProfilePage />)
+    renderProfilePage()
 
     await waitFor(() => {
       expect(screen.getByRole('alert')).toHaveTextContent('Database unavailable')
@@ -120,7 +144,7 @@ describe('ProfilePage', () => {
 
   it('removes an area from the list after successful archive', async () => {
     mockGetOk([makeRow('shoulder_left'), makeRow('finger_a2_right')])
-    render(<ProfilePage />)
+    renderProfilePage()
 
     await waitFor(() => expect(screen.getByText('Shoulder (left)')).toBeInTheDocument())
 
@@ -149,7 +173,7 @@ describe('ProfilePage', () => {
 
   it('shows error toast when archive fails', async () => {
     mockGetOk([makeRow('shoulder_left')])
-    render(<ProfilePage />)
+    renderProfilePage()
 
     await waitFor(() => expect(screen.getByText('Shoulder (left)')).toBeInTheDocument())
 
@@ -171,7 +195,7 @@ describe('ProfilePage', () => {
 
   it('adds a new area to the list after successful POST', async () => {
     mockGetOk([])
-    render(<ProfilePage />)
+    renderProfilePage()
 
     await waitFor(() => expect(screen.getByText(/no areas tracked yet/i)).toBeInTheDocument())
 
@@ -190,7 +214,7 @@ describe('ProfilePage', () => {
 
   it('shows error toast when add fails', async () => {
     mockGetOk([])
-    render(<ProfilePage />)
+    renderProfilePage()
 
     await waitFor(() => expect(screen.getByText(/no areas tracked yet/i)).toBeInTheDocument())
 
@@ -203,6 +227,71 @@ describe('ProfilePage', () => {
 
     await waitFor(() => {
       expect(mockToastError).toHaveBeenCalledWith('Failed to add')
+    })
+  })
+
+  it('shows account email and display name from auth context', async () => {
+    mockGetOk([])
+    renderProfilePage(makeUser({ displayName: 'Coach Dave' }))
+
+    expect(screen.getByText('climber@example.com')).toBeInTheDocument()
+    expect(screen.getByDisplayValue('Coach Dave')).toBeInTheDocument()
+  })
+
+  it('saves an updated display name', async () => {
+    mockGetOk([])
+    ;(global.fetch as jest.Mock).mockResolvedValueOnce({
+      ok: true,
+      json: jest.fn().mockResolvedValue({
+        data: {
+          id: 'user-123',
+          email: 'climber@example.com',
+          display_name: 'Updated Name',
+          role: 'user',
+          invite_status: 'active',
+          created_at: '2026-04-01T10:00:00Z',
+          updated_at: '2026-04-01T10:00:00Z',
+        },
+        error: null,
+      }),
+    })
+    renderProfilePage()
+
+    await waitFor(() => expect(screen.getByDisplayValue('Test Climber')).toBeInTheDocument())
+
+    const user = userEvent.setup()
+    const input = screen.getByLabelText(/display name/i)
+    await user.clear(input)
+    await user.type(input, 'Updated Name')
+    await user.click(screen.getByRole('button', { name: /save account/i }))
+
+    await waitFor(() => {
+      expect(global.fetch).toHaveBeenCalledWith('/api/profile', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ display_name: 'Updated Name' }),
+      })
+      expect(screen.getByRole('status')).toHaveTextContent('Account details saved.')
+    })
+  })
+
+  it('shows an error when display name save fails', async () => {
+    mockGetOk([])
+    ;(global.fetch as jest.Mock).mockResolvedValueOnce({
+      ok: false,
+      json: jest.fn().mockResolvedValue({ data: null, error: 'Failed to update profile.' }),
+    })
+    renderProfilePage()
+
+    await waitFor(() => expect(screen.getByDisplayValue('Test Climber')).toBeInTheDocument())
+
+    const user = userEvent.setup()
+    await user.clear(screen.getByLabelText(/display name/i))
+    await user.type(screen.getByLabelText(/display name/i), 'Updated Name')
+    await user.click(screen.getByRole('button', { name: /save account/i }))
+
+    await waitFor(() => {
+      expect(screen.getByRole('alert')).toHaveTextContent('Failed to update profile.')
     })
   })
 })

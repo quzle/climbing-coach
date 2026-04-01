@@ -325,28 +325,28 @@ Goal: resolve the authenticated user in every route and propagate ownership chec
 
 Goal: add user-facing auth controls, account management, and ensure browser state does not leak across users.
 
-- [ ] **CLIENT-1** Add auth/profile context for client components
+- [x] **CLIENT-1** Add auth/profile context for client components ✅ _2026-04-01_
   - Depends on: AUTH-2, AUTH-4, REPO-0
   - Deliverables:
-    - React context provider exposing authenticated user identity (id, email, display name, role) to client components
-    - Wraps the app layout so all authenticated pages have access
+    - React context provider exposing authenticated user identity (id, email, display name, role) to client components ✅
+    - Wraps the app layout so all authenticated pages have access ✅
 
-- [ ] **CLIENT-2** Add logout action and UI trigger
+- [x] **CLIENT-2** Add logout action and UI trigger ✅ _2026-04-01_
   - Depends on: CLIENT-1
   - Deliverables:
-    - Call `supabase.auth.signOut()` and redirect to `/auth/login`
-    - Accessible logout button in the navigation or user menu
+    - Call `supabase.auth.signOut()` and redirect to `/auth/login` ✅
+    - Accessible logout button in the navigation or user menu ✅
 
-- [ ] **CLIENT-3** Add user indicator to navigation
+- [x] **CLIENT-3** Add user indicator to navigation ✅ _2026-04-01_
   - Depends on: CLIENT-1, CLIENT-2
   - Deliverables:
-    - Display the logged-in user's email or display name in the app chrome
-    - Provide access to logout and account settings from the indicator
+    - Display the logged-in user's email or display name in the app chrome ✅
+    - Provide access to logout and account settings from the indicator ✅
 
-- [ ] **CLIENT-4** Add user account/settings page
+- [x] **CLIENT-4** Add user account/settings page ✅ _2026-04-01_
   - Depends on: CLIENT-1
   - Deliverables:
-    - Page showing email and display name
+    - Page showing email and display name ✅
 
 - [ ] **CLIENT-5** Update `useDraftSession` local storage key to include `userId`
   - Depends on: CLIENT-1
