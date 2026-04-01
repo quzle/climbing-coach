@@ -12,7 +12,7 @@ import {
 import { buildAthleteContext, computeWarnings, parseInjuryAreaHealth } from '@/services/ai/contextBuilder'
 import { getLastSessionDate } from '@/services/data/sessionRepository'
 import { getActiveInjuryAreas } from '@/services/data/injuryAreasRepository'
-import { SINGLE_USER_PLACEHOLDER_ID } from '@/lib/placeholder-user-id'
+import { getCurrentUser } from '@/lib/supabase/get-current-user'
 import { POST, GET } from './route'
 
 // =============================================================================
@@ -41,6 +41,10 @@ jest.mock('@/services/data/injuryAreasRepository', () => ({
   getActiveInjuryAreas: jest.fn(),
 }))
 
+jest.mock('@/lib/supabase/get-current-user', () => ({
+  getCurrentUser: jest.fn(),
+}))
+
 // =============================================================================
 // TYPED MOCK REFERENCES
 // =============================================================================
@@ -55,6 +59,7 @@ const mockComputeWarnings = computeWarnings as jest.Mock
 const mockParseInjuryAreaHealth = parseInjuryAreaHealth as jest.Mock
 const mockGetLastSessionDate = getLastSessionDate as jest.Mock
 const mockGetActiveInjuryAreas = getActiveInjuryAreas as jest.Mock
+const mockGetCurrentUser = getCurrentUser as jest.Mock
 
 // =============================================================================
 // FIXTURES
@@ -92,6 +97,7 @@ beforeEach(() => {
   mockBuildAthleteContext.mockResolvedValue({ warnings: [] })
   mockGetLastSessionDate.mockResolvedValue({ data: null, error: null })
   mockGetActiveInjuryAreas.mockResolvedValue({ data: [], error: null })
+  mockGetCurrentUser.mockResolvedValue({ id: 'user-1', email: 'user@example.com' })
   mockComputeWarnings.mockReturnValue([])
   mockParseInjuryAreaHealth.mockReturnValue([])
 })
@@ -118,6 +124,11 @@ describe('POST /api/readiness', () => {
     const body = await response.json()
 
     expect(response.status).toBe(201)
+    expect(mockHasCheckedInToday).toHaveBeenCalledWith('user-1')
+    expect(mockCreateCheckin).toHaveBeenCalledWith(
+      expect.objectContaining({ user_id: 'user-1' }),
+      expect.any(Array),
+    )
     expect(body.data.checkin).not.toBeNull()
     expect(body.error).toBeNull()
   })
@@ -238,6 +249,8 @@ describe('GET /api/readiness', () => {
     const body = await response.json()
 
     expect(response.status).toBe(200)
+    expect(mockGetTodaysCheckin).toHaveBeenCalledWith('user-1')
+    expect(mockGetAverageReadiness).toHaveBeenCalledWith(7, 'user-1')
     expect(body.data.checkins).toHaveLength(2)
     expect(body.data.hasCheckedInToday).toBe(true)
   })
@@ -266,7 +279,7 @@ describe('GET /api/readiness', () => {
   it('calls getLastSessionDate and getActiveInjuryAreas', async () => {
     await GET(new NextRequest('http://localhost:3000/api/readiness'))
 
-    expect(mockGetLastSessionDate).toHaveBeenCalledWith(SINGLE_USER_PLACEHOLDER_ID)
+    expect(mockGetLastSessionDate).toHaveBeenCalledWith('user-1')
     expect(mockGetActiveInjuryAreas).toHaveBeenCalled()
   })
 
@@ -284,12 +297,12 @@ describe('GET /api/readiness', () => {
   it('defaults to 7 days when no days param provided', async () => {
     await GET(new NextRequest('http://localhost:3000/api/readiness'))
 
-    expect(mockGetRecentCheckins).toHaveBeenCalledWith(7)
+    expect(mockGetRecentCheckins).toHaveBeenCalledWith(7, 'user-1')
   })
 
   it('clamps days param to maximum of 90', async () => {
     await GET(new NextRequest('http://localhost:3000/api/readiness?days=200'))
 
-    expect(mockGetRecentCheckins).toHaveBeenCalledWith(90)
+    expect(mockGetRecentCheckins).toHaveBeenCalledWith(90, 'user-1')
   })
 })

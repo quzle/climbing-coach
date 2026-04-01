@@ -11,7 +11,7 @@ import {
 import { buildAthleteContext, computeWarnings, parseInjuryAreaHealth } from '@/services/ai/contextBuilder'
 import { getLastSessionDate } from '@/services/data/sessionRepository'
 import { getActiveInjuryAreas } from '@/services/data/injuryAreasRepository'
-import { SINGLE_USER_PLACEHOLDER_ID } from '@/lib/placeholder-user-id'
+import { getCurrentUser } from '@/lib/supabase/get-current-user'
 import type { ApiResponse, InjuryAreaHealth, ReadinessCheckin } from '@/types'
 
 const injuryAreaHealthItemSchema = z.object({
@@ -49,6 +49,7 @@ export async function POST(
   NextResponse<ApiResponse<{ checkin: ReadinessCheckin; warnings: string[] }>>
 > {
   try {
+    const user = await getCurrentUser()
     const body: unknown = await request.json()
     const parsed = readinessSchema.safeParse(body)
 
@@ -63,7 +64,7 @@ export async function POST(
     const validated = parsed.data
     const { injury_area_health, ...checkinInput } = validated
 
-    const alreadyCheckedIn = await hasCheckedInToday()
+    const alreadyCheckedIn = await hasCheckedInToday(user.id)
     if (alreadyCheckedIn.error) {
       console.error(
         '[POST /api/readiness] hasCheckedInToday:',
@@ -87,7 +88,7 @@ export async function POST(
 
     const today = new Date().toISOString().split('T')[0] as string
     const result = await createCheckin(
-      { ...checkinInput, date: today, user_id: SINGLE_USER_PLACEHOLDER_ID },
+      { ...checkinInput, date: today, user_id: user.id },
       injury_area_health as InjuryAreaHealth[],
     )
     if (result.error) {
@@ -133,7 +134,8 @@ export async function POST(
  */
 export async function DELETE(): Promise<NextResponse<ApiResponse<{ deleted: true }>>> {
   try {
-    const result = await deleteTodaysCheckin()
+    const user = await getCurrentUser()
+    const result = await deleteTodaysCheckin(user.id)
     if (result.error !== null) {
       console.error('[DELETE /api/readiness]', result.error)
       return NextResponse.json(
@@ -174,14 +176,15 @@ export async function GET(
   >
 > {
   try {
+    const user = await getCurrentUser()
     const days = Number(request.nextUrl.searchParams.get('days') ?? '7')
     const safeDays = Math.min(Math.max(days, 1), 90)
 
     const [checkinsResult, todayResult, avgResult, lastSessionResult, activeInjuryAreasResult] = await Promise.all([
-      getRecentCheckins(safeDays),
-      getTodaysCheckin(),
-      getAverageReadiness(7),
-      getLastSessionDate(SINGLE_USER_PLACEHOLDER_ID),
+      getRecentCheckins(safeDays, user.id),
+      getTodaysCheckin(user.id),
+      getAverageReadiness(7, user.id),
+      getLastSessionDate(user.id),
       getActiveInjuryAreas(),
     ])
 

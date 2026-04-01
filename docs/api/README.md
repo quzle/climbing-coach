@@ -106,7 +106,7 @@ Fetch recent chat messages for display on page load.
 
 ### `POST /api/readiness`
 
-Submit today's readiness check-in. One check-in per calendar date is enforced — a second submission on the same day returns `409`.
+Submit today's readiness check-in for the authenticated user. One check-in per calendar date is enforced per user — a second submission on the same day returns `409`.
 
 Returns active training warnings (same set the AI coach sees) so the UI can surface them immediately after submission.
 
@@ -152,7 +152,7 @@ Returns active training warnings (same set the AI coach sees) so the UI can surf
 
 ### `GET /api/readiness`
 
-Retrieve recent check-ins with today's summary and a rolling weekly average.
+Retrieve recent check-ins for the authenticated user with today's summary and a rolling weekly average.
 
 **Query parameters**
 

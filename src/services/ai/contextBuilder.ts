@@ -288,9 +288,9 @@ export async function buildAthleteContext(): Promise<AthleteContext> {
     activeInjuryAreasResult,
     programmeContext,
   ] = await Promise.all([
-    getTodaysCheckin(),
-    getRecentCheckins(14),
-    getAverageReadiness(7),
+    getTodaysCheckin(SINGLE_USER_PLACEHOLDER_ID),
+    getRecentCheckins(14, SINGLE_USER_PLACEHOLDER_ID),
+    getAverageReadiness(7, SINGLE_USER_PLACEHOLDER_ID),
     getRecentSessions(30, SINGLE_USER_PLACEHOLDER_ID),
     getSessionCountThisWeek(SINGLE_USER_PLACEHOLDER_ID),
     getLastSessionDate(SINGLE_USER_PLACEHOLDER_ID),
