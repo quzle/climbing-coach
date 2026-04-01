@@ -7,7 +7,8 @@ import {
   updateSessionDeviation,
 } from '@/services/data/sessionRepository'
 import { updatePlannedSession } from '@/services/data/plannedSessionRepository'
-import { SINGLE_USER_PLACEHOLDER_ID } from '@/lib/placeholder-user-id'
+import { getCurrentUser } from '@/lib/supabase/get-current-user'
+import { logError, logInfo, logWarn } from '@/lib/logger'
 import type { ApiResponse, SessionLog, SessionType } from '@/types'
 
 // =============================================================================
@@ -93,12 +94,25 @@ const VALID_SESSION_TYPES: SessionType[] = [
 export async function POST(
   request: NextRequest,
 ): Promise<NextResponse<ApiResponse<{ session: SessionLog }>>> {
+  const startedAt = Date.now()
+
   try {
+    const user = await getCurrentUser()
     const body: unknown = await request.json()
     const parsed = sessionLogSchema.safeParse(body)
 
     if (!parsed.success) {
       const messages = parsed.error.issues.map((e) => e.message).join(', ')
+      logWarn({
+        event: 'session_create_failed',
+        outcome: 'failure',
+        route: '/api/sessions',
+        userId: user.id,
+        entityType: 'session',
+        durationMs: Date.now() - startedAt,
+        data: { reason: 'validation_failed', messages },
+      })
+
       return NextResponse.json(
         { data: null, error: `Invalid request: ${messages}` },
         { status: 400 },
@@ -109,15 +123,28 @@ export async function POST(
 
     const result = await createSession({
       ...validated,
-      // log_data from Zod is Record<string,unknown>; cast to Json to satisfy
-      // the Supabase insert type which uses a recursive Json alias.
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      log_data: validated.log_data as any,
-      user_id: SINGLE_USER_PLACEHOLDER_ID,
+      log_data: validated.log_data as Json,
+      user_id: user.id,
     })
     if (result.error) {
-      console.error('[POST /api/sessions] createSession:', result.error)
-      return NextResponse.json({ data: null, error: result.error }, { status: 500 })
+      logWarn({
+        event: 'session_create_failed',
+        outcome: 'failure',
+        route: '/api/sessions',
+        userId: user.id,
+        entityType: 'session',
+        durationMs: Date.now() - startedAt,
+        data: {
+          reason: result.error,
+          sessionType: validated.session_type,
+          sessionDate: validated.date,
+        },
+      })
+
+      return NextResponse.json(
+        { data: null, error: 'Failed to save session. Please try again.' },
+        { status: 500 },
+      )
     }
 
     const session = result.data as SessionLog
@@ -126,13 +153,19 @@ export async function POST(
     if (validated.planned_session_id !== null) {
       const plannedSessionResult = await updatePlannedSession(validated.planned_session_id, {
         status: 'completed',
-      }, SINGLE_USER_PLACEHOLDER_ID)
+      }, user.id)
 
       if (plannedSessionResult.error) {
-        console.error(
-          '[POST /api/sessions] updatePlannedSession:',
-          plannedSessionResult.error,
-        )
+        logWarn({
+          event: 'planned_session_update_failed',
+          outcome: 'failure',
+          route: '/api/sessions',
+          userId: user.id,
+          entityType: 'planned_session',
+          entityId: validated.planned_session_id,
+          durationMs: Date.now() - startedAt,
+          data: { reason: plannedSessionResult.error },
+        })
       }
 
       const plannedSession = plannedSessionResult.data
@@ -152,15 +185,50 @@ export async function POST(
           await updateSessionDeviation(
             session.id,
             'Session duration differed from plan by more than 20%',
-            SINGLE_USER_PLACEHOLDER_ID,
+            user.id,
           )
         }
       }
     }
 
+    logInfo({
+      event: 'session_created',
+      outcome: 'success',
+      route: '/api/sessions',
+      userId: user.id,
+      entityType: 'session',
+      entityId: session.id,
+      durationMs: Date.now() - startedAt,
+      data: {
+        sessionType: validated.session_type,
+        sessionDate: validated.date,
+      },
+    })
+
     return NextResponse.json({ data: { session }, error: null }, { status: 201 })
   } catch (error) {
-    console.error('[POST /api/sessions]', error)
+    if (error instanceof Error && error.message === 'Unauthenticated') {
+      logWarn({
+        event: 'session_create_failed',
+        outcome: 'failure',
+        route: '/api/sessions',
+        entityType: 'session',
+        durationMs: Date.now() - startedAt,
+        data: { reason: 'unauthenticated' },
+      })
+
+      return NextResponse.json({ data: null, error: 'Unauthenticated.' }, { status: 401 })
+    }
+
+    logError({
+      event: 'session_create_failed',
+      outcome: 'failure',
+      route: '/api/sessions',
+      entityType: 'session',
+      durationMs: Date.now() - startedAt,
+      error,
+    })
+
     return NextResponse.json(
       { data: null, error: 'Failed to save session. Please try again.' },
       { status: 500 },
@@ -177,12 +245,25 @@ export async function POST(
 export async function GET(
   request: NextRequest,
 ): Promise<NextResponse<ApiResponse<{ sessions: SessionLog[] }>>> {
+  const startedAt = Date.now()
+
   try {
+    const user = await getCurrentUser()
     const days = Number(request.nextUrl.searchParams.get('days') ?? '30')
     const safeDays = Math.min(Math.max(days, 1), 365)
     const type = request.nextUrl.searchParams.get('type') as SessionType | null
 
     if (type !== null && !VALID_SESSION_TYPES.includes(type)) {
+      logWarn({
+        event: 'sessions_list_failed',
+        outcome: 'failure',
+        route: '/api/sessions',
+        userId: user.id,
+        entityType: 'session',
+        durationMs: Date.now() - startedAt,
+        data: { reason: 'invalid_type', type, days: safeDays },
+      })
+
       return NextResponse.json(
         { data: null, error: 'Invalid session type' },
         { status: 400 },
@@ -191,20 +272,63 @@ export async function GET(
 
     const result =
       type !== null
-        ? await getSessionsByType(type, safeDays, SINGLE_USER_PLACEHOLDER_ID)
-        : await getRecentSessions(safeDays, SINGLE_USER_PLACEHOLDER_ID)
+        ? await getSessionsByType(type, safeDays, user.id)
+        : await getRecentSessions(safeDays, user.id)
 
     if (result.error) {
-      console.error('[GET /api/sessions]', result.error)
-      return NextResponse.json({ data: null, error: result.error }, { status: 500 })
+      logWarn({
+        event: 'sessions_list_failed',
+        outcome: 'failure',
+        route: '/api/sessions',
+        userId: user.id,
+        entityType: 'session',
+        durationMs: Date.now() - startedAt,
+        data: { reason: result.error, type, days: safeDays },
+      })
+
+      return NextResponse.json(
+        { data: null, error: 'Failed to load sessions. Please try again.' },
+        { status: 500 },
+      )
     }
+
+    logInfo({
+      event: 'sessions_listed',
+      outcome: 'success',
+      route: '/api/sessions',
+      userId: user.id,
+      entityType: 'session',
+      durationMs: Date.now() - startedAt,
+      data: { type, days: safeDays, count: (result.data ?? []).length },
+    })
 
     return NextResponse.json({
       data: { sessions: result.data ?? [] },
       error: null,
     })
   } catch (error) {
-    console.error('[GET /api/sessions]', error)
+    if (error instanceof Error && error.message === 'Unauthenticated') {
+      logWarn({
+        event: 'sessions_list_failed',
+        outcome: 'failure',
+        route: '/api/sessions',
+        entityType: 'session',
+        durationMs: Date.now() - startedAt,
+        data: { reason: 'unauthenticated' },
+      })
+
+      return NextResponse.json({ data: null, error: 'Unauthenticated.' }, { status: 401 })
+    }
+
+    logError({
+      event: 'sessions_list_failed',
+      outcome: 'failure',
+      route: '/api/sessions',
+      entityType: 'session',
+      durationMs: Date.now() - startedAt,
+      error,
+    })
+
     return NextResponse.json(
       { data: null, error: 'Failed to load sessions. Please try again.' },
       { status: 500 },

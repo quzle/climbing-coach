@@ -268,7 +268,7 @@ Goal: resolve the authenticated user in every route and propagate ownership chec
 - [x] **API-3** Refactor `src/app/api/planned-sessions/route.ts` ✅ — implemented 2026-04-01. Added structured route logging, unauthenticated (401) handling, and expanded GET/POST error-path test coverage.
   - Depends on: AUTH-4, REPO-3, LOG-3
 
-- [ ] **API-4** Refactor `src/app/api/sessions/route.ts`
+- [x] **API-4** Refactor `src/app/api/sessions/route.ts` ✅ — implemented 2026-04-01. Replaced placeholder user scoping with auth session user resolution, added structured route logging and 401 handling, and expanded GET/POST error-path tests.
   - Depends on: AUTH-4, REPO-4, LOG-3
 
 - [ ] **API-5** Refactor `src/app/api/readiness/route.ts`

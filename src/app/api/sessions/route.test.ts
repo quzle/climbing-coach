@@ -9,7 +9,7 @@ import {
   updateSessionDeviation,
 } from '@/services/data/sessionRepository'
 import { updatePlannedSession } from '@/services/data/plannedSessionRepository'
-import { SINGLE_USER_PLACEHOLDER_ID } from '@/lib/placeholder-user-id'
+import { getCurrentUser } from '@/lib/supabase/get-current-user'
 import { POST, GET } from './route'
 
 // =============================================================================
@@ -27,6 +27,16 @@ jest.mock('@/services/data/plannedSessionRepository', () => ({
   updatePlannedSession: jest.fn(),
 }))
 
+jest.mock('@/lib/supabase/get-current-user', () => ({
+  getCurrentUser: jest.fn(),
+}))
+
+jest.mock('@/lib/logger', () => ({
+  logInfo: jest.fn(),
+  logWarn: jest.fn(),
+  logError: jest.fn(),
+}))
+
 // =============================================================================
 // TYPED MOCK REFERENCES
 // =============================================================================
@@ -35,6 +45,7 @@ const mockCreateSession = createSession as jest.Mock
 const mockGetRecentSessions = getRecentSessions as jest.Mock
 const mockGetSessionsByType = getSessionsByType as jest.Mock
 const mockUpdatePlannedSession = updatePlannedSession as jest.Mock
+const mockGetCurrentUser = getCurrentUser as jest.Mock
 
 // Suppress unused warning — mocked to prevent real calls, not asserted against
 void (updateSessionDeviation as jest.Mock)
@@ -68,6 +79,7 @@ const mockSession = {
 
 beforeEach(() => {
   jest.clearAllMocks()
+  mockGetCurrentUser.mockResolvedValue({ id: 'user-1', email: 'user@example.com' })
   mockCreateSession.mockResolvedValue({ data: mockSession, error: null })
   mockGetRecentSessions.mockResolvedValue({ data: [], error: null })
   mockGetSessionsByType.mockResolvedValue({ data: [], error: null })
@@ -110,7 +122,7 @@ describe('POST /api/sessions', () => {
     expect(mockUpdatePlannedSession).toHaveBeenCalledWith(
       plannedSessionId,
       { status: 'completed' },
-      SINGLE_USER_PLACEHOLDER_ID,
+      'user-1',
     )
   })
 
@@ -163,8 +175,24 @@ describe('POST /api/sessions', () => {
     mockCreateSession.mockResolvedValue({ data: null, error: 'DB error' })
 
     const response = await POST(makePostRequest(validBody))
+    const body = await response.json()
 
     expect(response.status).toBe(500)
+    expect(body).toEqual({
+      data: null,
+      error: 'Failed to save session. Please try again.',
+    })
+  })
+
+  it('returns 401 when unauthenticated', async () => {
+    mockGetCurrentUser.mockRejectedValue(new Error('Unauthenticated'))
+
+    const response = await POST(makePostRequest(validBody))
+    const body = await response.json()
+
+    expect(response.status).toBe(401)
+    expect(body).toEqual({ data: null, error: 'Unauthenticated.' })
+    expect(mockCreateSession).not.toHaveBeenCalled()
   })
 })
 
@@ -188,7 +216,7 @@ describe('GET /api/sessions', () => {
     expect(mockGetSessionsByType).toHaveBeenCalledWith(
       'bouldering',
       expect.any(Number),
-      SINGLE_USER_PLACEHOLDER_ID,
+      'user-1',
     )
     expect(mockGetRecentSessions).not.toHaveBeenCalled()
   })
@@ -202,12 +230,36 @@ describe('GET /api/sessions', () => {
   it('defaults to 30 days when no days param', async () => {
     await GET(new NextRequest('http://localhost:3000/api/sessions'))
 
-    expect(mockGetRecentSessions).toHaveBeenCalledWith(30, SINGLE_USER_PLACEHOLDER_ID)
+    expect(mockGetRecentSessions).toHaveBeenCalledWith(30, 'user-1')
   })
 
   it('clamps days param to maximum of 365', async () => {
     await GET(new NextRequest('http://localhost:3000/api/sessions?days=400'))
 
-    expect(mockGetRecentSessions).toHaveBeenCalledWith(365, SINGLE_USER_PLACEHOLDER_ID)
+    expect(mockGetRecentSessions).toHaveBeenCalledWith(365, 'user-1')
+  })
+
+  it('returns 500 when repository fails', async () => {
+    mockGetRecentSessions.mockResolvedValue({ data: null, error: 'DB error' })
+
+    const response = await GET(new NextRequest('http://localhost:3000/api/sessions'))
+    const body = await response.json()
+
+    expect(response.status).toBe(500)
+    expect(body).toEqual({
+      data: null,
+      error: 'Failed to load sessions. Please try again.',
+    })
+  })
+
+  it('returns 401 when unauthenticated', async () => {
+    mockGetCurrentUser.mockRejectedValue(new Error('Unauthenticated'))
+
+    const response = await GET(new NextRequest('http://localhost:3000/api/sessions'))
+    const body = await response.json()
+
+    expect(response.status).toBe(401)
+    expect(body).toEqual({ data: null, error: 'Unauthenticated.' })
+    expect(mockGetRecentSessions).not.toHaveBeenCalled()
   })
 })

@@ -130,7 +130,7 @@ Returns active training warnings (same set the AI coach sees) so the UI can surf
 }
 ```
 
-**Response** `201`
+**Response** `201` · `400` on validation error · `401` if unauthenticated
 
 ```ts
 {
@@ -162,7 +162,7 @@ Retrieve recent check-ins for the authenticated user with today's summary and a 
 |---|---|---|---|
 | `days` | number | `7` | 1–90 |
 
-**Response** `200`
+**Response** `200` · `400` for invalid type · `401` if unauthenticated
 
 ```ts
 {
