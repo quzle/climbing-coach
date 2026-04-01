@@ -400,7 +400,7 @@ AI wizard — step 2. Persists the reviewed plan: creates the programme row and 
 
 ### `GET /api/mesocycles`
 
-List mesocycles for a programme, scoped to the authenticated user.
+List mesocycles for a programme, scoped to the authenticated user. Returns `401` if unauthenticated.
 
 **Query parameters**
 
@@ -408,7 +408,7 @@ List mesocycles for a programme, scoped to the authenticated user.
 |---|---|---|
 | `programme_id` | UUID | Yes |
 
-**Response** `200`
+**Response** `200` · `400` if `programme_id` missing/invalid · `401` if unauthenticated
 
 ```ts
 { data: { mesocycles: Mesocycle[] } }
@@ -437,7 +437,7 @@ Create a mesocycle within a programme for the authenticated user.
 }
 ```
 
-**Response** `201`
+**Response** `201` · `400` on validation error · `401` if unauthenticated
 
 ```ts
 { data: { mesocycle: Mesocycle } }

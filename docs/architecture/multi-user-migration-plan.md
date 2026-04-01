@@ -262,7 +262,7 @@ Goal: resolve the authenticated user in every route and propagate ownership chec
 - [x] **API-1** Refactor `src/app/api/programmes/route.ts` ✅ — implemented 2026-04-01. Added unauthenticated (401) error handling to GET and POST, extended test coverage for 401 and 500 paths.
   - Depends on: AUTH-4, REPO-1, LOG-3
 
-- [ ] **API-2** Refactor `src/app/api/mesocycles/route.ts`
+- [x] **API-2** Refactor `src/app/api/mesocycles/route.ts` ✅ — implemented 2026-04-01. Added unauthenticated (401) error handling to GET and POST, extended test coverage for 401 and 500 paths.
   - Depends on: AUTH-4, REPO-2, LOG-3
 
 - [ ] **API-3** Refactor `src/app/api/planned-sessions/route.ts`
