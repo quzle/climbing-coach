@@ -201,6 +201,32 @@ Results: all 56 suites, 449 tests passed.
 - [x] **AUTH-7** Implement invite action using Supabase native invite flow
   - Depends on: AUTH-6, LOG-1
 
+- [ ] **MANUAL-1** ⚙️ _Manual step — Supabase dashboard_ — Add allowed redirect URLs
+  - Depends on: none
+  - In **Authentication > URL Configuration**, add to the Allowed Redirect URLs list (do not change the Site URL):
+    - `http://localhost:3000/auth/confirm`
+    - `https://<staging-domain>/auth/confirm`
+    - `https://<production-domain>/auth/confirm`
+
+- [ ] **MANUAL-2** ⚙️ _Manual step — Supabase dashboard_ — Update invite email template
+  - Depends on: MANUAL-1
+  - In **Authentication > Email Templates > Invite**, replace the confirmation link destination so it points to `/auth/confirm` using the token hash pattern:
+    - Change the link href to: `{{ .SiteURL }}/auth/confirm?token_hash={{ .TokenHash }}&type=invite`
+  - This ensures dashboard-sent invites route to the OTP verification endpoint rather than the app root. Once `API-0` is implemented, `inviteUserByEmail` will pass `options.redirectTo` explicitly and this template customisation remains valid.
+
+- [ ] **AUTH-8** Add `/auth/confirm` OTP verification route
+  - Depends on: AUTH-2, AUTH-5, MANUAL-1
+  - Deliverables:
+    - Server-side Route Handler at `src/app/auth/confirm/route.ts`
+    - Reads `token_hash`, `type`, and optional `next` from query parameters
+    - Calls `supabase.auth.verifyOtp({ token_hash, type })` — the correct method for invite and recovery OTP links (distinct from `exchangeCodeForSession` used in `/auth/callback` for OAuth PKCE codes)
+    - When `type === 'invite'`: calls `finalizeInvitedUserProfile()` after session is established
+    - When `type === 'recovery'`: redirects to a change-password page (required by CLIENT-4)
+    - On success: redirects to `next` parameter or `/`
+    - On failure: redirects to `/auth/login?error=confirm_failed`
+    - Middleware updated to allow `/auth/confirm` as a public path (alongside `/auth/login` and `/auth/callback`)
+    - Unit tests covering success, invite finalization, recovery redirect, missing token, and failed verification paths
+
 ### Phase 3: Logging Baseline
 
 Goal: introduce structured operational logging before feature refactors.
@@ -432,6 +458,7 @@ DB-1, DB-2, DB-3
   -> AUTH-1, AUTH-4, REPO-0
   -> AUTH-2 -> AUTH-3
   -> AUTH-5 -> AUTH-6 -> AUTH-7
+  -> MANUAL-1 -> MANUAL-2 -> AUTH-8
   -> REPO-1 through REPO-8
   -> API-0 through API-9
   -> CLIENT-1 through CLIENT-8
