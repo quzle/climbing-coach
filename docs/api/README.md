@@ -617,7 +617,7 @@ List planned sessions for the authenticated user by date range or upcoming days.
 | `end_date` | YYYY-MM-DD | — | Required if `start_date` provided |
 | `upcoming_days` | number | `7` | 1–30; used when no date range given |
 
-**Response** `200`
+**Response** `200` · `400` on invalid query params · `401` if unauthenticated
 
 ```ts
 { data: { plannedSessions: PlannedSession[] } }
@@ -643,7 +643,7 @@ Create a planned session row manually for the authenticated user.
 }
 ```
 
-**Response** `201`
+**Response** `201` · `400` on validation error · `401` if unauthenticated
 
 ```ts
 { data: { plannedSession: PlannedSession } }
