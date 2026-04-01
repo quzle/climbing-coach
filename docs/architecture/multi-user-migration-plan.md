@@ -221,20 +221,20 @@ Results: all 56 suites, 449 tests passed.
     - Reads `token_hash`, `type`, and optional `next` from query parameters ✅
     - Calls `supabase.auth.verifyOtp({ token_hash, type })` — the correct method for invite and recovery OTP links (distinct from `exchangeCodeForSession` used in `/auth/callback` for OAuth PKCE codes) ✅
     - When `type === 'invite'`: calls `finalizeInvitedUserProfile()` after session is established ✅
-    - When `type === 'recovery'`: redirects to a change-password page (required by CLIENT-4) ✅
+    - When `type === 'recovery'`: redirects to a change-password page ✅
     - On success: redirects to `next` parameter or `/` ✅
     - On failure: redirects to `/auth/login?error=confirm_failed` ✅
     - Middleware updated to allow `/auth/confirm` as a public path (alongside `/auth/login` and `/auth/callback`) ✅
     - Unit tests covering success, invite finalization, recovery redirect, missing token, and failed verification paths ✅
 
-- [ ] **AUTH-9** Add password recovery flow — "Forgot password" entry point and change-password page
+- [ ] **AUTH-9** Replace password login form with magic link login
   - Depends on: AUTH-2, AUTH-8
   - Deliverables:
-    - **"Forgot password" form on `/auth/login`**: link that reveals an email input; calls `supabase.auth.resetPasswordForEmail(email, { redirectTo: '/auth/confirm' })` so the recovery link routes through the `type=recovery` OTP flow; shows confirmation message on success and safe generic error on failure
-    - **`/auth/change-password` page**: the dedicated page AUTH-8 redirects to after a successful `type=recovery` verification; form calls `supabase.auth.updateUser({ password: newPassword })`; redirects to `/` on success; accessible only with a valid recovery session (middleware must allow the route until the session is set)
-    - The change-password component is also referenced by CLIENT-4 (account settings); extract as a shared component if appropriate
-    - Unit tests for both surfaces covering success, validation, error, and in-flight states
-    - `docs/ux/00-account-creation.md` updated to document the recovery flow
+    - **Replace `/auth/login` form**: swap the email + password fields for an email-only input; on submit call `supabase.auth.signInWithOtp({ email })`; show a confirmation message (e.g. "Check your email for a sign-in link"); show a safe generic error on failure; in-flight submit state reflected in UI
+    - **Handle `type=magiclink` in `/auth/confirm`**: `verifyOtp` already supports this type; ensure the route's success path redirects to `next` or `/` (same as `type=invite`) and does not attempt profile finalization for returning users
+    - Unit tests for the updated login page covering confirmation message, error state, and in-flight state
+    - Unit tests for the `/auth/confirm` `type=magiclink` path
+    - `docs/ux/00-account-creation.md` updated to reflect magic link as the login mechanism
 
 ### Phase 3: Logging Baseline
 
@@ -344,10 +344,9 @@ Goal: add user-facing auth controls, account management, and ensure browser stat
     - Provide access to logout and account settings from the indicator
 
 - [ ] **CLIENT-4** Add user account/settings page
-  - Depends on: CLIENT-1, AUTH-9
+  - Depends on: CLIENT-1
   - Deliverables:
     - Page showing email and display name
-    - Password change flow via Supabase Auth `updateUser` (reuses change-password component from AUTH-9)
 
 - [ ] **CLIENT-5** Update `useDraftSession` local storage key to include `userId`
   - Depends on: CLIENT-1
@@ -434,7 +433,7 @@ Trigger: auth context, logout, user indicator, account page, and scoped localSto
 Delta test targets:
 - Verify logged-in user's identity is visible in the navigation
 - Logout redirects to `/auth/login` and clears the session
-- Account/settings page displays correct user info; password change works
+- Account/settings page displays correct user info
 - Login as User A, create a draft session and send chat messages, logout, login as User B — no draft or chat history leaks
 - Rapidly switch between two accounts in the same browser; verify complete state isolation
 

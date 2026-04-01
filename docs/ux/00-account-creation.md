@@ -2,11 +2,9 @@
 
 ## Overview
 
-Climbing Coach uses an invite-only signup model. There is no public registration page. A superuser sends an invite via Supabase, the invited user clicks the link in their email, and the application activates their account on arrival at the auth callback. The user then accesses the app using email and password on all subsequent visits.
+Climbing Coach uses an invite-only signup model. There is no public registration page. A superuser sends an invite via Supabase, the invited user clicks the link in their email, and the application activates their account on arrival at `/auth/confirm`. The user then accesses the app using an email magic link on all subsequent visits — no password is required or stored.
 
 This flow has two actors: the **superuser** who initiates the invite, and the **invited user** who completes it. The two sides are independent and asynchronous.
-
-The invite magic link establishes an authenticated session but does not set a password. Password creation is handled via Supabase's password reset flow: the user clicks "Forgot password" on `/auth/login` and follows the emailed link to set a password. This is the accepted approach for MVP — no in-app password setup screen is planned.
 
 At the time of writing, the invite must be sent from the Supabase dashboard directly. The in-app invite UI (`DEV-2`) and `POST /api/invites` route (`API-0`) are not yet implemented.
 
@@ -58,20 +56,16 @@ sequenceDiagram
     API-->>App: OK
 
     App-->>User: Redirect to /
-    Note over User,App: Session is active. User should set a password<br/>before the session expires via "Forgot password" on /auth/login.
 
     Note over User,App: On all subsequent visits
     User->>App: Navigates to any protected route
     App-->>User: Middleware redirects to /auth/login
-    User->>App: Clicks "Forgot password", enters email
-    App->>Supabase: resetPasswordForEmail(email)
-    Supabase-->>User: Password reset email
-    User->>Supabase: Clicks reset link, sets password
-    Supabase-->>User: Confirmation
-    Note over User,App: User now has a password and logs in normally on future visits
-    User->>App: Submits email + password at /auth/login
-    App->>Supabase: signInWithPassword(email, password)
-    Supabase-->>App: Session
+    User->>App: Enters email at /auth/login
+    App->>Supabase: signInWithOtp(email)
+    Supabase-->>User: Magic link email — link contains token_hash and type=magiclink
+    User->>App: Clicks magic link → /auth/confirm?token_hash=...&type=magiclink
+    App->>Supabase: verifyOtp({ token_hash, type: 'magiclink' })
+    Supabase-->>App: Session (access token + refresh token set in cookies)
     App-->>User: Redirect to /
 ```
 
@@ -84,24 +78,24 @@ sequenceDiagram
 | **Receive invite** | Opens email from Supabase | Generic Supabase-branded invite email with an "Accept invite" button | Email is sent from Supabase's default address with Supabase branding. There is no app-specific copy, no mention of what Climbing Coach is, and no indication of who sent the invite. |
 | **Click invite link** | Clicks "Accept invite" | Browser opens `/auth/confirm?token_hash=...&type=invite` | User has no visibility of what is happening. No loading state is shown during the confirmation. |
 | **Session established** | — (automatic) | `verifyOtp` runs; cookies are set; profile row is upserted | If verification fails the user is redirected to `/auth/login?error=confirm_failed` with no explanation of what went wrong or what to do next. |
-| **Land on home** | Redirected to `/` | Home dashboard renders with empty state | The user has an active session but no password set. There is no prompt directing them to set a password before the session expires. A superuser should advise them to use "Forgot password" on the login page before logging out. |
-| **Set password** | Clicks "Forgot password" on `/auth/login`, enters email | Supabase sends a password reset email | The "Forgot password" link is not yet present on the login page — this step requires the standard Supabase reset email flow to be surfaced in the UI. |
-| **Return visit** | Opens app after session has expired, logs in with email + password | Middleware redirects to `/auth/login`; user signs in normally | Normal login flow once a password has been set. |
+| **Land on home** | Redirected to `/` | Home dashboard renders with empty state | The user has an active session. No further setup is required. |
+| **Return visit** | Opens app after session has expired, navigates to any protected route | Middleware redirects to `/auth/login` | User enters their email and receives a magic link. |
+| **Magic link sign-in** | Clicks magic link in email | `/auth/confirm` verifies the OTP and establishes a session; redirects to `/` | Token valid for Supabase's default OTP expiry (typically 1 hour). If expired, the user re-enters their email on `/auth/login`. |
 
 ---
 
 ## Gap summary
 
 ### Accepted / by design
-- **Password setup via Supabase reset flow.** The invite magic link does not set a password. Users set their password via "Forgot password" on `/auth/login` before their first session expires. No in-app password setup screen is planned for MVP.
+- **Magic link login (no password).** Users authenticate exclusively via email magic links — both on first invite and on all return visits. No password is required or stored. `AUTH-9` implements the magic link login form.
+- **Password setup via Supabase reset flow removed.** The original approach of setting a password via "Forgot password" was replaced by magic link authentication — simpler and consistent with the invite flow.
 
 ### Resolved
 - **`/auth/confirm` OTP route (`AUTH-8`).** Implemented with support for invite-type (profile finalization + redirect) and recovery-type (redirect to change-password page) flows. Handles safe `next` parameter validation and structured error logging.
 
 ### Open
-- **No in-app invite sending.** Invites must currently be sent directly from the Supabase dashboard. The `/dev` invite UI (`DEV-2`) and `POST /api/invites` (`API-0`) are not yet built.
-- **No "Forgot password" link on the login page.** The password reset entry point does not yet exist in the login UI. Users cannot self-serve into the reset flow without knowing the URL directly.
-- **No prompt to set a password after first login.** The user lands on the home screen with no guidance that they need to set a password before their session expires.
+- **No in-app invite sending.** Invites must currently be sent directly from the Supabase dashboard. The `/dev` invite UI (`DEV-2`) is not yet built. (`POST /api/invites` is implemented as `API-0`.)
+- **Magic link login not yet implemented.** `AUTH-9` (replace password form with magic link entry) is pending. Until then the login page has a password form that no user has credentials for.
 - **Generic invite email.** The email is sent with Supabase default branding and copy. Customisation requires a Supabase Pro plan or custom SMTP configuration.
 - **Silent confirmation failures.** If `verifyOtp` or profile finalization fails, the user is redirected to `/auth/login?error=confirm_failed` with no explanation in the UI.
 - **No logout surface.** Once logged in, the user has no way to log out. `CLIENT-2` (logout action) and `CLIENT-3` (user indicator) are pending.
