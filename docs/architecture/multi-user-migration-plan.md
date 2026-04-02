@@ -434,6 +434,40 @@ For `chat_threads`, the migration:
 - creates a single `FOR ALL` policy for role `authenticated`
 - uses `auth.uid() = user_id` in both `USING` and `WITH CHECK`
 
+#### Phase 9 Implementation Notes (SEC-5 scaffolding added 2026-04-02; local execution pending)
+
+Added an integration-specific Jest entrypoint:
+
+- `jest.integration.config.js` uses the Node environment, matches only `*.integration.test.ts`, and loads `jest.integration.setup.ts`
+- `package.json` now exposes `npm run test:integration`
+- `jest.config.js` now ignores `*.integration.test.ts` so the unit suite stays unchanged
+
+Added a local-Supabase integration harness under `src/test/integration/`:
+
+- validates `INTEGRATION_SUPABASE_URL`, `INTEGRATION_SUPABASE_ANON_KEY`, and `INTEGRATION_SUPABASE_SERVICE_ROLE_KEY`
+- refuses non-local Supabase hosts unless `INTEGRATION_SUPABASE_ALLOW_REMOTE=true`
+- creates and deletes real auth users through the admin API
+- seeds matching `profiles` rows and test-owned domain data with the service role
+- converts real Supabase sessions into the SSR cookie format expected by `src/lib/supabase/server.ts`
+
+Initial integration coverage added:
+
+- `src/app/api/programmes/route.integration.test.ts`: unauthenticated request returns `401`; authenticated request sees only its own programmes
+- `src/app/api/invites/route.integration.test.ts`: authenticated non-superuser receives `403`
+- `src/lib/supabase/rls.integration.test.ts`: anon-key clients with real JWTs can read only their own `programmes`, `profiles`, and `chat_threads` rows
+
+Integration execution status (updated 2026-04-02):
+
+- Integration Supabase project (`tmtspymjfnemygpquyhw`) has been bootstrapped to match production schema.
+- `npm run test:integration` now passes (3 suites, 6 tests).
+
+Migration transparency rule for future work:
+
+- Every new migration in `supabase/migrations/` must be applied to both projects:
+  - production: `qsihlcmjjwarxrnmmsse`
+  - integration: `tmtspymjfnemygpquyhw`
+- Issue completion for schema changes must explicitly confirm both projects were updated.
+
 ### Phase 10: Documentation
 
 Goal: keep repository documentation consistent with the architecture changes.

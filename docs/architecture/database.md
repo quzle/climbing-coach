@@ -4,6 +4,33 @@ This document describes the complete Supabase Postgres schema for the Climbing C
 
 Schema changes are managed as SQL migration files in `supabase/migrations/`. Run each migration in order against your Supabase project via the SQL Editor before starting the application.
 
+## Supabase Projects and Migration Policy
+
+The project currently uses two Supabase projects:
+
+- **Production:** `qsihlcmjjwarxrnmmsse`
+- **Integration test:** `tmtspymjfnemygpquyhw`
+
+The integration project is a non-production environment used for:
+
+- running `npm run test:integration` against real Supabase Auth + RLS behavior
+- validating route-level auth handling with real JWT-backed sessions
+- validating row ownership enforcement before production rollout
+
+### Required migration workflow (both databases)
+
+Every new migration must be applied to **both** projects to keep schemas aligned.
+
+1. Add migration SQL in `supabase/migrations/`.
+2. Apply to production (`qsihlcmjjwarxrnmmsse`).
+3. Apply to integration (`tmtspymjfnemygpquyhw`).
+4. Regenerate `src/lib/database.types.ts` from production only.
+5. Run unit tests and integration tests.
+
+Never consider a migration complete until both Supabase projects have the same migration history.
+
+Auth and authorization integration coverage is exercised separately from unit tests through `npm run test:integration`. That suite seeds local Supabase users via the service role, then verifies route-level auth handling and direct RLS filtering with real anon-key sessions.
+
 ---
 
 ## `profiles`

@@ -143,6 +143,20 @@ Each layer has a single responsibility. Violating these boundaries is the most c
 
 **RLS policy:** Row Level Security is enabled on all user-owned domain tables, `profiles`, and `chat_threads`. The anon key (used in the browser) is blocked from accessing data unless a specific RLS policy permits it. This is a safety net — the primary access control is using the server client for all data operations.
 
+## Integration Security Tests
+
+Authentication and authorization integration coverage lives under `*.integration.test.ts` and runs through a separate Jest config in `jest.integration.config.js`.
+
+- `npm run test` continues to run only unit/component tests.
+- `npm run test:integration` runs the Node-only integration suite against a dedicated Supabase environment.
+- Integration project reference: `tmtspymjfnemygpquyhw`.
+- Production project reference: `qsihlcmjjwarxrnmmsse`.
+- The integration suite requires `INTEGRATION_SUPABASE_URL`, `INTEGRATION_SUPABASE_ANON_KEY`, and `INTEGRATION_SUPABASE_SERVICE_ROLE_KEY`.
+- By default the suite refuses to run against a non-local Supabase host. Set `INTEGRATION_SUPABASE_ALLOW_REMOTE=true` only for an isolated test project.
+- Route integration tests use real Supabase JWTs converted into the SSR cookie format expected by `src/lib/supabase/server.ts`, so `getCurrentUser()` and `requireSuperuser()` execute against the real auth stack.
+- Direct RLS integration tests use anon-key clients authenticated with real user sessions to verify that cross-user queries are filtered by database policy.
+- All schema migrations in `supabase/migrations/` must be applied to both production and integration projects so integration test outcomes reflect production schema behavior.
+
 No secret must ever appear in a `NEXT_PUBLIC_` prefixed environment variable. The `NEXT_PUBLIC_` prefix causes Next.js to bundle the value into the client-side JavaScript bundle.
 
 ## Structured Logging
@@ -165,5 +179,5 @@ The application deploys automatically to Vercel on every push to `main`.
 
 - **Build command:** `next build` (Vercel default)
 - **Environment variables:** must be configured in the Vercel project dashboard — copy from `.env.local`
-- **Database:** Supabase is not managed by Vercel. Schema migrations must be run manually against the Supabase project. See `database.md` for the schema.
+- **Database:** Supabase is not managed by Vercel. Schema migrations must be run manually against both Supabase projects (`qsihlcmjjwarxrnmmsse` production and `tmtspymjfnemygpquyhw` integration). See `database.md` for the schema and migration workflow.
 - **No preview environments** — single-user app, `main` → production.
