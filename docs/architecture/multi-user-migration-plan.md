@@ -386,7 +386,7 @@ Goal: update development tools without weakening auth boundaries.
 
 Goal: add database-level enforcement after the multi-user happy path is working.
 
-- [ ] **SEC-1** Add RLS to all user-owned tables
+- [x] **SEC-1** Add RLS to all user-owned tables ✅ _2026-04-02_
   - Depends on: Phases 5 and 6 completed and verified
 
 - [ ] **SEC-2** Add RLS to `profiles`
@@ -400,6 +400,16 @@ Goal: add database-level enforcement after the multi-user happy path is working.
 
 - [ ] **SEC-5** Add integration coverage for auth and authorization rules
   - Depends on: all API route work complete
+
+#### Phase 9 Implementation Notes (SEC-1 completed 2026-04-02)
+
+Added migration `supabase/migrations/20260402000000_add_rls_to_user_owned_tables.sql`.
+
+For each user-owned domain table (`programmes`, `mesocycles`, `planned_sessions`, `session_logs`, `readiness_checkins`, `chat_messages`, `injury_areas`, `weekly_templates`), the migration:
+
+- enables row level security
+- creates one `FOR ALL` policy for role `authenticated`
+- uses `auth.uid() = user_id` in both `USING` and `WITH CHECK`
 
 ### Phase 10: Documentation
 
