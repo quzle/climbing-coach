@@ -208,6 +208,12 @@ Results: all 56 suites, 449 tests passed.
     - `https://<staging-domain>/auth/confirm`
     - `https://<production-domain>/auth/confirm`
 
+- [ ] **MANUAL-3** ⚙️ _Manual step — Supabase dashboard_ — Update magic link email template
+  - Depends on: MANUAL-1
+  - In **Authentication > Email Templates > Magic Link**, replace `{{ .ConfirmationURL }}` with the token hash pattern (same approach as the invite template):
+    - Change the link href to: `{{ .SiteURL }}/auth/confirm?token_hash={{ .TokenHash }}&type=magiclink`
+  - **Why**: `{{ .ConfirmationURL }}` routes through Supabase's `/auth/v1/verify` endpoint, which then redirects to `redirect_to`. If `signInWithOtp` is called without an explicit `emailRedirectTo`, Supabase populates `redirect_to` from the Site URL — which may be missing the `https://` scheme in some environments, causing a "requested path is invalid" error at the Supabase domain. The token hash approach bypasses the Supabase verify endpoint entirely and routes directly to `/auth/confirm`.
+
 - [ ] **MANUAL-2** ⚙️ _Manual step — Supabase dashboard_ — Update invite email template
   - Depends on: MANUAL-1
   - In **Authentication > Email Templates > Invite**, replace the confirmation link destination so it points to `/auth/confirm` using the token hash pattern:
