@@ -16,11 +16,27 @@ and a clear stop-and-ask policy.
 
 ## Inputs
 
-- Issue number (from user prompt, e.g. "work on issue #26")
+- One issue number (from user prompt, e.g. "work on issue #26")
+- Or multiple issue numbers in one prompt (e.g. "work on #26, #27, #28")
 - If no number given, find the lowest-numbered open issue and confirm
   with the user before proceeding
 
 ## Workflow
+
+### 0. Normalize issue list and execution mode
+
+- If the user requests multiple issues in one prompt, build an ordered list exactly as requested.
+- Execute issues strictly one-by-one in that order.
+- Do not parallelize issue implementation.
+- Do not batch completion across issues.
+- For each issue, complete the full lifecycle (implement -> test -> docs update -> commit -> comment -> close) before starting the next issue.
+
+Per-issue completion gate (mandatory before moving to next issue):
+1. Relevant code and tests for that issue are complete.
+2. At least one relevant `docs/` file is updated in the same unit of work.
+3. Changes for that issue are committed with a dedicated commit.
+4. Completion comment is posted on that issue.
+5. That issue is closed.
 
 ### 1. Read the issue
 
@@ -51,9 +67,11 @@ receive only its summary when done.
 - Before posting completion, ensure relevant documentation under `docs/` is updated for the implemented change.
 - Do not treat the issue as complete until at least one relevant `docs/` file is edited in the same unit of work.
 - If no clear doc target is obvious, stop and ask the user which `docs/` file should be updated.
+- Create a dedicated commit for this issue before posting completion.
 - Post a completion comment on the issue (see format below)
 - Close the issue via MCP or `gh issue close <NUMBER> --repo <REPO>`
 - Report back to the user: "Issue #N done. Changes: [summary]."
+- If there are remaining issues in the same user request, continue to the next issue only after this issue is committed and closed.
 
 **If the subagent is uncertain or blocked:**
 - Post a blocker comment on the issue
@@ -97,3 +115,4 @@ Stop and ask the user (do not proceed) if:
 - Do not create new branches — continue on whichever branch is active
 - If the user says "skip this issue", set status to **Todo**, close
   with a skipped comment, and stop
+- When multiple issues are requested together, use one commit per issue (no shared commit spanning multiple issues).
