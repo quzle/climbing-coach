@@ -1,4 +1,9 @@
 import { createClient } from '@/lib/supabase/server'
+import {
+  AuthorizationCheckError,
+  ForbiddenError,
+  UnauthenticatedError,
+} from '@/lib/errors'
 import { logError, logWarn } from '@/lib/logger'
 import { getProfile } from '@/services/data/profilesRepository'
 
@@ -12,7 +17,7 @@ export type AuthUser = {
  * Reads the session JWT from cookies and validates it with Supabase Auth.
  * This is the canonical way to get the authenticated user in API routes and Server Components.
  * @returns The authenticated user's id and email
- * @throws {Error} If no authenticated user session is found
+ * @throws {UnauthenticatedError} If no authenticated user session is found
  */
 export async function getCurrentUser(): Promise<AuthUser> {
   const supabase = await createClient()
@@ -31,7 +36,7 @@ export async function getCurrentUser(): Promise<AuthUser> {
       error: error?.message ?? 'No authenticated user session',
     })
 
-    throw new Error('Unauthenticated')
+    throw new UnauthenticatedError()
   }
 
   return {
@@ -44,7 +49,9 @@ export async function getCurrentUser(): Promise<AuthUser> {
  * @description Ensures the authenticated user has the superuser role before
  * allowing privileged server-side actions.
  * @returns The authenticated user payload
- * @throws {Error} If unauthenticated, if authorization cannot be checked, or if the user is not a superuser
+ * @throws {UnauthenticatedError} If no authenticated user session exists
+ * @throws {AuthorizationCheckError} If the user profile cannot be loaded for role verification
+ * @throws {ForbiddenError} If the authenticated user does not have the superuser role
  */
 export async function requireSuperuser(): Promise<AuthUser> {
   const user = await getCurrentUser()
@@ -62,7 +69,7 @@ export async function requireSuperuser(): Promise<AuthUser> {
       error: profileResult.error,
     })
 
-    throw new Error('Authorization check failed')
+    throw new AuthorizationCheckError()
   }
 
   if (!profileResult.data || profileResult.data.role !== 'superuser') {
@@ -77,7 +84,7 @@ export async function requireSuperuser(): Promise<AuthUser> {
       },
     })
 
-    throw new Error('Forbidden')
+    throw new ForbiddenError()
   }
 
   return user

@@ -395,7 +395,7 @@ Goal: add database-level enforcement after the multi-user happy path is working.
 - [x] **SEC-3** Add RLS to `chat_threads` ✅ _2026-04-02_
   - Depends on: SEC-1
 
-- [ ] **SEC-4** Standardize forbidden and auth-failure route handling
+- [x] **SEC-4** Standardize forbidden and auth-failure route handling ✅ _2026-04-02_
   - Depends on: LOG-2, all API route work complete
 
 - [ ] **SEC-5** Add integration coverage for auth and authorization rules

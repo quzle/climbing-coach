@@ -1,4 +1,5 @@
 import { NextResponse } from 'next/server'
+import { handleRouteAuthError } from '@/lib/errors'
 import { logError, logWarn } from '@/lib/logger'
 import { requireSuperuser } from '@/lib/supabase/get-current-user'
 import { listProfiles } from '@/services/data/profilesRepository'
@@ -40,7 +41,11 @@ export async function GET(): Promise<
 
     return NextResponse.json({ data: users, error: null }, { status: 200 })
   } catch (error) {
-    if (error instanceof Error && error.message === 'Unauthenticated') {
+    const authError = handleRouteAuthError(error, {
+      unauthenticatedMessage: 'Authentication required.',
+    })
+
+    if (authError !== null) {
       logWarn({
         event: 'privileged_dev_action_executed',
         outcome: 'failure',
@@ -48,30 +53,12 @@ export async function GET(): Promise<
         entityType: 'dev_action',
         entityId: 'seed_target_list',
         data: {
-          reason: 'unauthenticated',
+          reason: authError.reason,
+          ...(authError.reason === 'forbidden' ? { requiredRole: 'superuser' } : {}),
         },
       })
 
-      return NextResponse.json(
-        { data: null, error: 'Authentication required.' },
-        { status: 401 },
-      )
-    }
-
-    if (error instanceof Error && error.message === 'Forbidden') {
-      logWarn({
-        event: 'privileged_dev_action_executed',
-        outcome: 'failure',
-        route: '/api/dev/seed-targets',
-        entityType: 'dev_action',
-        entityId: 'seed_target_list',
-        data: {
-          reason: 'forbidden',
-          requiredRole: 'superuser',
-        },
-      })
-
-      return NextResponse.json({ data: null, error: 'Forbidden.' }, { status: 403 })
+      return authError.response
     }
 
     logError({

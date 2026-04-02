@@ -71,18 +71,19 @@ Two Supabase client factories exist in `src/lib/supabase/`:
 import { getCurrentUser, requireSuperuser } from '@/lib/supabase/get-current-user'
 
 // Inside an API route or Server Component:
-const user = await getCurrentUser() // throws 'Unauthenticated' if no valid session
+const user = await getCurrentUser() // throws UnauthenticatedError if no valid session
 // user.id — the Supabase Auth UUID
 // user.email — the user's email address (may be undefined)
 
-await requireSuperuser() // throws 'Unauthenticated' or 'Forbidden' for privileged actions
+await requireSuperuser() // throws UnauthenticatedError, ForbiddenError, or AuthorizationCheckError
 ```
 
 **Rules:**
 - All API routes that require authentication must call `getCurrentUser()` to identify the user. Never use a hardcoded user ID.
-- `getCurrentUser()` throws `Error('Unauthenticated')` if there is no valid session. API routes should catch this and return a `401` response.
+- `getCurrentUser()` throws `UnauthenticatedError` if there is no valid session. API routes should delegate to the shared route auth handler and return a `401` response.
 - Routes that execute privileged actions (for example under `/api/dev`) must call `requireSuperuser()` before performing the action.
-- `requireSuperuser()` validates `profiles.role === 'superuser'` server-side and throws `Error('Forbidden')` for non-superusers.
+- `requireSuperuser()` validates `profiles.role === 'superuser'` server-side and throws `ForbiddenError` for non-superusers.
+- `AuthorizationCheckError` means the server could not verify authorization safely; routes should let that fall through to their normal `500` path.
 - Never call `getCurrentUser()` from a Client Component. Call it in an API route or Server Component only.
 
 ## Middleware and Route Gating

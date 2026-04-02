@@ -1,4 +1,12 @@
+/**
+ * @jest-environment node
+ */
 import { createClient } from '@/lib/supabase/server'
+import {
+  AuthorizationCheckError,
+  ForbiddenError,
+  UnauthenticatedError,
+} from '@/lib/errors'
 import { logError, logWarn } from '@/lib/logger'
 import { getProfile } from '@/services/data/profilesRepository'
 import { getCurrentUser, requireSuperuser } from './get-current-user'
@@ -57,7 +65,10 @@ describe('getCurrentUser', () => {
       error: { message: 'JWT expired' },
     })
 
-    await expect(getCurrentUser()).rejects.toThrow('Unauthenticated')
+    const result = getCurrentUser()
+
+    await expect(result).rejects.toBeInstanceOf(UnauthenticatedError)
+    await expect(result).rejects.toThrow('Unauthenticated')
     expect(mockLogWarn).toHaveBeenCalledWith({
       event: 'auth_check_failed',
       outcome: 'failure',
@@ -74,7 +85,10 @@ describe('getCurrentUser', () => {
       error: null,
     })
 
-    await expect(getCurrentUser()).rejects.toThrow('Unauthenticated')
+    const result = getCurrentUser()
+
+    await expect(result).rejects.toBeInstanceOf(UnauthenticatedError)
+    await expect(result).rejects.toThrow('Unauthenticated')
     expect(mockLogWarn).toHaveBeenCalledWith({
       event: 'auth_check_failed',
       outcome: 'failure',
@@ -125,7 +139,10 @@ describe('requireSuperuser', () => {
       error: null,
     })
 
-    await expect(requireSuperuser()).rejects.toThrow('Forbidden')
+    const result = requireSuperuser()
+
+    await expect(result).rejects.toBeInstanceOf(ForbiddenError)
+    await expect(result).rejects.toThrow('Forbidden')
     expect(mockLogWarn).toHaveBeenCalledWith({
       event: 'access_control_denied',
       outcome: 'failure',
@@ -148,7 +165,10 @@ describe('requireSuperuser', () => {
       error: 'Failed to retrieve profile',
     })
 
-    await expect(requireSuperuser()).rejects.toThrow('Authorization check failed')
+    const result = requireSuperuser()
+
+    await expect(result).rejects.toBeInstanceOf(AuthorizationCheckError)
+    await expect(result).rejects.toThrow('Authorization check failed')
     expect(mockLogError).toHaveBeenCalledWith({
       event: 'access_control_check_failed',
       outcome: 'failure',
@@ -167,6 +187,9 @@ describe('requireSuperuser', () => {
       error: { message: 'JWT missing' },
     })
 
-    await expect(requireSuperuser()).rejects.toThrow('Unauthenticated')
+    const result = requireSuperuser()
+
+    await expect(result).rejects.toBeInstanceOf(UnauthenticatedError)
+    await expect(result).rejects.toThrow('Unauthenticated')
   })
 })

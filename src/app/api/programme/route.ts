@@ -1,4 +1,5 @@
 import { NextResponse } from 'next/server'
+import { handleRouteAuthError } from '@/lib/errors'
 import { logError, logInfo, logWarn } from '@/lib/logger'
 import { getCurrentUser } from '@/lib/supabase/get-current-user'
 import { getProgrammeBuilderSnapshot } from '@/services/training/programmeService'
@@ -52,17 +53,19 @@ export async function GET(): Promise<
 
     return NextResponse.json({ data: result.data, error: null })
   } catch (error) {
-    if (error instanceof Error && error.message === 'Unauthenticated') {
+    const authError = handleRouteAuthError(error)
+
+    if (authError !== null) {
       logWarn({
         event: 'programme_snapshot_fetch_failed',
         outcome: 'failure',
         route: '/api/programme',
         entityType: 'programme',
         durationMs: Date.now() - startedAt,
-        data: { reason: 'unauthenticated' },
+        data: { reason: authError.reason },
       })
 
-      return NextResponse.json({ data: null, error: 'Unauthenticated.' }, { status: 401 })
+      return authError.response
     }
 
     logError({

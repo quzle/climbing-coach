@@ -1,6 +1,7 @@
 /**
  * @jest-environment node
  */
+import { ForbiddenError, UnauthenticatedError } from '@/lib/errors'
 import { logError, logWarn } from '@/lib/logger'
 import { requireSuperuser } from '@/lib/supabase/get-current-user'
 import { listProfiles } from '@/services/data/profilesRepository'
@@ -63,7 +64,7 @@ describe('GET /api/dev/seed-targets', () => {
   })
 
   it('returns 401 when requester is unauthenticated', async () => {
-    mockRequireSuperuser.mockRejectedValue(new Error('Unauthenticated'))
+    mockRequireSuperuser.mockRejectedValue(new UnauthenticatedError())
 
     const response = await GET()
     const body = await response.json()
@@ -79,7 +80,7 @@ describe('GET /api/dev/seed-targets', () => {
   })
 
   it('returns 403 when requester is not a superuser', async () => {
-    mockRequireSuperuser.mockRejectedValue(new Error('Forbidden'))
+    mockRequireSuperuser.mockRejectedValue(new ForbiddenError())
 
     const response = await GET()
     const body = await response.json()

@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { z } from 'zod'
+import { handleRouteAuthError } from '@/lib/errors'
 import {
   getActiveInjuryAreas,
   addInjuryArea,
@@ -52,17 +53,19 @@ export async function GET(): Promise<NextResponse<ApiResponse<InjuryAreaRow[]>>>
 
     return NextResponse.json({ data: result.data ?? [], error: null })
   } catch (error) {
-    if (error instanceof Error && error.message === 'Unauthenticated') {
+    const authError = handleRouteAuthError(error)
+
+    if (authError !== null) {
       logWarn({
         event: 'injury_areas_fetch_failed',
         outcome: 'failure',
         route: '/api/injury-areas',
         entityType: 'injury_area',
         durationMs: Date.now() - startedAt,
-        data: { reason: 'unauthenticated' },
+        data: { reason: authError.reason },
       })
 
-      return NextResponse.json({ data: null, error: 'Unauthenticated.' }, { status: 401 })
+      return authError.response
     }
 
     logError({
@@ -146,17 +149,19 @@ export async function POST(
 
     return NextResponse.json({ data: result.data, error: null }, { status: 201 })
   } catch (error) {
-    if (error instanceof Error && error.message === 'Unauthenticated') {
+    const authError = handleRouteAuthError(error)
+
+    if (authError !== null) {
       logWarn({
         event: 'injury_area_create_failed',
         outcome: 'failure',
         route: '/api/injury-areas',
         entityType: 'injury_area',
         durationMs: Date.now() - startedAt,
-        data: { reason: 'unauthenticated' },
+        data: { reason: authError.reason },
       })
 
-      return NextResponse.json({ data: null, error: 'Unauthenticated.' }, { status: 401 })
+      return authError.response
     }
 
     logError({

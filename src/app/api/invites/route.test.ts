@@ -1,6 +1,11 @@
 /**
  * @jest-environment node
  */
+import {
+  AuthorizationCheckError,
+  ForbiddenError,
+  UnauthenticatedError,
+} from '@/lib/errors'
 import { NextRequest } from 'next/server'
 import { logError, logInfo, logWarn } from '@/lib/logger'
 import { requireSuperuser } from '@/lib/supabase/get-current-user'
@@ -94,7 +99,7 @@ describe('POST /api/invites', () => {
   })
 
   it('returns 401 when requester is unauthenticated', async () => {
-    mockRequireSuperuser.mockRejectedValue(new Error('Unauthenticated'))
+    mockRequireSuperuser.mockRejectedValue(new UnauthenticatedError())
 
     const request = new NextRequest('http://localhost:3000/api/invites', {
       method: 'POST',
@@ -120,7 +125,7 @@ describe('POST /api/invites', () => {
   })
 
   it('returns 403 when requester is not a superuser', async () => {
-    mockRequireSuperuser.mockRejectedValue(new Error('Forbidden'))
+    mockRequireSuperuser.mockRejectedValue(new ForbiddenError())
 
     const request = new NextRequest('http://localhost:3000/api/invites', {
       method: 'POST',
@@ -138,7 +143,6 @@ describe('POST /api/invites', () => {
       event: 'invite_sent',
       outcome: 'failure',
       route: '/api/invites',
-      userId: null,
       entityType: 'invite',
       data: {
         reason: 'forbidden',
@@ -174,6 +178,29 @@ describe('POST /api/invites', () => {
       },
     })
     expect(mockLogError).not.toHaveBeenCalled()
+  })
+
+  it('returns 500 when authorization cannot be verified', async () => {
+    mockRequireSuperuser.mockRejectedValue(new AuthorizationCheckError())
+
+    const request = new NextRequest('http://localhost:3000/api/invites', {
+      method: 'POST',
+      body: JSON.stringify({ email: 'new.user@example.com' }),
+      headers: { 'Content-Type': 'application/json' },
+    })
+
+    const response = await POST(request)
+    const body = await response.json()
+
+    expect(response.status).toBe(500)
+    expect(body).toEqual({ data: null, error: 'Failed to send invite.' })
+    expect(mockLogError).toHaveBeenCalledWith({
+      event: 'invite_sent',
+      outcome: 'failure',
+      route: '/api/invites',
+      entityType: 'invite',
+      error: new AuthorizationCheckError(),
+    })
   })
 
   it('returns 500 and logs error when route throws unexpectedly', async () => {

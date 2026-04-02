@@ -1,5 +1,6 @@
 /** @jest-environment node */
 import { DELETE } from './route'
+import { UnauthenticatedError } from '@/lib/errors'
 import { getCurrentUser } from '@/lib/supabase/get-current-user'
 
 jest.mock('@/services/data/injuryAreasRepository', () => ({
@@ -84,7 +85,7 @@ describe('DELETE /api/injury-areas/[area]', () => {
   })
 
   it('returns 401 when unauthenticated', async () => {
-    mockGetCurrentUser.mockRejectedValue(new Error('Unauthenticated'))
+    mockGetCurrentUser.mockRejectedValue(new UnauthenticatedError())
 
     const response = await DELETE(new Request('http://localhost'), makeParams('shoulder_left'))
     const body = await response.json()

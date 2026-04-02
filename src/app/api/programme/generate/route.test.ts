@@ -1,6 +1,7 @@
 /**
  * @jest-environment node
  */
+import { UnauthenticatedError } from '@/lib/errors'
 import { NextRequest } from 'next/server'
 import { GoogleGenerativeAI } from '@google/generative-ai'
 import { getCurrentUser } from '@/lib/supabase/get-current-user'
@@ -108,7 +109,7 @@ describe('POST /api/programme/generate', () => {
   })
 
   it('returns 401 when unauthenticated', async () => {
-    mockGetCurrentUser.mockRejectedValue(new Error('Unauthenticated'))
+    mockGetCurrentUser.mockRejectedValue(new UnauthenticatedError())
 
     const response = await POST(makeRequest(validBody))
     const body = await response.json()

@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { z } from 'zod'
+import { handleRouteAuthError } from '@/lib/errors'
 import { logError, logInfo, logWarn } from '@/lib/logger'
 import { requireSuperuser } from '@/lib/supabase/get-current-user'
 import { inviteUserByEmail } from '@/services/data/invitesRepository'
@@ -91,37 +92,24 @@ export async function POST(
       { status: 201 },
     )
   } catch (error) {
-    if (error instanceof Error && error.message === 'Unauthenticated') {
+    const authError = handleRouteAuthError(error, {
+      unauthenticatedMessage: 'Authentication required.',
+    })
+
+    if (authError !== null) {
       logWarn({
         event: 'invite_sent',
         outcome: 'failure',
         route: '/api/invites',
+        ...(authenticatedUserId !== null ? { userId: authenticatedUserId } : {}),
         entityType: 'invite',
         data: {
-          reason: 'unauthenticated',
+          reason: authError.reason,
+          ...(authError.reason === 'forbidden' ? { requiredRole: 'superuser' } : {}),
         },
       })
 
-      return NextResponse.json(
-        { data: null, error: 'Authentication required.' },
-        { status: 401 },
-      )
-    }
-
-    if (error instanceof Error && error.message === 'Forbidden') {
-      logWarn({
-        event: 'invite_sent',
-        outcome: 'failure',
-        route: '/api/invites',
-        userId: authenticatedUserId,
-        entityType: 'invite',
-        data: {
-          reason: 'forbidden',
-          requiredRole: 'superuser',
-        },
-      })
-
-      return NextResponse.json({ data: null, error: 'Forbidden.' }, { status: 403 })
+      return authError.response
     }
 
     logError({

@@ -1,6 +1,7 @@
 /**
  * @jest-environment node
  */
+import { UnauthenticatedError } from '@/lib/errors'
 import { NextRequest } from 'next/server'
 import { createProgramme, getProgrammes } from '@/services/data/programmeRepository'
 import { getCurrentUser } from '@/lib/supabase/get-current-user'
@@ -54,7 +55,7 @@ describe('GET /api/programmes', () => {
   })
 
   it('returns 401 when unauthenticated', async () => {
-    mockGetCurrentUser.mockRejectedValue(new Error('Unauthenticated'))
+    mockGetCurrentUser.mockRejectedValue(new UnauthenticatedError())
 
     const response = await GET()
     const body = await response.json()
@@ -107,7 +108,7 @@ describe('POST /api/programmes', () => {
   })
 
   it('returns 401 when unauthenticated', async () => {
-    mockGetCurrentUser.mockRejectedValue(new Error('Unauthenticated'))
+    mockGetCurrentUser.mockRejectedValue(new UnauthenticatedError())
 
     const request = new NextRequest('http://localhost:3000/api/programmes', {
       method: 'POST',

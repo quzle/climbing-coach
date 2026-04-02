@@ -1,6 +1,7 @@
 /**
  * @jest-environment node
  */
+import { ForbiddenError, UnauthenticatedError } from '@/lib/errors'
 import { NextRequest } from 'next/server'
 import { logError, logInfo, logWarn } from '@/lib/logger'
 import { requireSuperuser } from '@/lib/supabase/get-current-user'
@@ -155,7 +156,7 @@ describe('POST /api/dev/seed-programme', () => {
   })
 
   it('returns 403 when requester is not a superuser', async () => {
-    mockRequireSuperuser.mockRejectedValue(new Error('Forbidden'))
+    mockRequireSuperuser.mockRejectedValue(new ForbiddenError())
 
     const request = new NextRequest('http://localhost:3000/api/dev/seed-programme', {
       method: 'POST',
@@ -170,7 +171,7 @@ describe('POST /api/dev/seed-programme', () => {
   })
 
   it('returns 401 when requester is unauthenticated', async () => {
-    mockRequireSuperuser.mockRejectedValue(new Error('Unauthenticated'))
+    mockRequireSuperuser.mockRejectedValue(new UnauthenticatedError())
 
     const request = new NextRequest('http://localhost:3000/api/dev/seed-programme', {
       method: 'POST',

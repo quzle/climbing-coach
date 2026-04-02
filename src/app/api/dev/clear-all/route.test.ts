@@ -1,9 +1,10 @@
 /**
  * @jest-environment node
  */
+import { ForbiddenError, UnauthenticatedError } from '@/lib/errors'
 import { NextRequest } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
-import { logError, logInfo } from '@/lib/logger'
+import { logError, logInfo, logWarn } from '@/lib/logger'
 import { requireSuperuser } from '@/lib/supabase/get-current-user'
 import { POST } from './route'
 
@@ -14,6 +15,7 @@ jest.mock('@/lib/supabase/server', () => ({
 jest.mock('@/lib/logger', () => ({
   logError: jest.fn(),
   logInfo: jest.fn(),
+  logWarn: jest.fn(),
 }))
 
 jest.mock('@/lib/supabase/get-current-user', () => ({
@@ -24,6 +26,7 @@ const mockCreateClient = createClient as jest.Mock
 const mockRequireSuperuser = requireSuperuser as jest.Mock
 const mockLogError = logError as jest.Mock
 const mockLogInfo = logInfo as jest.Mock
+const mockLogWarn = logWarn as jest.Mock
 
 function makeMockSupabase(
   deleteResult: { data: { id: string }[] | null; error: null | { message: string } },
@@ -176,7 +179,7 @@ describe('POST /api/dev/clear-all', () => {
   })
 
   it('returns 401 when requester is unauthenticated', async () => {
-    mockRequireSuperuser.mockRejectedValue(new Error('Unauthenticated'))
+    mockRequireSuperuser.mockRejectedValue(new UnauthenticatedError())
     const request = new NextRequest('http://localhost:3000/api/dev/clear-all', {
       method: 'POST',
     })
@@ -188,10 +191,18 @@ describe('POST /api/dev/clear-all', () => {
     expect(body.data).toBeNull()
     expect(body.error).toBe('Authentication required.')
     expect(mockCreateClient).not.toHaveBeenCalled()
+    expect(mockLogWarn).toHaveBeenCalledWith({
+      event: 'privileged_dev_action_executed',
+      outcome: 'failure',
+      route: '/api/dev/clear-all',
+      entityType: 'dev_action',
+      entityId: 'clear_all',
+      data: { reason: 'unauthenticated' },
+    })
   })
 
   it('returns 403 when requester is not a superuser', async () => {
-    mockRequireSuperuser.mockRejectedValue(new Error('Forbidden'))
+    mockRequireSuperuser.mockRejectedValue(new ForbiddenError())
     const request = new NextRequest('http://localhost:3000/api/dev/clear-all', {
       method: 'POST',
     })
@@ -203,6 +214,14 @@ describe('POST /api/dev/clear-all', () => {
     expect(body.data).toBeNull()
     expect(body.error).toBe('Forbidden.')
     expect(mockCreateClient).not.toHaveBeenCalled()
+    expect(mockLogWarn).toHaveBeenCalledWith({
+      event: 'privileged_dev_action_executed',
+      outcome: 'failure',
+      route: '/api/dev/clear-all',
+      entityType: 'dev_action',
+      entityId: 'clear_all',
+      data: { reason: 'forbidden', requiredRole: 'superuser' },
+    })
   })
 
   it('returns 400 for invalid target user payload', async () => {

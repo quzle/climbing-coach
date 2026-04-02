@@ -1,6 +1,7 @@
 /**
  * @jest-environment node
  */
+import { UnauthenticatedError } from '@/lib/errors'
 import { getProgrammeBuilderSnapshot } from '@/services/training/programmeService'
 import { getCurrentUser } from '@/lib/supabase/get-current-user'
 import { GET } from './route'
@@ -86,7 +87,7 @@ describe('GET /api/programme', () => {
   })
 
   it('returns 401 when unauthenticated', async () => {
-    mockGetCurrentUser.mockRejectedValue(new Error('Unauthenticated'))
+    mockGetCurrentUser.mockRejectedValue(new UnauthenticatedError())
 
     const response = await GET()
     const body = await response.json()

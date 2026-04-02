@@ -1,6 +1,7 @@
 /**
  * @jest-environment node
  */
+import { UnauthenticatedError } from '@/lib/errors'
 import { NextRequest } from 'next/server'
 import { logError, logInfo, logWarn } from '@/lib/logger'
 import { getCurrentUser } from '@/lib/supabase/get-current-user'
@@ -65,7 +66,7 @@ describe('GET /api/profile', () => {
   })
 
   it('returns 401 when unauthenticated', async () => {
-    mockGetCurrentUser.mockRejectedValue(new Error('Unauthenticated'))
+    mockGetCurrentUser.mockRejectedValue(new UnauthenticatedError())
 
     const response = await GET()
     const body = await response.json()
@@ -152,7 +153,7 @@ describe('PATCH /api/profile', () => {
   })
 
   it('returns 401 when unauthenticated', async () => {
-    mockGetCurrentUser.mockRejectedValue(new Error('Unauthenticated'))
+    mockGetCurrentUser.mockRejectedValue(new UnauthenticatedError())
     const request = new NextRequest('http://localhost:3000/api/profile', {
       method: 'PATCH',
       body: JSON.stringify({ display_name: 'Updated Name' }),

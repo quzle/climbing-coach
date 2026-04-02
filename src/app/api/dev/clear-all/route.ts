@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { z } from 'zod'
-import { logError, logInfo } from '@/lib/logger'
+import { handleRouteAuthError } from '@/lib/errors'
+import { logError, logInfo, logWarn } from '@/lib/logger'
 import { createClient } from '@/lib/supabase/server'
 import { requireSuperuser } from '@/lib/supabase/get-current-user'
 import type { ApiResponse } from '@/types'
@@ -105,15 +106,24 @@ export async function POST(
       { status: 200 },
     )
   } catch (error) {
-    if (error instanceof Error && error.message === 'Unauthenticated') {
-      return NextResponse.json(
-        { data: null, error: 'Authentication required.' },
-        { status: 401 },
-      )
-    }
+    const authError = handleRouteAuthError(error, {
+      unauthenticatedMessage: 'Authentication required.',
+    })
 
-    if (error instanceof Error && error.message === 'Forbidden') {
-      return NextResponse.json({ data: null, error: 'Forbidden.' }, { status: 403 })
+    if (authError !== null) {
+      logWarn({
+        event: 'privileged_dev_action_executed',
+        outcome: 'failure',
+        route: '/api/dev/clear-all',
+        entityType: 'dev_action',
+        entityId: 'clear_all',
+        data: {
+          reason: authError.reason,
+          ...(authError.reason === 'forbidden' ? { requiredRole: 'superuser' } : {}),
+        },
+      })
+
+      return authError.response
     }
 
     logError({

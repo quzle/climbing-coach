@@ -1,6 +1,7 @@
 /**
  * @jest-environment node
  */
+import { UnauthenticatedError } from '@/lib/errors'
 import { NextRequest } from 'next/server'
 import {
   createWeeklyTemplate,
@@ -70,7 +71,7 @@ describe('GET /api/weekly-templates', () => {
   })
 
   it('returns 401 when unauthenticated', async () => {
-    mockGetCurrentUser.mockRejectedValue(new Error('Unauthenticated'))
+    mockGetCurrentUser.mockRejectedValue(new UnauthenticatedError())
 
     const response = await GET(
       new NextRequest(
@@ -130,7 +131,7 @@ describe('POST /api/weekly-templates', () => {
   })
 
   it('returns 401 when unauthenticated', async () => {
-    mockGetCurrentUser.mockRejectedValue(new Error('Unauthenticated'))
+    mockGetCurrentUser.mockRejectedValue(new UnauthenticatedError())
 
     const request = new NextRequest('http://localhost/api/weekly-templates', {
       method: 'POST',

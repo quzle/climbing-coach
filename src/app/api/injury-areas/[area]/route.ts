@@ -1,4 +1,5 @@
 import { NextResponse } from 'next/server'
+import { handleRouteAuthError } from '@/lib/errors'
 import { archiveInjuryArea } from '@/services/data/injuryAreasRepository'
 import { getCurrentUser } from '@/lib/supabase/get-current-user'
 import { logError, logInfo, logWarn } from '@/lib/logger'
@@ -53,7 +54,9 @@ export async function DELETE(
 
     return NextResponse.json({ data: result.data, error: null })
   } catch (error) {
-    if (error instanceof Error && error.message === 'Unauthenticated') {
+    const authError = handleRouteAuthError(error)
+
+    if (authError !== null) {
       logWarn({
         event: 'injury_area_archive_failed',
         outcome: 'failure',
@@ -61,10 +64,10 @@ export async function DELETE(
         entityType: 'injury_area',
         entityId: area,
         durationMs: Date.now() - startedAt,
-        data: { reason: 'unauthenticated' },
+        data: { reason: authError.reason },
       })
 
-      return NextResponse.json({ data: null, error: 'Unauthenticated.' }, { status: 401 })
+      return authError.response
     }
 
     logError({

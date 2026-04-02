@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { z } from 'zod'
+import { handleRouteAuthError } from '@/lib/errors'
 import { logError, logInfo, logWarn } from '@/lib/logger'
 import { getCurrentUser } from '@/lib/supabase/get-current-user'
 import { sendChatMessage } from '@/services/ai/geminiClient'
@@ -158,7 +159,9 @@ export async function POST(
       error: null,
     })
   } catch (error) {
-    if (error instanceof Error && error.message === 'Unauthenticated') {
+    const authError = handleRouteAuthError(error)
+
+    if (authError !== null) {
       logWarn({
         event: 'chat_request_handled',
         outcome: 'failure',
@@ -166,11 +169,11 @@ export async function POST(
         entityType: 'chat_request',
         durationMs: Date.now() - startedAt,
         data: {
-          reason: 'unauthenticated',
+          reason: authError.reason,
         },
       })
 
-      return NextResponse.json({ data: null, error: 'Unauthenticated.' }, { status: 401 })
+      return authError.response
     }
 
     logError({

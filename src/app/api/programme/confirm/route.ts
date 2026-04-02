@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { z } from 'zod'
+import { handleRouteAuthError } from '@/lib/errors'
 import { logError, logInfo, logWarn } from '@/lib/logger'
 import { createClient } from '@/lib/supabase/server'
 import { getCurrentUser } from '@/lib/supabase/get-current-user'
@@ -209,17 +210,19 @@ export async function POST(
       { status: 201 },
     )
   } catch (error) {
-    if (error instanceof Error && error.message === 'Unauthenticated') {
+    const authError = handleRouteAuthError(error)
+
+    if (authError !== null) {
       logWarn({
         event: 'programme_confirm_failed',
         outcome: 'failure',
         route: '/api/programme/confirm',
         entityType: 'programme',
         durationMs: Date.now() - startedAt,
-        data: { reason: 'unauthenticated' },
+        data: { reason: authError.reason },
       })
 
-      return NextResponse.json({ data: null, error: 'Unauthenticated.' }, { status: 401 })
+      return authError.response
     }
 
     logError({

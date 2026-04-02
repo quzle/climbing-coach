@@ -1,6 +1,7 @@
 /**
  * @jest-environment node
  */
+import { UnauthenticatedError } from '@/lib/errors'
 import { NextRequest } from 'next/server'
 import { createMesocycle, getMesocyclesByProgramme } from '@/services/data/mesocycleRepository'
 import { getCurrentUser } from '@/lib/supabase/get-current-user'
@@ -65,7 +66,7 @@ describe('GET /api/mesocycles', () => {
   })
 
   it('returns 401 when unauthenticated', async () => {
-    mockGetCurrentUser.mockRejectedValue(new Error('Unauthenticated'))
+    mockGetCurrentUser.mockRejectedValue(new UnauthenticatedError())
 
     const response = await GET(
       new NextRequest(
@@ -128,7 +129,7 @@ describe('POST /api/mesocycles', () => {
   })
 
   it('returns 401 when unauthenticated', async () => {
-    mockGetCurrentUser.mockRejectedValue(new Error('Unauthenticated'))
+    mockGetCurrentUser.mockRejectedValue(new UnauthenticatedError())
 
     const request = new NextRequest('http://localhost/api/mesocycles', {
       method: 'POST',

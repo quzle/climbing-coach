@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { z } from 'zod'
+import { handleRouteAuthError } from '@/lib/errors'
 import { logError, logInfo, logWarn } from '@/lib/logger'
 import { getCurrentUser } from '@/lib/supabase/get-current-user'
 import { getProfile, updateProfile } from '@/services/data/profilesRepository'
@@ -50,21 +51,22 @@ export async function GET(): Promise<NextResponse<ApiResponse<Profile>>> {
 
     return NextResponse.json({ data: result.data, error: null }, { status: 200 })
   } catch (error) {
-    if (error instanceof Error && error.message === 'Unauthenticated') {
+    const authError = handleRouteAuthError(error, {
+      unauthenticatedMessage: 'Authentication required.',
+    })
+
+    if (authError !== null) {
       logWarn({
         event: 'profile_fetched',
         outcome: 'failure',
         route: '/api/profile',
         entityType: 'profile',
         data: {
-          reason: 'unauthenticated',
+          reason: authError.reason,
         },
       })
 
-      return NextResponse.json(
-        { data: null, error: 'Authentication required.' },
-        { status: 401 },
-      )
+      return authError.response
     }
 
     logError({
@@ -151,21 +153,22 @@ export async function PATCH(
 
     return NextResponse.json({ data: result.data, error: null }, { status: 200 })
   } catch (error) {
-    if (error instanceof Error && error.message === 'Unauthenticated') {
+    const authError = handleRouteAuthError(error, {
+      unauthenticatedMessage: 'Authentication required.',
+    })
+
+    if (authError !== null) {
       logWarn({
         event: 'profile_updated',
         outcome: 'failure',
         route: '/api/profile',
         entityType: 'profile',
         data: {
-          reason: 'unauthenticated',
+          reason: authError.reason,
         },
       })
 
-      return NextResponse.json(
-        { data: null, error: 'Authentication required.' },
-        { status: 401 },
-      )
+      return authError.response
     }
 
     logError({

@@ -1,6 +1,7 @@
 /**
  * @jest-environment node
  */
+import { UnauthenticatedError } from '@/lib/errors'
 import { NextRequest } from 'next/server'
 import { logError, logInfo, logWarn } from '@/lib/logger'
 import { getCurrentUser } from '@/lib/supabase/get-current-user'
@@ -209,7 +210,7 @@ describe('POST /api/chat', () => {
   })
 
   it('returns 401 when unauthenticated', async () => {
-    ;(getCurrentUser as jest.Mock).mockRejectedValue(new Error('Unauthenticated'))
+    ;(getCurrentUser as jest.Mock).mockRejectedValue(new UnauthenticatedError())
 
     const response = await POST(makeRequest({ message: 'Hello', history: [] }))
     const body = await response.json()

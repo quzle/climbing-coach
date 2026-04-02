@@ -33,6 +33,14 @@ All dates are `YYYY-MM-DD` strings. Never ISO 8601 datetime — date only.
 
 All `POST` and `PUT` routes validate input with Zod. Invalid input returns `400` with a message listing which fields failed and why.
 
+### Authentication failures
+
+API routes use the shared auth error handler in `src/lib/errors.ts` to translate typed server auth errors into safe responses.
+
+- `UnauthenticatedError` returns `401`.
+- `ForbiddenError` returns `403`.
+- `AuthorizationCheckError` is treated as an internal authorization verification failure and falls through to the route's normal `500` response.
+
 ### Logging and observability
 
 API routes use the structured logger in `src/lib/logger.ts`.
