@@ -392,7 +392,7 @@ Goal: add database-level enforcement after the multi-user happy path is working.
 - [x] **SEC-2** Add RLS to `profiles` ✅ _2026-04-02_
   - Depends on: SEC-1, REPO-0
 
-- [ ] **SEC-3** Add RLS to `chat_threads`
+- [x] **SEC-3** Add RLS to `chat_threads` ✅ _2026-04-02_
   - Depends on: SEC-1
 
 - [ ] **SEC-4** Standardize forbidden and auth-failure route handling
@@ -422,6 +422,17 @@ For `profiles`, the migration:
 - creates a `FOR SELECT` policy for role `authenticated` using `auth.uid() = id`
 - creates a `FOR UPDATE` policy for role `authenticated` using `auth.uid() = id` in both `USING` and `WITH CHECK`
 - intentionally does not create `INSERT` or `DELETE` policies for role `authenticated`
+
+
+#### Phase 9 Implementation Notes (SEC-3 completed 2026-04-02)
+
+Added migration `supabase/migrations/20260402000002_add_rls_to_chat_threads.sql`.
+
+For `chat_threads`, the migration:
+
+- enables row level security
+- creates a single `FOR ALL` policy for role `authenticated`
+- uses `auth.uid() = user_id` in both `USING` and `WITH CHECK`
 
 ### Phase 10: Documentation
 

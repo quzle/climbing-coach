@@ -257,3 +257,5 @@ Groups chat messages into per-user conversation threads. Introduced to support t
 **Relationships:** `user_id` → `auth.users(id)`.
 
 **Business rules:** The MVP exposes one default thread per user in the UI. The schema supports multiple threads per user without a redesign. `updated_at` should be refreshed whenever a message is added to the thread.
+
+**RLS:** Enabled by migration `20260402000002_add_rls_to_chat_threads.sql`. Authenticated users can access only their own thread rows via one owner policy using `auth.uid() = user_id` in both `USING` and `WITH CHECK`.
