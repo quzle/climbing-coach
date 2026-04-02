@@ -38,7 +38,7 @@ export type RouteAuthErrorReason = 'unauthenticated' | 'forbidden'
 
 export type RouteAuthErrorResult = {
   reason: RouteAuthErrorReason
-  response: NextResponse<ApiResponse<null>>
+  response: NextResponse<ApiResponse<never>>
 }
 
 type RouteAuthErrorOptions = {
@@ -49,7 +49,7 @@ type RouteAuthErrorOptions = {
 function createAuthErrorResponse(
   message: string,
   status: 401 | 403,
-): NextResponse<ApiResponse<null>> {
+): NextResponse<ApiResponse<never>> {
   return NextResponse.json({ data: null, error: message }, { status })
 }
 

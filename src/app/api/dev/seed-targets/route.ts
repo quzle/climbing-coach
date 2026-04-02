@@ -1,4 +1,5 @@
 import { NextResponse } from 'next/server'
+import { z } from 'zod'
 import { handleRouteAuthError } from '@/lib/errors'
 import { logError, logWarn } from '@/lib/logger'
 import { requireSuperuser } from '@/lib/supabase/get-current-user'
@@ -12,6 +13,14 @@ export type SeedTargetUser = {
   role: 'user' | 'superuser'
   invite_status: 'invited' | 'active'
 }
+
+const seedTargetUserSchema = z.object({
+  id: z.string().uuid(),
+  email: z.string().email(),
+  display_name: z.string().nullable(),
+  role: z.enum(['user', 'superuser']),
+  invite_status: z.enum(['invited', 'active']),
+})
 
 /**
  * @description Lists possible target users for dev seed/reset actions.
@@ -31,13 +40,35 @@ export async function GET(): Promise<
       )
     }
 
-    const users: SeedTargetUser[] = result.data.map((profile) => ({
-      id: profile.id,
-      email: profile.email,
-      display_name: profile.display_name,
-      role: profile.role,
-      invite_status: profile.invite_status,
-    }))
+    const parsedUsers = result.data.map((profile) =>
+      seedTargetUserSchema.safeParse({
+        id: profile.id,
+        email: profile.email,
+        display_name: profile.display_name,
+        role: profile.role,
+        invite_status: profile.invite_status,
+      }),
+    )
+
+    const invalidCount = parsedUsers.filter((user) => !user.success).length
+
+    if (invalidCount > 0) {
+      logWarn({
+        event: 'privileged_dev_action_executed',
+        outcome: 'failure',
+        route: '/api/dev/seed-targets',
+        entityType: 'dev_action',
+        entityId: 'seed_target_list',
+        data: {
+          reason: 'invalid_profile_shape',
+          invalidCount,
+        },
+      })
+    }
+
+    const users: SeedTargetUser[] = parsedUsers
+      .filter((user) => user.success)
+      .map((user) => user.data)
 
     return NextResponse.json({ data: users, error: null }, { status: 200 })
   } catch (error) {

@@ -41,8 +41,10 @@ export function SeedDataTools(): React.JSX.Element {
           return
         }
 
-        setUsers(json.data)
-        setSelectedUserId((current) => current ?? json.data[0]?.id ?? null)
+        const loadedUsers = json.data
+
+        setUsers(loadedUsers)
+        setSelectedUserId((current) => current ?? loadedUsers[0]?.id ?? null)
       } catch {
         if (isActive) {
           setErrorMessage('Failed to load target users.')
