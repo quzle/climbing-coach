@@ -3,6 +3,7 @@ import type { Profile, ProfileInsert, ProfileUpdate } from '@/types'
 import {
   getProfile,
   getProfileByEmail,
+  listProfiles,
   updateProfile,
   upsertProfile,
 } from './profilesRepository'
@@ -29,6 +30,7 @@ function makeSupabaseMock() {
   const mockResult = { data: null, error: null }
   const mockChain = {
     select: jest.fn().mockReturnThis(),
+    order: jest.fn().mockReturnThis(),
     insert: jest.fn().mockReturnThis(),
     update: jest.fn().mockReturnThis(),
     upsert: jest.fn().mockReturnThis(),
@@ -213,6 +215,48 @@ describe('upsertProfile', () => {
 
     expect(result.data).toBeNull()
     expect(result.error).toBe('An unexpected error occurred')
+  })
+})
+
+describe('listProfiles', () => {
+  let mockFrom: jest.Mock
+  let mockChain: ReturnType<typeof makeSupabaseMock>['mockChain']
+
+  beforeEach(() => {
+    const mock = makeSupabaseMock()
+    mockFrom = mock.mockFrom
+    mockChain = mock.mockChain
+    ;(createClient as jest.Mock).mockResolvedValue({ from: mockFrom })
+  })
+
+  it('returns all profiles in descending created order', async () => {
+    const profiles = [
+      makeProfile({ id: 'user-2', created_at: '2026-04-01T10:00:00Z' }),
+      makeProfile({ id: 'user-1', created_at: '2026-03-31T10:00:00Z' }),
+    ]
+    mockChain.order.mockResolvedValue({ data: profiles, error: null })
+
+    const result = await listProfiles()
+
+    expect(result).toEqual({ data: profiles, error: null })
+    expect(mockFrom).toHaveBeenCalledWith('profiles')
+    expect(mockChain.order).toHaveBeenCalledWith('created_at', { ascending: false })
+  })
+
+  it('returns an error message on Supabase error', async () => {
+    mockChain.order.mockResolvedValue({ data: null, error: { message: 'db failure' } })
+
+    const result = await listProfiles()
+
+    expect(result).toEqual({ data: null, error: 'Failed to list profiles' })
+  })
+
+  it('returns an error message on unexpected exception', async () => {
+    ;(createClient as jest.Mock).mockRejectedValue(new Error('network error'))
+
+    const result = await listProfiles()
+
+    expect(result).toEqual({ data: null, error: 'An unexpected error occurred' })
   })
 })
 

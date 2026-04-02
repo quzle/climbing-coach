@@ -1,10 +1,18 @@
-import { NextResponse } from 'next/server'
+import { NextRequest, NextResponse } from 'next/server'
+import { z } from 'zod'
 import { logError, logInfo } from '@/lib/logger'
 import { createClient } from '@/lib/supabase/server'
 import { requireSuperuser } from '@/lib/supabase/get-current-user'
 import type { ApiResponse } from '@/types'
 
+const requestSchema = z
+  .object({
+    targetUserId: z.string().uuid().optional(),
+  })
+  .optional()
+
 export type ClearAllResult = {
+  targetUserId: string
   tablesCleared: Record<string, number>
 }
 
@@ -24,13 +32,23 @@ const DELETE_ORDER = [
  * @description Deletes all rows from all application tables. Dev-only.
  * @returns Per-table row counts for the deleted rows.
  */
-export async function POST(): Promise<NextResponse<ApiResponse<ClearAllResult>>> {
+export async function POST(
+  request: NextRequest,
+): Promise<NextResponse<ApiResponse<ClearAllResult>>> {
   if (process.env.NODE_ENV === 'production') {
     return NextResponse.json({ data: null, error: 'Not found.' }, { status: 404 })
   }
 
   try {
     const user = await requireSuperuser()
+    const requestBody: unknown = await request.json().catch(() => undefined)
+    const parsed = requestSchema.safeParse(requestBody)
+
+    if (!parsed.success) {
+      return NextResponse.json({ data: null, error: 'Invalid request.' }, { status: 400 })
+    }
+
+    const targetUserId = parsed.data?.targetUserId ?? user.id
 
     const supabase = await createClient()
     const tablesCleared: Record<string, number> = {}
@@ -40,7 +58,7 @@ export async function POST(): Promise<NextResponse<ApiResponse<ClearAllResult>>>
       const { data, error } = await supabase
         .from(table)
         .delete()
-        .neq('id', '00000000-0000-0000-0000-000000000000')
+        .eq('user_id', targetUserId)
         .select('id')
 
       if (error) {
@@ -54,6 +72,7 @@ export async function POST(): Promise<NextResponse<ApiResponse<ClearAllResult>>>
           entityId: 'clear_all',
           data: {
             table,
+            targetUserId,
           },
           error,
         })
@@ -76,11 +95,15 @@ export async function POST(): Promise<NextResponse<ApiResponse<ClearAllResult>>>
       entityType: 'dev_action',
       entityId: 'clear_all',
       data: {
+        targetUserId,
         tables_cleared: tablesCleared,
       },
     })
 
-    return NextResponse.json({ data: { tablesCleared }, error: null }, { status: 200 })
+    return NextResponse.json(
+      { data: { targetUserId, tablesCleared }, error: null },
+      { status: 200 },
+    )
   } catch (error) {
     if (error instanceof Error && error.message === 'Unauthenticated') {
       return NextResponse.json(

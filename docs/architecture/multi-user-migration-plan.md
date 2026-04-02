@@ -364,16 +364,16 @@ Goal: add user-facing auth controls, account management, and ensure browser stat
 
 Goal: update development tools without weakening auth boundaries.
 
-- [ ] **DEV-1** Enforce `requireSuperuser()` in dev-only privileged handlers
+- [x] **DEV-1** Enforce `requireSuperuser()` in dev-only privileged handlers ✅ — implemented 2026-04-02. Added superuser enforcement and structured route logging to all privileged `/api/dev/*` handlers (`clear-all`, `seed-programme`, `seed-targets`).
   - Depends on: AUTH-6
 
-- [ ] **DEV-2** Add invite management controls to `/dev`
+- [x] **DEV-2** Add invite management controls to `/dev` ✅ — implemented 2026-04-02. Added `InviteManagementControls` on `/dev` using React Hook Form + Zod, wired to `POST /api/invites` with success and error handling.
   - Depends on: API-0, CLIENT-1
 
-- [ ] **DEV-3** Enforce reset-before-reseed behaviour in seed tooling
+- [x] **DEV-3** Enforce reset-before-reseed behaviour in seed tooling ✅ — implemented 2026-04-02. `POST /api/dev/seed-programme` now returns `409` when seed data already exists for the target user; reseed requires an explicit reset via user-targeted clear operation.
   - Depends on: DEV-1, REPO-1, REPO-4
 
-- [ ] **DEV-4** Add target-user selection for seeded demo data
+- [x] **DEV-4** Add target-user selection for seeded demo data ✅ — implemented 2026-04-02. Added `GET /api/dev/seed-targets` (superuser-only), `/dev` target-user selector UI, and target-user wiring for seed/reset triggers.
   - Depends on: DEV-3, REPO-0
 
 ### Phase 9: MVP Security Baseline

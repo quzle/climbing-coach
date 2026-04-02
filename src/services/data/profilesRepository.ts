@@ -58,6 +58,30 @@ export async function getProfileByEmail(email: string): Promise<ApiResponse<Prof
 }
 
 /**
+ * @description Lists all user profiles for superuser-targeted dev tooling.
+ * @returns All profiles sorted by created_at descending.
+ */
+export async function listProfiles(): Promise<ApiResponse<Profile[]>> {
+  try {
+    const supabase = await createClient()
+    const { data, error } = await supabase
+      .from('profiles')
+      .select('*')
+      .order('created_at', { ascending: false })
+
+    if (error) {
+      console.error('[profilesRepository.listProfiles]', error)
+      return { data: null, error: 'Failed to list profiles' }
+    }
+
+    return { data: data ?? [], error: null }
+  } catch (err) {
+    console.error('[profilesRepository.listProfiles] unexpected error', err)
+    return { data: null, error: 'An unexpected error occurred' }
+  }
+}
+
+/**
  * @description Creates or updates a user profile. Used during auth callbacks to
  * ensure the profiles row is kept in sync with the auth.users record.
  * @param profile The profile payload to upsert (id is required)

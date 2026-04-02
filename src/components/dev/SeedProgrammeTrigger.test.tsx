@@ -24,13 +24,19 @@ describe('SeedProgrammeTrigger', () => {
     })
 
     const user = userEvent.setup()
-    render(<SeedProgrammeTrigger />)
+    render(<SeedProgrammeTrigger targetUserId="11111111-1111-4111-8111-111111111111" />)
 
     await user.click(screen.getByRole('button', { name: 'Seed Summer Multipitch Programme' }))
 
     await waitFor(() => {
       expect(global.fetch).toHaveBeenCalledWith('/api/dev/seed-programme', {
         method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          targetUserId: '11111111-1111-4111-8111-111111111111',
+        }),
       })
     })
 
@@ -59,7 +65,7 @@ describe('SeedProgrammeTrigger', () => {
     })
 
     const user = userEvent.setup()
-    render(<SeedProgrammeTrigger />)
+    render(<SeedProgrammeTrigger targetUserId="11111111-1111-4111-8111-111111111111" />)
 
     await user.click(screen.getByRole('button', { name: 'Seed Summer Multipitch Programme' }))
 
@@ -78,12 +84,21 @@ describe('SeedProgrammeTrigger', () => {
     })
 
     const user = userEvent.setup()
-    render(<SeedProgrammeTrigger />)
+    render(<SeedProgrammeTrigger targetUserId="11111111-1111-4111-8111-111111111111" />)
 
     await user.click(screen.getByRole('button', { name: 'Seed Summer Multipitch Programme' }))
 
     expect(
       await screen.findByText('Failed to seed programme data.'),
     ).toBeInTheDocument()
+  })
+
+  it('disables seeding when no target user is selected', () => {
+    render(<SeedProgrammeTrigger targetUserId={null} />)
+
+    expect(screen.getByText('Select a target user before seeding.')).toBeInTheDocument()
+    expect(
+      screen.getByRole('button', { name: 'Seed Summer Multipitch Programme' }),
+    ).toBeDisabled()
   })
 })

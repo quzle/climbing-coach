@@ -878,13 +878,22 @@ All `/api/dev/*` routes are disabled in production (`404`) and privileged handle
 
 ### `POST /api/dev/clear-all`
 
-Deletes all application rows in FK-safe order for local/dev cleanup. Requires authenticated `superuser` role.
+Deletes all rows for a target user in FK-safe order for dev reset-before-reseed workflows. Requires authenticated `superuser` role.
+
+**Request body**
+
+```ts
+{
+  targetUserId?: string // UUID; defaults to authenticated superuser if omitted
+}
+```
 
 **Response** `200`
 
 ```ts
 {
   data: {
+    targetUserId: string
     tablesCleared: Record<string, number> // deleted-row count by table
   },
   error: null
@@ -903,10 +912,63 @@ Deletes all application rows in FK-safe order for local/dev cleanup. Requires au
 
 ### `POST /api/dev/seed-programme`
 
-Seeds a deterministic Phase 2 starter programme with mesocycles, weekly templates, and planned sessions. **Disabled in production** — returns `404` when `NODE_ENV=production`.
+Seeds a deterministic Phase 2 starter programme with mesocycles, weekly templates, and planned sessions for a target user. **Disabled in production** — returns `404` when `NODE_ENV=production`.
+
+Reset-before-reseed is enforced: if seeded data already exists for the target user, this route returns `409` and does not overwrite existing rows.
+
+**Request body**
+
+```ts
+{
+  targetUserId?: string // UUID; defaults to authenticated superuser if omitted
+}
+```
 
 **Response** `200`
 
 ```ts
-{ data: SeedProgrammeResult } // summary of what was created
+{
+  data: SeedProgrammeResult,
+  error: null
+}
 ```
+
+**Status codes**
+
+| Code | Meaning |
+|---|---|
+| `200` | Programme seeded successfully |
+| `400` | Invalid request payload |
+| `401` | Not authenticated |
+| `403` | Authenticated but not a superuser |
+| `404` | Route disabled in production |
+| `409` | Reset required before reseeding the target user |
+| `500` | Failed to seed programme data |
+
+### `GET /api/dev/seed-targets`
+
+Lists available target users for dev seed/reset operations. Requires authenticated `superuser` role.
+
+**Response** `200`
+
+```ts
+{
+  data: Array<{
+    id: string
+    email: string
+    display_name: string | null
+    role: 'user' | 'superuser'
+    invite_status: 'invited' | 'active'
+  }>,
+  error: null
+}
+```
+
+**Status codes**
+
+| Code | Meaning |
+|---|---|
+| `200` | Target users returned successfully |
+| `401` | Not authenticated |
+| `403` | Authenticated but not a superuser |
+| `500` | Failed to load target users |

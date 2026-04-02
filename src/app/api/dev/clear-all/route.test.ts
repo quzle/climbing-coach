@@ -1,6 +1,7 @@
 /**
  * @jest-environment node
  */
+import { NextRequest } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
 import { logError, logInfo } from '@/lib/logger'
 import { requireSuperuser } from '@/lib/supabase/get-current-user'
@@ -28,8 +29,8 @@ function makeMockSupabase(
   deleteResult: { data: { id: string }[] | null; error: null | { message: string } },
 ) {
   const mockSelect = jest.fn().mockResolvedValue(deleteResult)
-  const mockNeq = jest.fn().mockReturnValue({ select: mockSelect })
-  const mockDelete = jest.fn().mockReturnValue({ neq: mockNeq })
+  const mockEq = jest.fn().mockReturnValue({ select: mockSelect })
+  const mockDelete = jest.fn().mockReturnValue({ eq: mockEq })
   const mockFrom = jest.fn().mockReturnValue({ delete: mockDelete })
   return { from: mockFrom }
 }
@@ -47,11 +48,18 @@ describe('POST /api/dev/clear-all', () => {
     })
     mockCreateClient.mockResolvedValue(mockSupabase)
 
-    const response = await POST()
+    const request = new NextRequest('http://localhost:3000/api/dev/clear-all', {
+      method: 'POST',
+      body: JSON.stringify({}),
+      headers: { 'Content-Type': 'application/json' },
+    })
+
+    const response = await POST(request)
     const body = await response.json()
 
     expect(response.status).toBe(200)
     expect(body.error).toBeNull()
+    expect(body.data.targetUserId).toBe('super-123')
     expect(body.data.tablesCleared).toMatchObject({
       session_logs: 2,
       planned_sessions: 2,
@@ -81,6 +89,7 @@ describe('POST /api/dev/clear-all', () => {
           chat_messages: 2,
           injury_areas: 2,
         }),
+        targetUserId: 'super-123',
       },
     })
   })
@@ -88,8 +97,13 @@ describe('POST /api/dev/clear-all', () => {
   it('clears tables in FK-safe order', async () => {
     const mockSupabase = makeMockSupabase({ data: [], error: null })
     mockCreateClient.mockResolvedValue(mockSupabase)
+    const request = new NextRequest('http://localhost:3000/api/dev/clear-all', {
+      method: 'POST',
+      body: JSON.stringify({}),
+      headers: { 'Content-Type': 'application/json' },
+    })
 
-    await POST()
+    await POST(request)
 
     const calledTables = (mockSupabase.from as jest.Mock).mock.calls.map(
       ([table]: [string]) => table,
@@ -106,16 +120,40 @@ describe('POST /api/dev/clear-all', () => {
     ])
   })
 
+  it('uses target user ID from request payload for deletions', async () => {
+    const mockEq = jest.fn().mockReturnValue({
+      select: jest.fn().mockResolvedValue({ data: [], error: null }),
+    })
+    const mockDelete = jest.fn().mockReturnValue({ eq: mockEq })
+    const mockFrom = jest.fn().mockReturnValue({ delete: mockDelete })
+    mockCreateClient.mockResolvedValue({ from: mockFrom })
+
+    const request = new NextRequest('http://localhost:3000/api/dev/clear-all', {
+      method: 'POST',
+      body: JSON.stringify({ targetUserId: '11111111-1111-4111-8111-111111111111' }),
+      headers: { 'Content-Type': 'application/json' },
+    })
+
+    await POST(request)
+
+    expect(mockEq).toHaveBeenCalledWith('user_id', '11111111-1111-4111-8111-111111111111')
+  })
+
   it('returns 500 when a table delete fails', async () => {
     const mockSelect = jest
       .fn()
       .mockResolvedValue({ data: null, error: { message: 'db error' } })
-    const mockNeq = jest.fn().mockReturnValue({ select: mockSelect })
-    const mockDelete = jest.fn().mockReturnValue({ neq: mockNeq })
+    const mockEq = jest.fn().mockReturnValue({ select: mockSelect })
+    const mockDelete = jest.fn().mockReturnValue({ eq: mockEq })
     const mockFrom = jest.fn().mockReturnValue({ delete: mockDelete })
     mockCreateClient.mockResolvedValue({ from: mockFrom })
+    const request = new NextRequest('http://localhost:3000/api/dev/clear-all', {
+      method: 'POST',
+      body: JSON.stringify({ targetUserId: '11111111-1111-4111-8111-111111111111' }),
+      headers: { 'Content-Type': 'application/json' },
+    })
 
-    const response = await POST()
+    const response = await POST(request)
     const body = await response.json()
 
     expect(response.status).toBe(500)
@@ -131,6 +169,7 @@ describe('POST /api/dev/clear-all', () => {
       entityId: 'clear_all',
       data: {
         table: 'session_logs',
+        targetUserId: '11111111-1111-4111-8111-111111111111',
       },
       error: { message: 'db error' },
     })
@@ -138,8 +177,11 @@ describe('POST /api/dev/clear-all', () => {
 
   it('returns 401 when requester is unauthenticated', async () => {
     mockRequireSuperuser.mockRejectedValue(new Error('Unauthenticated'))
+    const request = new NextRequest('http://localhost:3000/api/dev/clear-all', {
+      method: 'POST',
+    })
 
-    const response = await POST()
+    const response = await POST(request)
     const body = await response.json()
 
     expect(response.status).toBe(401)
@@ -150,13 +192,30 @@ describe('POST /api/dev/clear-all', () => {
 
   it('returns 403 when requester is not a superuser', async () => {
     mockRequireSuperuser.mockRejectedValue(new Error('Forbidden'))
+    const request = new NextRequest('http://localhost:3000/api/dev/clear-all', {
+      method: 'POST',
+    })
 
-    const response = await POST()
+    const response = await POST(request)
     const body = await response.json()
 
     expect(response.status).toBe(403)
     expect(body.data).toBeNull()
     expect(body.error).toBe('Forbidden.')
     expect(mockCreateClient).not.toHaveBeenCalled()
+  })
+
+  it('returns 400 for invalid target user payload', async () => {
+    const request = new NextRequest('http://localhost:3000/api/dev/clear-all', {
+      method: 'POST',
+      body: JSON.stringify({ targetUserId: 'not-a-uuid' }),
+      headers: { 'Content-Type': 'application/json' },
+    })
+
+    const response = await POST(request)
+    const body = await response.json()
+
+    expect(response.status).toBe(400)
+    expect(body).toEqual({ data: null, error: 'Invalid request.' })
   })
 })
