@@ -140,7 +140,7 @@ Each layer has a single responsibility. Violating these boundaries is the most c
 | `NEXT_PUBLIC_SUPABASE_URL` | Intentionally public | Supabase project URL — not sensitive |
 | `NEXT_PUBLIC_SUPABASE_ANON_KEY` | Intentionally public | Anon key — restricted by RLS |
 
-**RLS policy:** Row Level Security is enabled on all Supabase tables. The anon key (used in the browser) is blocked from accessing data unless a specific RLS policy permits it. This is a safety net — the primary access control is using the server client for all data operations.
+**RLS policy:** Row Level Security is enabled on all user-owned domain tables and on `profiles`; `chat_threads` RLS is still pending as SEC-3 in the migration plan. The anon key (used in the browser) is blocked from accessing data unless a specific RLS policy permits it. This is a safety net — the primary access control is using the server client for all data operations.
 
 No secret must ever appear in a `NEXT_PUBLIC_` prefixed environment variable. The `NEXT_PUBLIC_` prefix causes Next.js to bundle the value into the client-side JavaScript bundle.
 

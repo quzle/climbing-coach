@@ -389,7 +389,7 @@ Goal: add database-level enforcement after the multi-user happy path is working.
 - [x] **SEC-1** Add RLS to all user-owned tables ✅ _2026-04-02_
   - Depends on: Phases 5 and 6 completed and verified
 
-- [ ] **SEC-2** Add RLS to `profiles`
+- [x] **SEC-2** Add RLS to `profiles` ✅ _2026-04-02_
   - Depends on: SEC-1, REPO-0
 
 - [ ] **SEC-3** Add RLS to `chat_threads`
@@ -410,6 +410,18 @@ For each user-owned domain table (`programmes`, `mesocycles`, `planned_sessions`
 - enables row level security
 - creates one `FOR ALL` policy for role `authenticated`
 - uses `auth.uid() = user_id` in both `USING` and `WITH CHECK`
+
+
+#### Phase 9 Implementation Notes (SEC-2 completed 2026-04-02)
+
+Added migration `supabase/migrations/20260402000001_add_rls_to_profiles.sql`.
+
+For `profiles`, the migration:
+
+- enables row level security
+- creates a `FOR SELECT` policy for role `authenticated` using `auth.uid() = id`
+- creates a `FOR UPDATE` policy for role `authenticated` using `auth.uid() = id` in both `USING` and `WITH CHECK`
+- intentionally does not create `INSERT` or `DELETE` policies for role `authenticated`
 
 ### Phase 10: Documentation
 

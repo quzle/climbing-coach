@@ -26,6 +26,12 @@ Created by migration `20260330000001_create_profiles_table.sql`.
 
 **Business rules:** A profile row is created when a superuser sends an invite (`invite_status = 'invited'`). On the user's first successful sign-in the application transitions `invite_status` to `'active'`. `role` is managed by superuser tooling only.
 
+**RLS:** Enabled by migration `20260402000001_add_rls_to_profiles.sql`. Authenticated users can:
+- `SELECT` only their own profile (`auth.uid() = id`)
+- `UPDATE` only their own profile (`USING auth.uid() = id` and `WITH CHECK auth.uid() = id`)
+
+No `INSERT` or `DELETE` policy is granted to `authenticated`.
+
 ---
 
 ## `programmes`
