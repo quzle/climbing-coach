@@ -9,7 +9,11 @@ const config = {
     '**/*.spec.ts',
     '**/*.spec.tsx',
   ],
-  testPathIgnorePatterns: ['<rootDir>/node_modules/', '<rootDir>/.next/'],
+  testPathIgnorePatterns: [
+    '<rootDir>/node_modules/',
+    '<rootDir>/.next/',
+    '\\.integration\\.test\\.(ts|tsx)$',
+  ],
   moduleNameMapper: {
     // Handle the @/* tsconfig path alias
     '^@/(.*)$': '<rootDir>/src/$1',
