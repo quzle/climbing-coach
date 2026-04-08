@@ -481,7 +481,7 @@ Goal: keep repository documentation consistent with the architecture changes.
 - [x] **DOCS-3** Update `docs/architecture/overview.md` ✅ — implemented 2026-04-02. Updated architecture overview to reflect final multi-user model, user-owned table scoping, profile role/invite lifecycle, thread-aware chat persistence, and current auth-entry route behavior.
   - Depends on: implementation complete
 
-- [ ] **DOCS-4** Create ADR 005 for this migration and access model
+- [x] **DOCS-4** Finalize ADR 005 with implementation outcomes ✅ — implemented 2026-04-02. Updated ADR status to implemented baseline, added concrete implementation outcomes, operational dual-project model, and documented transitional follow-up items.
   - Depends on: none for drafting
 
 ## Staging Deployment and Regression Test Points
