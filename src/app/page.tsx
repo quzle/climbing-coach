@@ -23,6 +23,10 @@ type SessionsData = {
   sessions: SessionLog[]
 }
 
+type ProgrammesData = {
+  programmes: { id: string }[]
+}
+
 // =============================================================================
 // CONSTANTS
 // =============================================================================
@@ -50,16 +54,18 @@ export default function Home(): React.JSX.Element {
   const [readiness, setReadiness] = useState<ReadinessData | null>(null)
   const [recentSession, setRecentSession] = useState<SessionLog | null>(null)
   const [todaysPlan, setTodaysPlan] = useState<PlannedSession | null>(null)
+  const [hasAnyProgrammes, setHasAnyProgrammes] = useState<boolean | null>(null)
   const [isLoading, setIsLoading] = useState(true)
   const [isResetting, setIsResetting] = useState(false)
 
   async function loadAll(): Promise<void> {
-    const [readinessRes, sessionsRes, plannedRes] = await Promise.allSettled([
+    const [readinessRes, sessionsRes, plannedRes, programmesRes] = await Promise.allSettled([
       fetch('/api/readiness').then((r) => r.json() as Promise<ApiResponse<ReadinessData>>),
       fetch('/api/sessions?days=7').then((r) => r.json() as Promise<ApiResponse<SessionsData>>),
       fetch('/api/planned-sessions?upcoming_days=1').then(
         (r) => r.json() as Promise<ApiResponse<{ plannedSessions: PlannedSession[] }>>,
       ),
+      fetch('/api/programmes').then((r) => r.json() as Promise<ApiResponse<ProgrammesData>>),
     ])
 
     if (readinessRes.status === 'fulfilled' && readinessRes.value.data) {
@@ -72,6 +78,10 @@ export default function Home(): React.JSX.Element {
     if (plannedRes.status === 'fulfilled' && plannedRes.value.data) {
       const plans = plannedRes.value.data.plannedSessions
       setTodaysPlan(plans.length > 0 ? (plans[0] ?? null) : null)
+    }
+    if (programmesRes.status === 'fulfilled' && programmesRes.value.data) {
+      const programmes = programmesRes.value.data.programmes
+      setHasAnyProgrammes(programmes.length > 0)
     }
 
     setIsLoading(false)
@@ -99,6 +109,24 @@ export default function Home(): React.JSX.Element {
           <h1 className="text-2xl font-bold text-slate-900">Climbing Coach</h1>
           <p className="text-sm text-slate-500">AI-powered training assistant</p>
         </div>
+
+        {/* Programme wizard CTA for users with no programmes */}
+        {!isLoading && hasAnyProgrammes === false && (
+          <Card>
+            <CardHeader className="pb-2">
+              <CardTitle className="text-base">Start Your Programme</CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-3">
+              <p className="text-sm text-slate-600">
+                Build your first plan with the AI wizard. It creates a periodised programme from
+                your goals and current level in about 2 minutes.
+              </p>
+              <Button asChild className="min-h-[44px] w-full">
+                <Link href="/programme/new">Create with AI wizard →</Link>
+              </Button>
+            </CardContent>
+          </Card>
+        )}
 
         {/* Readiness card */}
         <Card>

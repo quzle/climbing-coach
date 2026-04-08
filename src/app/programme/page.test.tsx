@@ -191,7 +191,7 @@ describe('ProgrammePage', () => {
     mockFetchOk({ ...mockSnapshot, currentProgramme: null })
     render(<ProgrammePage />)
     await waitFor(() => {
-      expect(screen.getByText('Programme Builder')).toBeInTheDocument()
+      expect(screen.getByText('Start Your Programme')).toBeInTheDocument()
     })
   })
 
@@ -199,17 +199,20 @@ describe('ProgrammePage', () => {
     mockFetchOk({ ...mockSnapshot, currentProgramme: null })
     render(<ProgrammePage />)
     await waitFor(() => {
-      expect(screen.getByText('Programme Builder')).toBeInTheDocument()
+      expect(screen.getByText('Start Your Programme')).toBeInTheDocument()
     })
     expect(screen.queryByText('16-Week Peak 2026')).not.toBeInTheDocument()
   })
 
-  it('shows builder editor instead of obsolete setup CTA in empty state', async () => {
+  it('shows AI wizard CTA in empty state', async () => {
     mockFetchOk({ ...mockSnapshot, currentProgramme: null })
     render(<ProgrammePage />)
 
-    expect(await screen.findByText('Programme Builder')).toBeInTheDocument()
-    expect(screen.getByRole('button', { name: /create programme/i })).toBeInTheDocument()
+    expect(await screen.findByText('Start Your Programme')).toBeInTheDocument()
+    expect(screen.getByRole('link', { name: /create with ai wizard/i })).toHaveAttribute(
+      'href',
+      '/programme/new',
+    )
   })
 
   it('shows error message when API returns an error', async () => {

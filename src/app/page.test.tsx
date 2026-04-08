@@ -65,15 +65,27 @@ function mockSessionsOk(sessions: unknown[] = []) {
   }
 }
 
+function mockProgrammesOk(programmes: unknown[] = []) {
+  return {
+    ok: true,
+    json: jest.fn().mockResolvedValue({
+      data: { programmes },
+      error: null,
+    }),
+  }
+}
+
 function mockFetchResponses(
   readinessResp: unknown,
   sessionsResp: unknown,
   plannedResp: unknown = mockPlannedSessionsOk(),
+  programmesResp: unknown = mockProgrammesOk([{ id: 'prog-1' }]),
 ) {
   ;(global.fetch as jest.Mock).mockImplementation((url: string) => {
     if ((url as string).includes('/api/readiness')) return Promise.resolve(readinessResp)
     if ((url as string).includes('/api/sessions')) return Promise.resolve(sessionsResp)
     if ((url as string).includes('/api/planned-sessions')) return Promise.resolve(plannedResp)
+    if ((url as string).includes('/api/programmes')) return Promise.resolve(programmesResp)
     return Promise.reject(new Error(`Unexpected fetch: ${url as string}`))
   })
 }
@@ -223,6 +235,35 @@ describe('Home dashboard', () => {
     render(<Home />)
 
     await waitFor(() => expect(screen.queryByText("Today's Session")).not.toBeInTheDocument())
+  })
+
+  it('shows programme wizard CTA when user has no programmes', async () => {
+    mockFetchResponses(
+      mockReadinessOk(),
+      mockSessionsOk(),
+      mockPlannedSessionsOk([]),
+      mockProgrammesOk([]),
+    )
+    render(<Home />)
+
+    await waitFor(() => expect(screen.getByText('Start Your Programme')).toBeInTheDocument())
+    expect(screen.getByRole('link', { name: /create with ai wizard/i })).toHaveAttribute(
+      'href',
+      '/programme/new',
+    )
+  })
+
+  it('does not show programme wizard CTA when user already has programmes', async () => {
+    mockFetchResponses(
+      mockReadinessOk(),
+      mockSessionsOk(),
+      mockPlannedSessionsOk([]),
+      mockProgrammesOk([{ id: 'prog-1' }]),
+    )
+    render(<Home />)
+
+    await waitFor(() => expect(screen.getByText('No check-in today')).toBeInTheDocument())
+    expect(screen.queryByText('Start Your Programme')).not.toBeInTheDocument()
   })
 
   it('shows warnings when checked in today and warnings are present', async () => {
