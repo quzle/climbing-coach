@@ -472,10 +472,10 @@ Migration transparency rule for future work:
 
 Goal: keep repository documentation consistent with the architecture changes.
 
-- [ ] **DOCS-1** Update `.github/copilot-instructions.md`
+- [x] **DOCS-1** Update `.github/copilot-instructions.md` ✅ — implemented 2026-04-02. Updated Copilot workspace instructions for multi-user architecture, dual-environment migration workflow, server/client Supabase usage boundaries, and protected-route auth conventions.
   - Depends on: LOG-3, implementation complete
 
-- [ ] **DOCS-2** Update `docs/api/README.md`
+- [x] **DOCS-2** Update `docs/api/README.md` ✅ — implemented 2026-04-02. Added explicit auth access model notes, documented legacy transitional auth behavior for `GET /api/chat/history` and `POST /api/planned-sessions/generate`, and updated planned session generation request/response details.
   - Depends on: API route work complete
 
 - [ ] **DOCS-3** Update `docs/architecture/overview.md`

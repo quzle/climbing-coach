@@ -41,6 +41,13 @@ API routes use the shared auth error handler in `src/lib/errors.ts` to translate
 - `ForbiddenError` returns `403`.
 - `AuthorizationCheckError` is treated as an internal authorization verification failure and falls through to the route's normal `500` response.
 
+### Auth access model
+
+- All non-auth API routes are expected to resolve auth context server-side and return `401` when unauthenticated.
+- Privileged routes under `/api/dev/*` require `superuser` and return `403` when authenticated as non-superuser.
+- Public auth entry routes live under `/auth/*` (page routes, not API routes).
+- Transitional legacy behavior currently remains on `GET /api/chat/history` and `POST /api/planned-sessions/generate`; both routes are documented below with their current auth behavior.
+
 ### Logging and observability
 
 API routes use the structured logger in `src/lib/logger.ts`.
@@ -96,13 +103,15 @@ Chat persistence is now repository-backed for both `chat_threads` and `chat_mess
 
 Fetch recent chat messages for display on page load.
 
+Current implementation note: this endpoint still reads using the legacy placeholder user scope rather than an authenticated user context.
+
 **Query parameters**
 
 | Param | Type | Default | Constraint |
 |---|---|---|---|
 | `limit` | number | `20` | 1–50 |
 
-**Response** `200`
+**Response** `200` · `500` on repository failure
 
 ```ts
 {
@@ -680,9 +689,17 @@ Create planned session records for every weekly occurrence in the active mesocyc
 
 Sessions are stored with template metadata only (`session_label`, `intensity`, `primary_focus`, `duration_mins`). No AI calls are made here — AI plan text is generated lazily on first access via `POST /api/planned-sessions/[id]/generate-plan`.
 
-**Request body:** none required.
+Current implementation note: this endpoint does not yet enforce an explicit route-level `getCurrentUser()` check.
 
-**Response** `200`
+**Request body**
+
+```ts
+{
+  week_start?: string // YYYY-MM-DD; optional
+}
+```
+
+**Response** `200` · `400` on validation error · `500` on generator/repository failure
 
 ```ts
 { data: { plannedSessions: PlannedSession[] } } // newly created rows only
