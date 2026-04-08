@@ -42,11 +42,20 @@ import type {
 function computeDaysSince(dateString: string | null): number {
   if (dateString === null) return 999
   const parts = dateString.split('-').map(Number)
-  if (parts.length !== 3 || parts.some(isNaN)) return 999
+  const [year, month, day] = parts
+  if (
+    parts.length !== 3 ||
+    year === undefined ||
+    month === undefined ||
+    day === undefined ||
+    [year, month, day].some(Number.isNaN)
+  ) {
+    return 999
+  }
   // Use Date.UTC with the LOCAL date components from both dates so that DST
   // transitions (which shift local midnight's UTC offset) cannot cause an
   // off-by-one when Math.floor rounds down 2d-23h to 2 instead of 3.
-  const thenMs = Date.UTC(parts[0], parts[1] - 1, parts[2])
+  const thenMs = Date.UTC(year, month - 1, day)
   const today = new Date()
   const nowMs = Date.UTC(today.getFullYear(), today.getMonth(), today.getDate())
   const diffMs = nowMs - thenMs
