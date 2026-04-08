@@ -6,7 +6,7 @@ This file is automatically read by GitHub Copilot. Follow these conventions prec
 
 ## Project Overview
 
-Next.js 14 App Router, TypeScript strict mode, single-user AI-powered climbing training assistant. Stack: Supabase Postgres, Google Gemini 2.5 Pro, shadcn/ui (Radix), Recharts, Zod, React Hook Form, Jest, React Testing Library.
+Next.js 14 App Router, TypeScript strict mode, multi-user AI-powered climbing training assistant. Stack: Supabase Postgres, Google Gemini 2.5 Pro, shadcn/ui (Radix), Recharts, Zod, React Hook Form, Jest, React Testing Library.
 
 See `docs/architecture/overview.md` for full architecture documentation.
 
@@ -15,6 +15,9 @@ See `docs/architecture/overview.md` for full architecture documentation.
 ## Database Rules
 
 - **All schema changes must go through a migration file** in `supabase/migrations/`. Never alter the remote database directly via the Supabase dashboard or any other means.
+- **Migrations must be applied to both Supabase projects.**
+  - Production: `qsihlcmjjwarxrnmmsse`
+  - Integration: `tmtspymjfnemygpquyhw`
 - **`src/lib/database.types.ts` must never be edited manually.** It is generated exclusively by running:
   ```
   supabase gen types typescript --project-id <project-id> 2>/dev/null > src/lib/database.types.ts
@@ -22,9 +25,10 @@ See `docs/architecture/overview.md` for full architecture documentation.
   Redirect stderr to `/dev/null` to prevent the Supabase CLI update notice from being appended to the file. Run this command immediately after every `supabase db push`.
 - The correct sequence for any schema change is:
   1. Write a new migration file in `supabase/migrations/`
-  2. Run `supabase db push` to apply it to the remote database
-  3. Regenerate `database.types.ts` via the CLI command above
-  4. Fix any downstream TypeScript errors caused by the updated types
+  2. Run `supabase db push` against production (`qsihlcmjjwarxrnmmsse`)
+  3. Run `supabase db push` against integration (`tmtspymjfnemygpquyhw`)
+  4. Regenerate `database.types.ts` from production via the CLI command above
+  5. Fix any downstream TypeScript errors caused by the updated types
 - If `database.types.ts` contains fields that application code has intentionally removed (e.g. after an ADR cutover), that means the migration to drop those columns has not been applied yet — write and push the migration rather than adjusting the types or working around them.
 
 ---
@@ -35,7 +39,22 @@ See `docs/architecture/overview.md` for full architecture documentation.
 - **All Supabase queries live in `src/services/data/` only.** Never query Supabase from a component or API route directly.
 - **All Gemini API calls live in `src/services/ai/` only.**
 - **Training logic lives in `src/services/training/` only.**
+- **User ownership is mandatory.** User-owned tables must always be queried with authenticated `user_id` scoping.
+- **Protected API routes must resolve auth context server-side.** Use `getCurrentUser()` for authenticated routes and `requireSuperuser()` for privileged `/api/dev/*` routes.
 - No layer may skip a level. Components call API routes. API routes call services. Services call repositories.
+
+## Supabase Client Rules
+
+- `src/lib/supabase/server.ts` is the default for all server-side data work (API routes, server services).
+- `src/lib/supabase/client.ts` is browser-only and must not be used for repository/service data access.
+- Never import `server.ts` from code that can run in the browser.
+- Never trust client-submitted `user_id`; derive user identity from auth helpers on the server.
+
+## Serverless Constraints
+
+- Do not rely on in-memory state across requests.
+- Always rebuild AI context from database state per request.
+- Treat Supabase as the source of truth for auth, chat history, training data, and readiness data.
 
 ---
 
@@ -135,6 +154,7 @@ See `docs/architecture/overview.md` for full architecture documentation.
 - `logWarn()` is for expected failure paths such as validation failures, denied access, or service/repository errors that are handled without throwing.
 - `logError()` is for unexpected exceptions, catch blocks, and unexpected states.
 - Route logs should stay at the route boundary. Repositories and services can log their own concerns, but routes should not duplicate lower-level logs unless they are adding route-specific context.
+- Privileged `/api/dev/*` routes must call `requireSuperuser()` and include a safe action identifier in `data`.
 
 Preferred route pattern:
 
