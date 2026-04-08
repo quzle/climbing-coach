@@ -38,7 +38,22 @@ const mockSnapshot = {
     interruption_notes: null,
     created_at: null,
   },
-  mesocycles: [],
+  mesocycles: [
+    {
+      id: 'meso-1',
+      name: 'Power & Finger Strength',
+      phase_type: 'power',
+      planned_start: '2026-03-02',
+      planned_end: '2026-04-05',
+      actual_start: null,
+      actual_end: null,
+      status: 'active',
+      focus: 'Max finger recruitment and contact strength',
+      programme_id: 'prog-1',
+      interruption_notes: null,
+      created_at: null,
+    },
+  ],
   currentWeeklyTemplate: [
     {
       id: 'wt-2',
@@ -83,9 +98,20 @@ const mockSnapshot = {
 // =============================================================================
 
 function mockFetchOk(data: unknown = mockSnapshot): void {
-  ;(global.fetch as jest.Mock).mockResolvedValue({
-    ok: true,
-    json: jest.fn().mockResolvedValue({ data, error: null }),
+  ;(global.fetch as jest.Mock).mockImplementation((url: string) => {
+    if (typeof url === 'string' && url.includes('/api/mesocycles')) {
+      return Promise.resolve({
+        ok: true,
+        json: jest.fn().mockResolvedValue({
+          data: { mesocycles: [mockSnapshot.activeMesocycle] },
+          error: null,
+        }),
+      })
+    }
+    return Promise.resolve({
+      ok: true,
+      json: jest.fn().mockResolvedValue({ data, error: null }),
+    })
   })
 }
 
@@ -128,21 +154,19 @@ describe('ProgrammePage', () => {
       expect(screen.getByText('Power & Finger Strength')).toBeInTheDocument()
     })
     expect(screen.getByText('Max finger recruitment and contact strength')).toBeInTheDocument()
-    expect(screen.getByText('power')).toBeInTheDocument()
+    expect(screen.getByText('Power')).toBeInTheDocument()
   })
 
-  it('renders weekly template rows sorted by day_of_week', async () => {
+  it('renders active mesocycle card details', async () => {
     mockFetchOk()
     render(<ProgrammePage />)
     await waitFor(() => {
-      expect(screen.getByText('Fingerboard — Limit Hangs')).toBeInTheDocument()
+      expect(screen.getByText('Current block')).toBeInTheDocument()
     })
-    expect(screen.getByText('Bouldering — Hard Problems')).toBeInTheDocument()
-    // Mon (day 1) should appear before Wed (day 3) in the DOM
-    const allText = screen.getAllByRole('listitem')
-    const monIdx = allText.findIndex((el) => el.textContent?.includes('Mon'))
-    const wedIdx = allText.findIndex((el) => el.textContent?.includes('Wed'))
-    expect(monIdx).toBeLessThan(wedIdx)
+    expect(screen.getByText('Mesocycles')).toBeInTheDocument()
+    // Mesocycle dates are rendered
+    expect(screen.getByText(/2 Mar/)).toBeInTheDocument()
+    expect(screen.getByText(/5 Apr 2026/)).toBeInTheDocument()
   })
 
   it('renders upcoming planned sessions section', async () => {
@@ -167,7 +191,7 @@ describe('ProgrammePage', () => {
     mockFetchOk({ ...mockSnapshot, currentProgramme: null })
     render(<ProgrammePage />)
     await waitFor(() => {
-      expect(screen.getByText('Start Your Programme')).toBeInTheDocument()
+      expect(screen.getByText('Programme Builder')).toBeInTheDocument()
     })
   })
 
@@ -175,7 +199,7 @@ describe('ProgrammePage', () => {
     mockFetchOk({ ...mockSnapshot, currentProgramme: null })
     render(<ProgrammePage />)
     await waitFor(() => {
-      expect(screen.getByText('Start Your Programme')).toBeInTheDocument()
+      expect(screen.getByText('Programme Builder')).toBeInTheDocument()
     })
     expect(screen.queryByText('16-Week Peak 2026')).not.toBeInTheDocument()
   })

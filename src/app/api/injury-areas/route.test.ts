@@ -1,11 +1,13 @@
 /**
  * @jest-environment node
  */
+import { UnauthenticatedError } from '@/lib/errors'
 import { NextRequest } from 'next/server'
 import {
   getActiveInjuryAreas,
   addInjuryArea,
 } from '@/services/data/injuryAreasRepository'
+import { getCurrentUser } from '@/lib/supabase/get-current-user'
 import { GET, POST } from './route'
 
 // =============================================================================
@@ -17,8 +19,19 @@ jest.mock('@/services/data/injuryAreasRepository', () => ({
   addInjuryArea: jest.fn(),
 }))
 
+jest.mock('@/lib/supabase/get-current-user', () => ({
+  getCurrentUser: jest.fn(),
+}))
+
+jest.mock('@/lib/logger', () => ({
+  logInfo: jest.fn(),
+  logWarn: jest.fn(),
+  logError: jest.fn(),
+}))
+
 const mockGetActiveInjuryAreas = getActiveInjuryAreas as jest.Mock
 const mockAddInjuryArea = addInjuryArea as jest.Mock
+const mockGetCurrentUser = getCurrentUser as jest.Mock
 
 // =============================================================================
 // FIXTURES
@@ -30,6 +43,7 @@ const mockArea = {
   is_active: true,
   added_at: '2026-03-25T10:00:00Z',
   archived_at: null,
+  user_id: 'user-1',
 }
 
 // =============================================================================
@@ -38,6 +52,7 @@ const mockArea = {
 
 beforeEach(() => {
   jest.clearAllMocks()
+  mockGetCurrentUser.mockResolvedValue({ id: 'user-1', email: 'user@example.com' })
   mockGetActiveInjuryAreas.mockResolvedValue({ data: [mockArea], error: null })
   mockAddInjuryArea.mockResolvedValue({ data: mockArea, error: null })
 })
@@ -64,6 +79,7 @@ describe('GET /api/injury-areas', () => {
     const body = await response.json()
 
     expect(response.status).toBe(200)
+    expect(mockGetActiveInjuryAreas).toHaveBeenCalledWith('user-1')
     expect(body.data).toEqual([mockArea])
     expect(body.error).toBeNull()
   })
@@ -87,6 +103,17 @@ describe('GET /api/injury-areas', () => {
     expect(response.status).toBe(500)
     expect(body.error).toContain('Failed to fetch')
   })
+
+  it('returns 401 when unauthenticated', async () => {
+    mockGetCurrentUser.mockRejectedValue(new UnauthenticatedError())
+
+    const response = await GET()
+    const body = await response.json()
+
+    expect(response.status).toBe(401)
+    expect(body).toEqual({ data: null, error: 'Unauthenticated.' })
+    expect(mockGetActiveInjuryAreas).not.toHaveBeenCalled()
+  })
 })
 
 describe('POST /api/injury-areas', () => {
@@ -102,7 +129,7 @@ describe('POST /api/injury-areas', () => {
   it('calls addInjuryArea with the validated area name', async () => {
     await POST(makePostRequest({ area: 'wrist_right' }))
 
-    expect(mockAddInjuryArea).toHaveBeenCalledWith('wrist_right')
+    expect(mockAddInjuryArea).toHaveBeenCalledWith('wrist_right', 'user-1')
   })
 
   it('returns 400 when area field is missing', async () => {
@@ -128,5 +155,16 @@ describe('POST /api/injury-areas', () => {
 
     expect(response.status).toBe(500)
     expect(body.error).toContain('Failed to add')
+  })
+
+  it('returns 401 when unauthenticated', async () => {
+    mockGetCurrentUser.mockRejectedValue(new UnauthenticatedError())
+
+    const response = await POST(makePostRequest({ area: 'shoulder_left' }))
+    const body = await response.json()
+
+    expect(response.status).toBe(401)
+    expect(body).toEqual({ data: null, error: 'Unauthenticated.' })
+    expect(mockAddInjuryArea).not.toHaveBeenCalled()
   })
 })

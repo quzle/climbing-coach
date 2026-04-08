@@ -6,6 +6,7 @@ import {
   getPlannedSessionsInRange,
 } from '@/services/data/plannedSessionRepository'
 import { getWeeklyTemplateByMesocycle } from '@/services/data/weeklyTemplateRepository'
+import { SINGLE_USER_PLACEHOLDER_ID } from '@/lib/placeholder-user-id'
 import type {
   AthleteContext,
   Mesocycle,
@@ -53,10 +54,11 @@ function makeMesocycle(overrides?: Partial<Mesocycle>): Mesocycle {
     interruption_notes: null,
     name: 'Power Block',
     phase_type: 'power',
-    planned_end: '2026-03-30',
+    planned_end: '2026-04-05',
     planned_start: '2026-03-03',
     programme_id: 'programme-1',
     status: 'active',
+    user_id: 'user-1',
     ...overrides,
   }
 }
@@ -72,6 +74,7 @@ function makeWeeklyTemplate(overrides?: Partial<WeeklyTemplate>): WeeklyTemplate
     primary_focus: 'Power',
     session_label: 'Limit Bouldering',
     session_type: 'bouldering',
+    user_id: 'user-1',
     ...overrides,
   }
 }
@@ -91,6 +94,7 @@ function makeSessionLog(overrides?: Partial<SessionLog>): SessionLog {
     quality_rating: 4,
     rpe: 7,
     session_type: 'bouldering',
+    user_id: 'user-1',
   }
 
   return {
@@ -111,6 +115,7 @@ function makePlannedSession(overrides?: Partial<PlannedSession>): PlannedSession
     session_type: 'bouldering',
     status: 'planned',
     template_id: 'template-1',
+    user_id: 'user-1',
     ...overrides,
   }
 }
@@ -169,7 +174,13 @@ describe('generatePlannedSessionsForActiveMesocycle', () => {
 
     expect(result.error).toBeNull()
     expect(result.data).toHaveLength(2)
-    expect(mockGenerateSessionPlan).toHaveBeenCalledTimes(2)
+    expect(mockGetActiveMesocycle).toHaveBeenCalledWith(SINGLE_USER_PLACEHOLDER_ID)
+    expect(mockGetPlannedSessionsInRange).toHaveBeenCalledWith(
+      '2026-03-30',
+      '2026-04-05',
+      SINGLE_USER_PLACEHOLDER_ID,
+    )
+    expect(mockGenerateSessionPlan).not.toHaveBeenCalled()
     expect(mockCreatePlannedSession).toHaveBeenCalledWith(
       expect.objectContaining({
         planned_date: '2026-03-30',

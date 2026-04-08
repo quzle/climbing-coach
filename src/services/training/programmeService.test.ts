@@ -44,7 +44,10 @@ function makeProgramme(overrides?: Partial<Programme>): Programme {
     name: 'Summer Multipitch Season',
     notes: null,
     start_date: '2026-01-05',
+    status: 'active',
     target_date: '2026-04-26',
+    athlete_profile: null,
+    user_id: 'user-1',
     ...overrides,
   }
 }
@@ -63,6 +66,7 @@ function makeMesocycle(overrides?: Partial<Mesocycle>): Mesocycle {
     planned_start: '2026-03-03',
     programme_id: 'programme-1',
     status: 'active',
+    user_id: 'user-1',
     ...overrides,
   }
 }
@@ -78,6 +82,7 @@ function makeWeeklyTemplate(overrides?: Partial<WeeklyTemplate>): WeeklyTemplate
     primary_focus: 'Power',
     session_label: 'Limit Bouldering',
     session_type: 'bouldering',
+    user_id: 'user-1',
     ...overrides,
   }
 }
@@ -93,6 +98,7 @@ function makePlannedSession(overrides?: Partial<PlannedSession>): PlannedSession
     session_type: 'bouldering',
     status: 'planned',
     template_id: 'template-1',
+    user_id: 'user-1',
     ...overrides,
   }
 }
@@ -117,9 +123,20 @@ beforeEach(() => {
 
 describe('getProgrammeBuilderSnapshot', () => {
   it('returns the aggregated planning snapshot', async () => {
-    const result = await getProgrammeBuilderSnapshot()
+    const result = await getProgrammeBuilderSnapshot('user-1')
 
     expect(result.error).toBeNull()
+    expect(mockGetActiveProgramme).toHaveBeenCalledWith('user-1')
+    expect(mockGetActiveMesocycle).toHaveBeenCalledWith('user-1')
+    expect(mockGetUpcomingPlannedSessions).toHaveBeenCalledWith(7, 'user-1')
+    expect(mockGetMesocyclesByProgramme).toHaveBeenCalledWith(
+      'programme-1',
+      'user-1',
+    )
+    expect(mockGetWeeklyTemplateByMesocycle).toHaveBeenCalledWith(
+      'mesocycle-1',
+      'user-1',
+    )
     expect(result.data?.currentProgramme?.name).toBe('Summer Multipitch Season')
     expect(result.data?.mesocycles).toHaveLength(1)
     expect(result.data?.currentWeeklyTemplate).toHaveLength(1)
@@ -130,7 +147,7 @@ describe('getProgrammeBuilderSnapshot', () => {
     mockGetActiveProgramme.mockResolvedValue({ data: null, error: null })
     mockGetActiveMesocycle.mockResolvedValue({ data: null, error: null })
 
-    const result = await getProgrammeBuilderSnapshot()
+    const result = await getProgrammeBuilderSnapshot('user-1')
 
     expect(result.error).toBeNull()
     expect(result.data?.currentProgramme).toBeNull()

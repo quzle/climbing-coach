@@ -21,6 +21,8 @@ export type Database = {
           created_at: string | null
           id: string
           role: string
+          thread_id: string | null
+          user_id: string
         }
         Insert: {
           content: string
@@ -28,6 +30,8 @@ export type Database = {
           created_at?: string | null
           id?: string
           role: string
+          thread_id?: string | null
+          user_id: string
         }
         Update: {
           content?: string
@@ -35,6 +39,67 @@ export type Database = {
           created_at?: string | null
           id?: string
           role?: string
+          thread_id?: string | null
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "chat_messages_thread_id_fkey"
+            columns: ["thread_id"]
+            isOneToOne: false
+            referencedRelation: "chat_threads"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      chat_threads: {
+        Row: {
+          created_at: string | null
+          id: string
+          title: string | null
+          updated_at: string | null
+          user_id: string
+        }
+        Insert: {
+          created_at?: string | null
+          id?: string
+          title?: string | null
+          updated_at?: string | null
+          user_id: string
+        }
+        Update: {
+          created_at?: string | null
+          id?: string
+          title?: string | null
+          updated_at?: string | null
+          user_id?: string
+        }
+        Relationships: []
+      }
+      injury_areas: {
+        Row: {
+          added_at: string
+          archived_at: string | null
+          area: string
+          id: string
+          is_active: boolean
+          user_id: string
+        }
+        Insert: {
+          added_at?: string
+          archived_at?: string | null
+          area: string
+          id?: string
+          is_active?: boolean
+          user_id: string
+        }
+        Update: {
+          added_at?: string
+          archived_at?: string | null
+          area?: string
+          id?: string
+          is_active?: boolean
+          user_id?: string
         }
         Relationships: []
       }
@@ -52,6 +117,7 @@ export type Database = {
           planned_start: string
           programme_id: string | null
           status: string
+          user_id: string
         }
         Insert: {
           actual_end?: string | null
@@ -66,6 +132,7 @@ export type Database = {
           planned_start: string
           programme_id?: string | null
           status?: string
+          user_id: string
         }
         Update: {
           actual_end?: string | null
@@ -80,6 +147,7 @@ export type Database = {
           planned_start?: string
           programme_id?: string | null
           status?: string
+          user_id?: string
         }
         Relationships: [
           {
@@ -102,6 +170,7 @@ export type Database = {
           session_type: string
           status: string
           template_id: string | null
+          user_id: string
         }
         Insert: {
           created_at?: string | null
@@ -113,6 +182,7 @@ export type Database = {
           session_type: string
           status?: string
           template_id?: string | null
+          user_id: string
         }
         Update: {
           created_at?: string | null
@@ -124,6 +194,7 @@ export type Database = {
           session_type?: string
           status?: string
           template_id?: string | null
+          user_id?: string
         }
         Relationships: [
           {
@@ -142,6 +213,36 @@ export type Database = {
           },
         ]
       }
+      profiles: {
+        Row: {
+          created_at: string
+          display_name: string | null
+          email: string
+          id: string
+          invite_status: string
+          role: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          display_name?: string | null
+          email: string
+          id: string
+          invite_status?: string
+          role?: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          display_name?: string | null
+          email?: string
+          id?: string
+          invite_status?: string
+          role?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       programmes: {
         Row: {
           athlete_profile: Json | null
@@ -151,7 +252,9 @@ export type Database = {
           name: string
           notes: string | null
           start_date: string
+          status: string
           target_date: string
+          user_id: string
         }
         Insert: {
           athlete_profile?: Json | null
@@ -161,7 +264,9 @@ export type Database = {
           name: string
           notes?: string | null
           start_date: string
+          status?: string
           target_date: string
+          user_id: string
         }
         Update: {
           athlete_profile?: Json | null
@@ -171,31 +276,9 @@ export type Database = {
           name?: string
           notes?: string | null
           start_date?: string
+          status?: string
           target_date?: string
-        }
-        Relationships: []
-      }
-      injury_areas: {
-        Row: {
-          id: string
-          area: string
-          is_active: boolean
-          added_at: string
-          archived_at: string | null
-        }
-        Insert: {
-          id?: string
-          area: string
-          is_active?: boolean
-          added_at?: string
-          archived_at?: string | null
-        }
-        Update: {
-          id?: string
-          area?: string
-          is_active?: boolean
-          added_at?: string
-          archived_at?: string | null
+          user_id?: string
         }
         Relationships: []
       }
@@ -212,6 +295,7 @@ export type Database = {
           notes: string | null
           readiness_score: number | null
           sleep_quality: number
+          user_id: string
         }
         Insert: {
           created_at?: string | null
@@ -225,6 +309,7 @@ export type Database = {
           notes?: string | null
           readiness_score?: number | null
           sleep_quality: number
+          user_id: string
         }
         Update: {
           created_at?: string | null
@@ -238,6 +323,7 @@ export type Database = {
           notes?: string | null
           readiness_score?: number | null
           sleep_quality?: number
+          user_id?: string
         }
         Relationships: []
       }
@@ -248,6 +334,7 @@ export type Database = {
           deviation_from_plan: string | null
           duration_mins: number | null
           id: string
+          injury_flags: Json | null
           location: string | null
           log_data: Json | null
           notes: string | null
@@ -255,7 +342,7 @@ export type Database = {
           quality_rating: number | null
           rpe: number | null
           session_type: string
-          injury_flags: Json | null
+          user_id: string
         }
         Insert: {
           created_at?: string | null
@@ -271,6 +358,7 @@ export type Database = {
           quality_rating?: number | null
           rpe?: number | null
           session_type: string
+          user_id: string
         }
         Update: {
           created_at?: string | null
@@ -286,6 +374,7 @@ export type Database = {
           quality_rating?: number | null
           rpe?: number | null
           session_type?: string
+          user_id?: string
         }
         Relationships: [
           {
@@ -308,6 +397,7 @@ export type Database = {
           primary_focus: string | null
           session_label: string
           session_type: string
+          user_id: string
         }
         Insert: {
           day_of_week: number
@@ -319,6 +409,7 @@ export type Database = {
           primary_focus?: string | null
           session_label: string
           session_type: string
+          user_id: string
         }
         Update: {
           day_of_week?: number
@@ -330,6 +421,7 @@ export type Database = {
           primary_focus?: string | null
           session_label?: string
           session_type?: string
+          user_id?: string
         }
         Relationships: [
           {

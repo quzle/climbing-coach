@@ -8,7 +8,8 @@ import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Skeleton } from '@/components/ui/skeleton'
 import { ProseMarkdown } from '@/components/ui/prose-markdown'
-import type { ApiResponse, Mesocycle, PlannedSession, ProgrammeBuilderSnapshot } from '@/types'
+import { ProgrammeBuilderEditor } from '@/components/programme/programme-builder-editor'
+import type { ApiResponse, PlannedSession, ProgrammeBuilderSnapshot } from '@/types'
 
 // =============================================================================
 // CONSTANTS
@@ -30,6 +31,16 @@ const PHASE_PILL_CLASSES: Record<string, string> = {
   climbing_specific: 'bg-emerald-100 text-emerald-700',
   performance: 'bg-amber-100 text-amber-700',
   deload: 'bg-slate-100 text-slate-500',
+}
+
+const DAY_NAMES: Record<number, string> = {
+  0: 'Mon',
+  1: 'Tue',
+  2: 'Wed',
+  3: 'Thu',
+  4: 'Fri',
+  5: 'Sat',
+  6: 'Sun',
 }
 
 // =============================================================================
@@ -69,7 +80,6 @@ function PhasePill({ phaseType, muted = false }: { phaseType: string; muted?: bo
  */
 export default function ProgrammePage(): React.JSX.Element {
   const [snapshot, setSnapshot] = useState<ProgrammeBuilderSnapshot | null>(null)
-  const [allMesocycles, setAllMesocycles] = useState<Mesocycle[] | null>(null)
   const [isLoading, setIsLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [expandedSessionId, setExpandedSessionId] = useState<string | null>(null)
@@ -89,17 +99,6 @@ export default function ProgrammePage(): React.JSX.Element {
       }
       setError(null)
       setSnapshot(json.data)
-
-      // Fetch all mesocycles once we have the programme ID.
-      if (json.data?.currentProgramme) {
-        const mesoRes = await fetch(
-          `/api/mesocycles?programme_id=${json.data.currentProgramme.id}`,
-        )
-        const mesoJson = (await mesoRes.json()) as ApiResponse<{ mesocycles: Mesocycle[] }>
-        if (mesoRes.ok && !mesoJson.error && mesoJson.data) {
-          setAllMesocycles(mesoJson.data.mesocycles)
-        }
-      }
     } catch {
       setError('Failed to load programme.')
     } finally {
@@ -195,27 +194,7 @@ export default function ProgrammePage(): React.JSX.Element {
         {/* No programme                                                        */}
         {/* ------------------------------------------------------------------ */}
         {!isLoading && !error && snapshot !== null && !snapshot.currentProgramme && (
-          <Card>
-            <CardHeader>
-              <CardTitle>Start Your Programme</CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-3 text-sm text-slate-600">
-              <p>
-                The AI wizard will design a full periodised training plan based on your goals,
-                current level, and availability — typically 12–24 weeks split into structured
-                mesocycle blocks.
-              </p>
-              <p>
-                You&apos;ll review and adjust the plan before anything is saved. Once confirmed,
-                you&apos;ll set up your weekly schedule for the first training block, and the AI
-                will generate session plans on demand from there.
-              </p>
-              <p className="text-xs text-slate-400">Takes about 2 minutes to complete.</p>
-              <Button asChild className="min-h-[44px] w-full">
-                <Link href="/programme/new">Create with AI wizard →</Link>
-              </Button>
-            </CardContent>
-          </Card>
+          <ProgrammeBuilderEditor snapshot={snapshot} onSaved={loadSnapshot} />
         )}
 
         {/* ------------------------------------------------------------------ */}
@@ -262,12 +241,39 @@ export default function ProgrammePage(): React.JSX.Element {
               </Card>
             )}
 
+            {/* Weekly Schedule */}
+            {snapshot.activeMesocycle && snapshot.currentWeeklyTemplate.length > 0 && (
+              <div>
+                <h2 className="mb-2 text-sm font-semibold uppercase tracking-wide text-slate-400">Weekly Schedule</h2>
+                <Card>
+                  <CardContent className="pt-4 pb-4">
+                    <ul className="divide-y divide-slate-100">
+                      {[...snapshot.currentWeeklyTemplate]
+                        .sort((a, b) => a.day_of_week - b.day_of_week)
+                        .map((row) => (
+                          <li key={row.id} className="py-2 first:pt-0 last:pb-0">
+                            <div className="flex items-center gap-3">
+                              <span className="w-12 shrink-0 text-sm text-slate-500">
+                                {DAY_NAMES[row.day_of_week]}
+                              </span>
+                              <span className="flex-1 text-sm font-medium text-slate-800">
+                                {row.session_label}
+                              </span>
+                            </div>
+                          </li>
+                        ))}
+                    </ul>
+                  </CardContent>
+                </Card>
+              </div>
+            )}
+
             {/* Mesocycles — all blocks in chronological order */}
-            {allMesocycles && allMesocycles.length > 0 && (
+            {snapshot.mesocycles.length > 0 && (
               <div>
               <h2 className="mb-2 text-sm font-semibold uppercase tracking-wide text-slate-400">Mesocycles</h2>
               <div className="space-y-2">
-                {allMesocycles.map((meso) => {
+                {snapshot.mesocycles.map((meso) => {
                   const isActive = meso.id === snapshot.activeMesocycle?.id
                   const isCompleted = meso.status === 'completed'
 

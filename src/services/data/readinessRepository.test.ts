@@ -65,6 +65,7 @@ function makeReadinessCheckin(
     readiness_score: 3.8,
     notes: null,
     created_at: '2026-03-24T08:00:00Z',
+    user_id: 'user-1',
     ...overrides,
   }
 }
@@ -83,6 +84,7 @@ function makeCheckinInput(
     life_stress: 2,
     illness_flag: false,
     notes: null,
+    user_id: 'user-1',
     ...overrides,
   }
 }
@@ -261,7 +263,7 @@ describe('getTodaysCheckin', () => {
     // maybeSingle returns null data when the row does not exist — not an error.
     mockChain.maybeSingle.mockResolvedValue({ data: null, error: null })
 
-    const result = await getTodaysCheckin()
+    const result = await getTodaysCheckin('user-1')
 
     expect(result.data).toBeNull()
     expect(result.error).toBeNull()
@@ -271,7 +273,7 @@ describe('getTodaysCheckin', () => {
     const fakeCheckin = makeReadinessCheckin({ date: '2026-03-24' })
     mockChain.maybeSingle.mockResolvedValue({ data: fakeCheckin, error: null })
 
-    const result = await getTodaysCheckin()
+    const result = await getTodaysCheckin('user-1')
 
     expect(result.data).toEqual(fakeCheckin)
     expect(result.error).toBeNull()
@@ -283,7 +285,7 @@ describe('getTodaysCheckin', () => {
       error: { message: 'DB error' },
     })
 
-    const result = await getTodaysCheckin()
+    const result = await getTodaysCheckin('user-1')
 
     expect(result.data).toBeNull()
     expect(result.error).not.toBeNull()
@@ -368,29 +370,6 @@ describe('createCheckin', () => {
       'Readiness database schema is out of date. Apply latest Supabase migrations.',
     )
   })
-
-  it('retries insert with legacy columns when old required fields are missing', async () => {
-    const createdRecord = makeReadinessCheckin()
-    mockChain.single
-      .mockResolvedValueOnce({
-        data: null,
-        error: {
-          code: '23502',
-          message: 'null value in column "shoulder_health" of relation "readiness_checkins" violates not-null constraint',
-        },
-      })
-      .mockResolvedValueOnce({ data: createdRecord, error: null })
-
-    const result = await createCheckin(makeCheckinInput())
-
-    expect(mockChain.insert).toHaveBeenCalledTimes(2)
-    const retryPayload = mockChain.insert.mock.calls[1]?.[0] as Record<string, unknown>
-    expect(retryPayload['shoulder_health']).toBeDefined()
-    expect(retryPayload['overall_fatigue']).toBeUndefined()
-    expect(retryPayload['motivation']).toBeUndefined()
-    expect(result.data).toEqual(createdRecord)
-    expect(result.error).toBeNull()
-  })
 })
 
 describe('hasCheckedInToday', () => {
@@ -411,7 +390,9 @@ describe('hasCheckedInToday', () => {
       error: null,
     })
 
-    const result = await hasCheckedInToday()
+    const result = await hasCheckedInToday('user-1')
+
+    expect(mockChain.eq).toHaveBeenCalledWith('user_id', 'user-1')
 
     expect(result.data).toBe(true)
     expect(result.error).toBeNull()
@@ -420,7 +401,7 @@ describe('hasCheckedInToday', () => {
   it('returns false when no check-in exists for today', async () => {
     mockChain.maybeSingle.mockResolvedValue({ data: null, error: null })
 
-    const result = await hasCheckedInToday()
+    const result = await hasCheckedInToday('user-1')
 
     expect(result.data).toBe(false)
     expect(result.error).toBeNull()
@@ -442,7 +423,7 @@ describe('getAverageReadiness', () => {
     // The query resolves successfully but with an empty array
     mockChain.lte.mockResolvedValue({ data: [], error: null })
 
-    const result = await getAverageReadiness(7)
+    const result = await getAverageReadiness(7, 'user-1')
 
     expect(result.data).toBe(0)
     expect(result.error).toBeNull()
@@ -454,7 +435,7 @@ describe('getAverageReadiness', () => {
       error: null,
     })
 
-    const result = await getAverageReadiness(7)
+    const result = await getAverageReadiness(7, 'user-1')
 
     expect(result.data).toBe(3.5)
     expect(result.error).toBeNull()
@@ -471,7 +452,7 @@ describe('getAverageReadiness', () => {
       error: null,
     })
 
-    const result = await getAverageReadiness(7)
+    const result = await getAverageReadiness(7, 'user-1')
 
     expect(result.data).toBe(3.0)
     expect(result.error).toBeNull()
@@ -492,7 +473,7 @@ describe('getReadinessTrend', () => {
   it('returns an empty array when no data exists', async () => {
     mockChain.order.mockResolvedValue({ data: [], error: null })
 
-    const result = await getReadinessTrend(7)
+    const result = await getReadinessTrend(7, 'user-1')
 
     expect(result.data).toEqual([])
     expect(result.error).toBeNull()
@@ -508,7 +489,7 @@ describe('getReadinessTrend', () => {
       error: null,
     })
 
-    const result = await getReadinessTrend(3)
+    const result = await getReadinessTrend(3, 'user-1')
 
     expect(result.data).toEqual([
       { date: '2026-03-22', score: 3.5 },
@@ -528,7 +509,7 @@ describe('getReadinessTrend', () => {
       error: null,
     })
 
-    const result = await getReadinessTrend(7)
+    const result = await getReadinessTrend(7, 'user-1')
 
     // Verify ascending order in the returned data
     const dates = result.data?.map((d) => d.date) ?? []
@@ -548,7 +529,7 @@ describe('getReadinessTrend', () => {
       error: null,
     })
 
-    const result = await getReadinessTrend(3)
+    const result = await getReadinessTrend(3, 'user-1')
 
     expect(result.data).toHaveLength(2)
     expect(result.data?.every((d) => d.score !== null)).toBe(true)

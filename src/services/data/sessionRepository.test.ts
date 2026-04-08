@@ -41,6 +41,8 @@ const mockChain = {
   maybeSingle: jest.fn().mockResolvedValue({ data: null, error: null }),
 }
 
+const TEST_USER_ID = 'user-1'
+
 beforeEach(() => {
   jest.clearAllMocks()
   // Re-apply all chain implementations so previous tests' overrides don't bleed
@@ -84,6 +86,7 @@ function makeSessionLog(overrides?: Partial<SessionLog>): SessionLog {
     log_data: null,
     deviation_from_plan: null,
     created_at: '2025-03-24T18:00:00Z',
+    user_id: 'user-1',
     ...overrides,
   }
 }
@@ -139,8 +142,9 @@ describe('getRecentSessions', () => {
     // order is the terminal for getRecentSessions
     mockChain.order.mockResolvedValue({ data: [session1, session2], error: null })
 
-    const result = await getRecentSessions(7)
+    const result = await getRecentSessions(7, TEST_USER_ID)
 
+    expect(mockChain.eq).toHaveBeenCalledWith('user_id', TEST_USER_ID)
     expect(mockChain.order).toHaveBeenCalledWith('date', { ascending: false })
     expect(result.data).toEqual([session1, session2])
     expect(result.error).toBeNull()
@@ -149,7 +153,7 @@ describe('getRecentSessions', () => {
   it('returns empty array when no sessions exist', async () => {
     mockChain.order.mockResolvedValue({ data: [], error: null })
 
-    const result = await getRecentSessions(7)
+    const result = await getRecentSessions(7, TEST_USER_ID)
 
     expect(result.data).toEqual([])
     expect(result.error).toBeNull()
@@ -158,7 +162,7 @@ describe('getRecentSessions', () => {
   it('returns error string when query fails', async () => {
     mockChain.order.mockResolvedValue({ data: null, error: { message: 'DB error' } })
 
-    const result = await getRecentSessions(7)
+    const result = await getRecentSessions(7, TEST_USER_ID)
 
     expect(result.data).toBeNull()
     expect(result.error).not.toBeNull()
@@ -171,8 +175,9 @@ describe('getSessionById', () => {
     const fakeSession = makeSessionLog()
     mockChain.single.mockResolvedValue({ data: fakeSession, error: null })
 
-    const result = await getSessionById('test-session-uuid')
+    const result = await getSessionById('test-session-uuid', TEST_USER_ID)
 
+    expect(mockChain.eq).toHaveBeenCalledWith('user_id', TEST_USER_ID)
     expect(result.data).toEqual(fakeSession)
     expect(result.error).toBeNull()
   })
@@ -180,7 +185,7 @@ describe('getSessionById', () => {
   it('returns error string when session is not found', async () => {
     mockChain.single.mockResolvedValue({ data: null, error: { message: 'No rows' } })
 
-    const result = await getSessionById('nonexistent-id')
+    const result = await getSessionById('nonexistent-id', TEST_USER_ID)
 
     expect(result.data).toBeNull()
     expect(result.error).not.toBeNull()
@@ -195,6 +200,7 @@ describe('createSession', () => {
     location: 'Boulder World Geneva',
     duration_mins: 90,
     rpe: 7,
+    user_id: 'user-1',
   }
 
   it('calls insert and returns the created session', async () => {
@@ -247,9 +253,10 @@ describe('updateSessionDeviation', () => {
     const updatedSession = makeSessionLog({ deviation_from_plan: deviationText })
     mockChain.single.mockResolvedValue({ data: updatedSession, error: null })
 
-    const result = await updateSessionDeviation('test-session-uuid', deviationText)
+    const result = await updateSessionDeviation('test-session-uuid', deviationText, TEST_USER_ID)
 
     expect(mockChain.update).toHaveBeenCalledTimes(1)
+    expect(mockChain.eq).toHaveBeenCalledWith('user_id', TEST_USER_ID)
     expect(result.data?.deviation_from_plan).toBe(deviationText)
     expect(result.error).toBeNull()
   })
@@ -260,7 +267,7 @@ describe('updateSessionDeviation', () => {
       error: { message: 'Update failed' },
     })
 
-    const result = await updateSessionDeviation('test-session-uuid', 'some deviation')
+    const result = await updateSessionDeviation('test-session-uuid', 'some deviation', TEST_USER_ID)
 
     expect(result.data).toBeNull()
     expect(result.error).not.toBeNull()
@@ -278,8 +285,9 @@ describe('getSessionCountThisWeek', () => {
     ]
     mockChain.lte.mockResolvedValue({ data: sessions, error: null })
 
-    const result = await getSessionCountThisWeek()
+    const result = await getSessionCountThisWeek(TEST_USER_ID)
 
+    expect(mockChain.eq).toHaveBeenCalledWith('user_id', TEST_USER_ID)
     expect(result.data).toBe(3)
     expect(result.error).toBeNull()
   })
@@ -287,7 +295,7 @@ describe('getSessionCountThisWeek', () => {
   it('returns 0 when no sessions exist this week', async () => {
     mockChain.lte.mockResolvedValue({ data: [], error: null })
 
-    const result = await getSessionCountThisWeek()
+    const result = await getSessionCountThisWeek(TEST_USER_ID)
 
     expect(result.data).toBe(0)
     expect(result.error).toBeNull()
@@ -296,7 +304,7 @@ describe('getSessionCountThisWeek', () => {
   it('uses Monday of the current week as the start date', async () => {
     mockChain.lte.mockResolvedValue({ data: [], error: null })
 
-    await getSessionCountThisWeek()
+    await getSessionCountThisWeek(TEST_USER_ID)
 
     const expectedMonday = getMondayOfCurrentWeek()
     // .gte is called with ('date', <monday>) before .lte is called
@@ -309,8 +317,9 @@ describe('getLastSessionDate', () => {
     const recentSession = makeSessionLog({ date: '2025-03-20' })
     mockChain.maybeSingle.mockResolvedValue({ data: recentSession, error: null })
 
-    const result = await getLastSessionDate()
+    const result = await getLastSessionDate(TEST_USER_ID)
 
+    expect(mockChain.eq).toHaveBeenCalledWith('user_id', TEST_USER_ID)
     expect(result.data).toBe('2025-03-20')
     expect(result.error).toBeNull()
   })
@@ -318,7 +327,7 @@ describe('getLastSessionDate', () => {
   it('returns null when no sessions have been logged', async () => {
     mockChain.maybeSingle.mockResolvedValue({ data: null, error: null })
 
-    const result = await getLastSessionDate()
+    const result = await getLastSessionDate(TEST_USER_ID)
 
     expect(result.data).toBeNull()
     expect(result.error).toBeNull()
@@ -336,7 +345,7 @@ describe('getGradeProgressionData', () => {
     })
     mockChain.order.mockResolvedValue({ data: [sessionWithGrades], error: null })
 
-    const result = await getGradeProgressionData()
+    const result = await getGradeProgressionData(TEST_USER_ID)
 
     expect(result.error).toBeNull()
     expect(result.data).toHaveLength(1)
@@ -367,7 +376,7 @@ describe('getGradeProgressionData', () => {
     })
     mockChain.order.mockResolvedValue({ data: [sessionNoSends], error: null })
 
-    const result = await getGradeProgressionData()
+    const result = await getGradeProgressionData(TEST_USER_ID)
 
     expect(result.error).toBeNull()
     // No completed attempts → nothing to chart
@@ -377,8 +386,9 @@ describe('getGradeProgressionData', () => {
   it('filters to climbing session types only using .in()', async () => {
     mockChain.order.mockResolvedValue({ data: [], error: null })
 
-    await getGradeProgressionData()
+    await getGradeProgressionData(TEST_USER_ID)
 
+    expect(mockChain.eq).toHaveBeenCalledWith('user_id', TEST_USER_ID)
     expect(mockChain.in).toHaveBeenCalledWith('session_type', [
       'bouldering',
       'kilterboard',
@@ -389,7 +399,7 @@ describe('getGradeProgressionData', () => {
   it('returns empty array when no climbing sessions exist', async () => {
     mockChain.order.mockResolvedValue({ data: [], error: null })
 
-    const result = await getGradeProgressionData()
+    const result = await getGradeProgressionData(TEST_USER_ID)
 
     expect(result.data).toEqual([])
     expect(result.error).toBeNull()

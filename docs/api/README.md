@@ -33,6 +33,34 @@ All dates are `YYYY-MM-DD` strings. Never ISO 8601 datetime — date only.
 
 All `POST` and `PUT` routes validate input with Zod. Invalid input returns `400` with a message listing which fields failed and why.
 
+### Authentication failures
+
+API routes use the shared auth error handler in `src/lib/errors.ts` to translate typed server auth errors into safe responses.
+
+- `UnauthenticatedError` returns `401`.
+- `ForbiddenError` returns `403`.
+- `AuthorizationCheckError` is treated as an internal authorization verification failure and falls through to the route's normal `500` response.
+
+### Auth access model
+
+- All non-auth API routes are expected to resolve auth context server-side and return `401` when unauthenticated.
+- Privileged routes under `/api/dev/*` require `superuser` and return `403` when authenticated as non-superuser.
+- Public auth entry routes live under `/auth/*` (page routes, not API routes).
+- Transitional legacy behavior currently remains on `GET /api/chat/history` and `POST /api/planned-sessions/generate`; both routes are documented below with their current auth behavior.
+
+### Logging and observability
+
+API routes use the structured logger in `src/lib/logger.ts`.
+
+- Every route log includes `event`, `outcome`, and `route`.
+- Add `userId` and `profileRole` when auth context is already available.
+- Add `entityType` and `entityId` when the route targets a specific domain record.
+- Put extra safe operational context under `data`.
+- Use `logInfo()` for successful route completion.
+- Use `logWarn()` for expected handled failures such as validation issues, denied access, and service or repository errors returned in-band.
+- Use `logError()` for unexpected exceptions and catch blocks.
+- Never log secrets or sensitive payloads such as tokens, cookies, prompts, chat message bodies, or raw model responses.
+
 ---
 
 ## Chat
@@ -41,24 +69,30 @@ All `POST` and `PUT` routes validate input with Zod. Invalid input returns `400`
 
 Send a user message to the AI coach. Builds a fresh athlete context on every call (readiness, sessions, programme, injury areas) and injects it into the Gemini system prompt.
 
+Operational logging for this route records request outcome, duration, message length, history count, warning count, and model identifier. Prompt text, chat history content, and AI response content are never logged.
+
 **Request body**
 
 ```ts
 {
   message: string        // 1–2000 chars
   history: ChatMessage[] // previous messages; defaults to []
+  thread_id?: string     // UUID; optional existing thread id
 }
 ```
 
-`history` is the full conversation so far, passed from client state. The last 20 messages are sent to Gemini as conversation history. Both the user message and the AI response are saved to `chat_messages` as a fire-and-forget operation.
+`history` is the full conversation so far, passed from client state. The last 20 messages are sent to Gemini as conversation history. The route resolves the authenticated user and persists both user/assistant messages with a thread id. If no `thread_id` is supplied, the user's most recent thread is reused or a new thread is created.
 
-**Response** `200`
+Chat persistence is now repository-backed for both `chat_threads` and `chat_messages`, establishing thread-aware storage primitives ahead of the `/api/chat` route refactor.
+
+**Response** `200` · `400` on validation error · `401` if unauthenticated · `404` if supplied thread is not found
 
 ```ts
 {
   data: {
     response: string    // AI coach reply (markdown)
     warnings: string[]  // active training warnings derived from today's readiness
+    thread_id: string   // UUID of thread used for persistence
   }
 }
 ```
@@ -69,13 +103,15 @@ Send a user message to the AI coach. Builds a fresh athlete context on every cal
 
 Fetch recent chat messages for display on page load.
 
+Current implementation note: this endpoint still reads using the legacy placeholder user scope rather than an authenticated user context.
+
 **Query parameters**
 
 | Param | Type | Default | Constraint |
 |---|---|---|---|
 | `limit` | number | `20` | 1–50 |
 
-**Response** `200`
+**Response** `200` · `500` on repository failure
 
 ```ts
 {
@@ -91,7 +127,7 @@ Fetch recent chat messages for display on page load.
 
 ### `POST /api/readiness`
 
-Submit today's readiness check-in. One check-in per calendar date is enforced — a second submission on the same day returns `409`.
+Submit today's readiness check-in for the authenticated user. One check-in per calendar date is enforced per user — a second submission on the same day returns `409`.
 
 Returns active training warnings (same set the AI coach sees) so the UI can surface them immediately after submission.
 
@@ -113,7 +149,7 @@ Returns active training warnings (same set the AI coach sees) so the UI can surf
 }
 ```
 
-**Response** `201`
+**Response** `201` · `400` on validation error · `401` if unauthenticated
 
 ```ts
 {
@@ -130,6 +166,7 @@ Returns active training warnings (same set the AI coach sees) so the UI can surf
 |---|---|
 | `201` | Check-in saved |
 | `400` | Validation failure |
+| `401` | Not authenticated |
 | `409` | Already checked in today |
 | `500` | Database error |
 
@@ -137,7 +174,7 @@ Returns active training warnings (same set the AI coach sees) so the UI can surf
 
 ### `GET /api/readiness`
 
-Retrieve recent check-ins with today's summary and a rolling weekly average.
+Retrieve recent check-ins for the authenticated user with today's summary and a rolling weekly average.
 
 **Query parameters**
 
@@ -145,7 +182,7 @@ Retrieve recent check-ins with today's summary and a rolling weekly average.
 |---|---|---|---|
 | `days` | number | `7` | 1–90 |
 
-**Response** `200`
+**Response** `200` · `401` if unauthenticated
 
 ```ts
 {
@@ -162,11 +199,23 @@ Individual query failures return partial results rather than a `500` — missing
 
 ---
 
+### `DELETE /api/readiness`
+
+Delete today's readiness check-in for the authenticated user so it can be resubmitted.
+
+**Response** `200` · `401` if unauthenticated · `404` if no check-in exists for today
+
+```ts
+{ data: { deleted: true }, error: null }
+```
+
+---
+
 ## Sessions
 
 ### `POST /api/sessions`
 
-Log a completed training session.
+Log a completed training session for the authenticated user.
 
 If `planned_session_id` is supplied and the planned session has status `planned`, it is automatically marked `completed`. If the logged duration deviates from the planned duration by more than 20%, a note is appended to the session record.
 
@@ -207,7 +256,7 @@ If `planned_session_id` is supplied and the planned session has status `planned`
 
 ### `GET /api/sessions`
 
-Retrieve recent sessions, optionally filtered by type.
+Retrieve recent sessions for the authenticated user, optionally filtered by type.
 
 **Query parameters**
 
@@ -230,7 +279,9 @@ Returns `400` if `type` is not a valid `SessionType`.
 
 ### `GET /api/programmes`
 
-List all programmes, ordered by most recent `start_date` first.
+List programmes for the authenticated user, ordered by most recent `start_date` first.
+
+All endpoints are scoped to the authenticated user. Returns `401` if the request is unauthenticated.
 
 **Response** `200`
 
@@ -242,7 +293,7 @@ List all programmes, ordered by most recent `start_date` first.
 
 ### `POST /api/programmes`
 
-Create a new programme.
+Create a new programme for the authenticated user.
 
 **Request body**
 
@@ -256,7 +307,7 @@ Create a new programme.
 }
 ```
 
-**Response** `201`
+**Response** `201` · `400` on validation error · `401` if unauthenticated
 
 ```ts
 { data: { programme: Programme } }
@@ -266,7 +317,7 @@ Create a new programme.
 
 ### `GET /api/programmes/[id]`
 
-Fetch one programme by UUID.
+Fetch one programme by UUID, scoped to the authenticated user.
 
 **Response** `200` · `404` if not found.
 
@@ -278,7 +329,7 @@ Fetch one programme by UUID.
 
 ### `PUT /api/programmes/[id]`
 
-Partial update — all fields optional, at least one required.
+Partial update (authenticated user's programme only) — all fields optional, at least one required.
 
 **Request body:** any subset of the `POST` fields above.
 
@@ -294,7 +345,7 @@ Partial update — all fields optional, at least one required.
 
 Aggregated planning snapshot — returns the active programme, the active mesocycle, the active mesocycle's weekly template, and the next 7 days of planned sessions in a single round-trip. Used by the programme page.
 
-**Response** `200`
+**Response** `200` · `401` if unauthenticated
 
 ```ts
 {
@@ -333,7 +384,7 @@ AI wizard — step 1. Accepts a training goal description and generates a period
 }
 ```
 
-**Response** `200`
+**Response** `200` · `400` on validation error · `401` if unauthenticated · `502` for invalid AI output · `503` if AI service not configured
 
 ```ts
 {
@@ -369,7 +420,7 @@ AI wizard — step 2. Persists the reviewed plan: creates the programme row and 
 }
 ```
 
-**Response** `201`
+**Response** `201` · `400` on validation error · `401` if unauthenticated
 
 ```ts
 { data: { programme_id: string; first_mesocycle_id: string } }
@@ -381,7 +432,7 @@ AI wizard — step 2. Persists the reviewed plan: creates the programme row and 
 
 ### `GET /api/mesocycles`
 
-List mesocycles for a programme.
+List mesocycles for a programme, scoped to the authenticated user. Returns `401` if unauthenticated.
 
 **Query parameters**
 
@@ -389,7 +440,7 @@ List mesocycles for a programme.
 |---|---|---|
 | `programme_id` | UUID | Yes |
 
-**Response** `200`
+**Response** `200` · `400` if `programme_id` missing/invalid · `401` if unauthenticated
 
 ```ts
 { data: { mesocycles: Mesocycle[] } }
@@ -399,7 +450,7 @@ List mesocycles for a programme.
 
 ### `POST /api/mesocycles`
 
-Create a mesocycle within a programme.
+Create a mesocycle within a programme for the authenticated user.
 
 **Request body**
 
@@ -418,7 +469,7 @@ Create a mesocycle within a programme.
 }
 ```
 
-**Response** `201`
+**Response** `201` · `400` on validation error · `401` if unauthenticated
 
 ```ts
 { data: { mesocycle: Mesocycle } }
@@ -428,7 +479,7 @@ Create a mesocycle within a programme.
 
 ### `GET /api/mesocycles/[id]`
 
-Fetch one mesocycle by UUID. Returns `404` if not found.
+Fetch one mesocycle by UUID, scoped to the authenticated user. Returns `404` if not found.
 
 **Response** `200`
 
@@ -440,7 +491,7 @@ Fetch one mesocycle by UUID. Returns `404` if not found.
 
 ### `PUT /api/mesocycles/[id]`
 
-Partial update — all fields optional, at least one required.
+Partial update (authenticated user's mesocycle only) — all fields optional, at least one required.
 
 **Request body:** any subset of the `POST` fields above.
 
@@ -509,6 +560,7 @@ Weekly setup wizard — step 2. Replaces all existing weekly templates for the m
 ## Weekly Templates
 
 Weekly templates define the intended session structure for each day of the week within a mesocycle. `day_of_week` uses `0 = Monday … 6 = Sunday`.
+All weekly template endpoints are scoped to the authenticated user.
 
 ### `GET /api/weekly-templates`
 
@@ -520,7 +572,7 @@ List weekly templates for a mesocycle, ordered by `day_of_week`.
 |---|---|---|
 | `mesocycle_id` | UUID | Yes |
 
-**Response** `200`
+**Response** `200` · `400` if `mesocycle_id` is missing/invalid · `401` if unauthenticated
 
 ```ts
 { data: { weeklyTemplates: WeeklyTemplate[] } }
@@ -547,7 +599,7 @@ Create a weekly template slot.
 }
 ```
 
-**Response** `201`
+**Response** `201` · `400` on validation error · `401` if unauthenticated
 
 ```ts
 { data: { weeklyTemplate: WeeklyTemplate } }
@@ -587,7 +639,7 @@ Planned sessions are AI-generated or manually created session outlines for a spe
 
 ### `GET /api/planned-sessions`
 
-List planned sessions by date range or upcoming days. Provide either a date range or `upcoming_days` — not both.
+List planned sessions for the authenticated user by date range or upcoming days. Provide either a date range or `upcoming_days` — not both.
 
 **Query parameters**
 
@@ -597,7 +649,7 @@ List planned sessions by date range or upcoming days. Provide either a date rang
 | `end_date` | YYYY-MM-DD | — | Required if `start_date` provided |
 | `upcoming_days` | number | `7` | 1–30; used when no date range given |
 
-**Response** `200`
+**Response** `200` · `400` on invalid query params · `401` if unauthenticated
 
 ```ts
 { data: { plannedSessions: PlannedSession[] } }
@@ -607,7 +659,7 @@ List planned sessions by date range or upcoming days. Provide either a date rang
 
 ### `POST /api/planned-sessions`
 
-Create a planned session row manually.
+Create a planned session row manually for the authenticated user.
 
 **Request body**
 
@@ -623,7 +675,7 @@ Create a planned session row manually.
 }
 ```
 
-**Response** `201`
+**Response** `201` · `400` on validation error · `401` if unauthenticated
 
 ```ts
 { data: { plannedSession: PlannedSession } }
@@ -637,9 +689,17 @@ Create planned session records for every weekly occurrence in the active mesocyc
 
 Sessions are stored with template metadata only (`session_label`, `intensity`, `primary_focus`, `duration_mins`). No AI calls are made here — AI plan text is generated lazily on first access via `POST /api/planned-sessions/[id]/generate-plan`.
 
-**Request body:** none required.
+Current implementation note: this endpoint does not yet enforce an explicit route-level `getCurrentUser()` check.
 
-**Response** `200`
+**Request body**
+
+```ts
+{
+  week_start?: string // YYYY-MM-DD; optional
+}
+```
+
+**Response** `200` · `400` on validation error · `500` on generator/repository failure
 
 ```ts
 { data: { plannedSessions: PlannedSession[] } } // newly created rows only
@@ -676,7 +736,7 @@ The session must have an associated `mesocycle_id` and `template_id`; standalone
 
 ### `GET /api/planned-sessions/[id]`
 
-Fetch one planned session by UUID. Returns `404` if not found.
+Fetch one planned session by UUID, scoped to the authenticated user. Returns `404` if not found.
 
 **Response** `200`
 
@@ -688,7 +748,7 @@ Fetch one planned session by UUID. Returns `404` if not found.
 
 ### `PUT /api/planned-sessions/[id]`
 
-Partial update — all fields optional, at least one required.
+Partial update (authenticated user's planned session only) — all fields optional, at least one required.
 
 **Request body:** any subset of the `POST` fields above.
 
@@ -702,7 +762,7 @@ Partial update — all fields optional, at least one required.
 
 ### `DELETE /api/planned-sessions/[id]`
 
-Delete a planned session row. Returns `404` if not found.
+Delete an authenticated user's planned session row. Returns `404` if not found.
 
 **Response** `200`
 
@@ -718,9 +778,9 @@ Injury areas are user-managed tracked body parts (e.g. `finger_a2_left`, `should
 
 ### `GET /api/injury-areas`
 
-List all currently active (non-archived) injury areas.
+List all currently active (non-archived) injury areas for the authenticated user.
 
-**Response** `200`
+**Response** `200` · `401` if unauthenticated
 
 ```ts
 { data: InjuryAreaRow[] }
@@ -730,7 +790,7 @@ List all currently active (non-archived) injury areas.
 
 ### `POST /api/injury-areas`
 
-Add a new injury area to track. If the area was previously archived, it is reactivated. Idempotent — adding an already-active area is a no-op.
+Add a new injury area to track for the authenticated user. If the area was previously archived, it is reactivated. Idempotent — adding an already-active area is a no-op.
 
 **Request body**
 
@@ -740,7 +800,7 @@ Add a new injury area to track. If the area was previously archived, it is react
 }
 ```
 
-**Response** `201`
+**Response** `201` · `400` on validation error · `401` if unauthenticated
 
 ```ts
 { data: InjuryAreaRow }
@@ -750,9 +810,9 @@ Add a new injury area to track. If the area was previously archived, it is react
 
 ### `DELETE /api/injury-areas/[area]`
 
-Archive an injury area (soft delete). The area name is URL-encoded in the path.
+Archive an authenticated user's injury area (soft delete). The area name is URL-encoded in the path.
 
-**Response** `200`
+**Response** `200` · `401` if unauthenticated
 
 ```ts
 { data: InjuryAreaRow } // the archived row
@@ -760,14 +820,180 @@ Archive an injury area (soft delete). The area name is URL-encoded in the path.
 
 ---
 
+## Invites
+
+### `POST /api/invites`
+
+Sends an invite email through Supabase native invite flow. Requires authenticated `superuser` role.
+
+This route logs `invite_sent` events with structured metadata at the route boundary:
+
+- `logInfo` for successful invite requests
+- `logWarn` for validation failures, unauthenticated or forbidden access, and handled invite service failures
+- `logError` only for unexpected exceptions
+
+**Request body**
+
+```ts
+{
+  email: string // valid email address, max 320 chars
+}
+```
+
+**Response** `201`
+
+```ts
+{
+  data: {
+    invited_email: string
+  },
+  error: null
+}
+```
+
+**Status codes**
+
+| Code | Meaning |
+|---|---|
+| `201` | Invite accepted by Supabase |
+| `400` | Invalid request payload |
+| `401` | Not authenticated |
+| `403` | Authenticated but not a superuser |
+| `500` | Failed to send invite |
+
+## Profile
+
+### `GET /api/profile`
+
+Returns the authenticated user's profile metadata.
+
+**Response** `200` · `401` if unauthenticated
+
+```ts
+{
+  data: Profile,
+  error: null
+}
+```
+
+### `PATCH /api/profile`
+
+Updates the authenticated user's editable profile fields.
+
+**Request body**
+
+```ts
+{
+  display_name: string // 1-120 chars
+}
+```
+
+**Response** `200` · `400` invalid payload · `401` unauthenticated
+
+```ts
+{
+  data: Profile,
+  error: null
+}
+```
+
 ## Dev
 
-### `POST /api/dev/seed-programme`
+All `/api/dev/*` routes are disabled in production (`404`) and privileged handlers require a server-side superuser check.
 
-Seeds a deterministic Phase 2 starter programme with mesocycles, weekly templates, and planned sessions. **Disabled in production** — returns `404` when `NODE_ENV=production`.
+### `POST /api/dev/clear-all`
+
+Deletes all rows for a target user in FK-safe order for dev reset-before-reseed workflows. Requires authenticated `superuser` role.
+
+**Request body**
+
+```ts
+{
+  targetUserId?: string // UUID; defaults to authenticated superuser if omitted
+}
+```
 
 **Response** `200`
 
 ```ts
-{ data: SeedProgrammeResult } // summary of what was created
+{
+  data: {
+    targetUserId: string
+    tablesCleared: Record<string, number> // deleted-row count by table
+  },
+  error: null
+}
 ```
+
+**Status codes**
+
+| Code | Meaning |
+|---|---|
+| `200` | Database cleared successfully |
+| `401` | Not authenticated |
+| `403` | Authenticated but not a superuser |
+| `404` | Route disabled in production |
+| `500` | Failed to clear one or more tables |
+
+### `POST /api/dev/seed-programme`
+
+Seeds a deterministic Phase 2 starter programme with mesocycles, weekly templates, and planned sessions for a target user. **Disabled in production** — returns `404` when `NODE_ENV=production`.
+
+Reset-before-reseed is enforced: if seeded data already exists for the target user, this route returns `409` and does not overwrite existing rows.
+
+**Request body**
+
+```ts
+{
+  targetUserId?: string // UUID; defaults to authenticated superuser if omitted
+}
+```
+
+**Response** `200`
+
+```ts
+{
+  data: SeedProgrammeResult,
+  error: null
+}
+```
+
+**Status codes**
+
+| Code | Meaning |
+|---|---|
+| `200` | Programme seeded successfully |
+| `400` | Invalid request payload |
+| `401` | Not authenticated |
+| `403` | Authenticated but not a superuser |
+| `404` | Route disabled in production |
+| `409` | Reset required before reseeding the target user |
+| `500` | Failed to seed programme data |
+
+### `GET /api/dev/seed-targets`
+
+Lists available target users for dev seed/reset operations. Requires authenticated `superuser` role.
+
+**Response** `200`
+
+```ts
+{
+  data: Array<{
+    id: string
+    email: string
+    display_name: string | null
+    role: 'user' | 'superuser'
+    invite_status: 'invited' | 'active'
+  }>,
+  error: null
+}
+```
+
+**Status codes**
+
+| Code | Meaning |
+|---|---|
+| `200` | Target users returned successfully |
+| `401` | Not authenticated |
+| `403` | Authenticated but not a superuser |
+| `500` | Failed to load target users |

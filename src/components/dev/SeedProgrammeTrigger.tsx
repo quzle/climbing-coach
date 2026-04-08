@@ -10,6 +10,10 @@ type SeedState =
   | { status: 'success'; message: string }
   | { status: 'error'; message: string }
 
+type SeedProgrammeTriggerProps = {
+  targetUserId: string | null
+}
+
 function buildSuccessMessage(result: SeedProgrammeResult): string {
   if (!result.seeded) {
     return `${result.programmeName} already exists. No new rows were created.`
@@ -25,17 +29,27 @@ function buildSuccessMessage(result: SeedProgrammeResult): string {
  * @description Small dev-only trigger for creating the Phase 2F starter programme without using a manual API call.
  * @returns Button and inline result state for the dev dashboard.
  */
-export function SeedProgrammeTrigger(): React.JSX.Element {
+export function SeedProgrammeTrigger({
+  targetUserId,
+}: SeedProgrammeTriggerProps): React.JSX.Element {
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [seedState, setSeedState] = useState<SeedState>({ status: 'idle', message: null })
 
   async function handleSeedProgramme(): Promise<void> {
+    if (targetUserId === null) {
+      return
+    }
+
     setIsSubmitting(true)
     setSeedState({ status: 'idle', message: null })
 
     try {
       const response = await fetch('/api/dev/seed-programme', {
         method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ targetUserId }),
       })
       const json = (await response.json()) as ApiResponse<SeedProgrammeResult>
 
@@ -74,13 +88,19 @@ export function SeedProgrammeTrigger(): React.JSX.Element {
       <Button
         type="button"
         className="min-h-[44px]"
-        disabled={isSubmitting}
+        disabled={isSubmitting || targetUserId === null}
         onClick={() => {
           void handleSeedProgramme()
         }}
       >
         {isSubmitting ? 'Seeding Programme...' : 'Seed Summer Multipitch Programme'}
       </Button>
+
+      {targetUserId === null ? (
+        <p className="text-sm text-amber-700" role="status">
+          Select a target user before seeding.
+        </p>
+      ) : null}
 
       {seedState.message !== null ? (
         <p

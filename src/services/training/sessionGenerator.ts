@@ -4,6 +4,7 @@ import {
   getPlannedSessionsInRange,
 } from '@/services/data/plannedSessionRepository'
 import { getWeeklyTemplateByMesocycle } from '@/services/data/weeklyTemplateRepository'
+import { SINGLE_USER_PLACEHOLDER_ID } from '@/lib/placeholder-user-id'
 import type { ApiResponse, Mesocycle, PlannedSession, WeeklyTemplate } from '@/types'
 
 /** Returns YYYY-MM-DD for a Date in UTC-safe format. */
@@ -31,6 +32,20 @@ function addDays(date: Date, days: number): string {
 }
 
 /**
+ * @description Returns the UTC midnight Date of the Monday that starts the
+ * calendar week containing `date`. DB convention: week starts on Monday.
+ * @param date Any UTC Date within the target week
+ * @returns The UTC midnight Date of the Monday starting the week containing `date`
+ */
+function weekStartMonday(date: Date): Date {
+  // JS getUTCDay(): 0=Sun…6=Sat. Convert to offset from Monday (0=Mon…6=Sun).
+  const daysFromMonday = (date.getUTCDay() + 6) % 7
+  const monday = new Date(date)
+  monday.setUTCDate(date.getUTCDate() - daysFromMonday)
+  return monday
+}
+
+/**
  * @description Returns the next date on or after `fromDate` whose day of week
  * matches `dbDayOfWeek` (0=Mon … 6=Sun).
  */
@@ -49,20 +64,21 @@ function nextOccurrenceOfDay(dbDayOfWeek: number, fromDate: Date): string {
  * Existing planned sessions for matching date+template are left untouched
  * to prevent duplicates on re-runs.
  *
- * @param fromDateStr Optional ISO date to start from (defaults to today)
+ * @param fromDateStr Optional ISO date whose week to generate sessions for (defaults to today's week)
  * @returns Array of newly created planned sessions for the full mesocycle
  */
 export async function generatePlannedSessionsForActiveMesocycle(
   fromDateStr?: string,
 ): Promise<ApiResponse<PlannedSession[]>> {
   try {
-    // Use the later of the provided start date and today — no point generating sessions in the past.
+    // Use the Monday of the week containing the provided date (or today's week
+    // when no date is given). This ensures all template days in the requested
+    // week are generated, including days that precede the requested date itself.
     const requestedDate = fromDateStr ? parseIsoDateUtc(fromDateStr) : todayUtcDate()
-    const today = todayUtcDate()
-    const fromDate = requestedDate > today ? requestedDate : today
+    const fromDate = weekStartMonday(requestedDate)
 
     // Fetch the mesocycle first so we can use planned_end as the range boundary.
-    const mesocycleResult = await getActiveMesocycle()
+    const mesocycleResult = await getActiveMesocycle(SINGLE_USER_PLACEHOLDER_ID)
     if (mesocycleResult.error !== null) {
       console.error(
         '[sessionGenerator.generatePlannedSessionsForActiveMesocycle] getActiveMesocycle:',
@@ -79,8 +95,12 @@ export async function generatePlannedSessionsForActiveMesocycle(
     // Fetch templates and existing sessions in parallel now that we have the
     // mesocycle end date for the range query.
     const [templatesResult, existingSessionsResult] = await Promise.all([
-      getWeeklyTemplateByMesocycle(activeMesocycle.id),
-      getPlannedSessionsInRange(toIsoDate(fromDate), activeMesocycle.planned_end),
+      getWeeklyTemplateByMesocycle(activeMesocycle.id, SINGLE_USER_PLACEHOLDER_ID),
+      getPlannedSessionsInRange(
+        toIsoDate(fromDate),
+        activeMesocycle.planned_end,
+        SINGLE_USER_PLACEHOLDER_ID,
+      ),
     ])
 
     if (templatesResult.error !== null) {
@@ -132,6 +152,7 @@ export async function generatePlannedSessionsForActiveMesocycle(
               primary_focus: template.primary_focus,
               duration_mins: template.duration_mins,
             },
+            user_id: SINGLE_USER_PLACEHOLDER_ID,
           })
 
           if (createResult.error !== null || createResult.data === null) {

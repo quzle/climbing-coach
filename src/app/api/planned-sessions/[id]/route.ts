@@ -6,6 +6,7 @@ import {
   updatePlannedSession,
 } from '@/services/data/plannedSessionRepository'
 import type { Json } from '@/lib/database.types'
+import { getCurrentUser } from '@/lib/supabase/get-current-user'
 import type { ApiResponse, PlannedSession } from '@/types'
 
 const paramsSchema = z.object({ id: z.string().uuid() })
@@ -44,6 +45,7 @@ export async function GET(
   context: { params: Promise<{ id: string }> },
 ): Promise<NextResponse<ApiResponse<{ plannedSession: PlannedSession }>>> {
   try {
+    const user = await getCurrentUser()
     const parsedParams = paramsSchema.safeParse(await context.params)
     if (!parsedParams.success) {
       return NextResponse.json(
@@ -52,7 +54,7 @@ export async function GET(
       )
     }
 
-    const result = await getPlannedSessionById(parsedParams.data.id)
+    const result = await getPlannedSessionById(parsedParams.data.id, user.id)
     if (result.error !== null || result.data === null) {
       return NextResponse.json(
         { data: null, error: 'Failed to load planned session.' },
@@ -79,6 +81,7 @@ export async function PUT(
   context: { params: Promise<{ id: string }> },
 ): Promise<NextResponse<ApiResponse<{ plannedSession: PlannedSession }>>> {
   try {
+    const user = await getCurrentUser()
     const parsedParams = paramsSchema.safeParse(await context.params)
     if (!parsedParams.success) {
       return NextResponse.json(
@@ -102,7 +105,7 @@ export async function PUT(
         parsedBody.data.generated_plan === undefined
           ? undefined
           : (parsedBody.data.generated_plan as Json),
-    })
+    }, user.id)
     if (result.error !== null || result.data === null) {
       return NextResponse.json(
         { data: null, error: 'Failed to update planned session.' },
@@ -129,6 +132,7 @@ export async function DELETE(
   context: { params: Promise<{ id: string }> },
 ): Promise<NextResponse<ApiResponse<{ plannedSession: PlannedSession }>>> {
   try {
+    const user = await getCurrentUser()
     const parsedParams = paramsSchema.safeParse(await context.params)
     if (!parsedParams.success) {
       return NextResponse.json(
@@ -137,7 +141,7 @@ export async function DELETE(
       )
     }
 
-    const result = await deletePlannedSession(parsedParams.data.id)
+    const result = await deletePlannedSession(parsedParams.data.id, user.id)
     if (result.error !== null || result.data === null) {
       return NextResponse.json(
         { data: null, error: 'Failed to delete planned session.' },

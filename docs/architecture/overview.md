@@ -27,11 +27,11 @@ No layer may skip a level. API routes do not query the database directly. Servic
 
 ## Why Modular Monolith
 
-This application is a single-developer, single-user personal tool. The primary architectural constraint is **maintenance burden** — every additional service boundary, deployment unit, or inter-service contract is overhead that slows development.
+This application is a single-developer tool now migrating to an invite-only multi-user MVP. The primary architectural constraint is **maintenance burden** — every additional service boundary, deployment unit, or inter-service contract is overhead that slows development.
 
 A modular monolith gives:
 - Logical separation enforced through folder structure and code review
-- A single deployment unit — one Vercel project, one Supabase project
+- A single deployment unit — one Vercel project with two Supabase environments (production + integration)
 - Simple debugging — one log stream, one process (per request)
 - Clear upgrade path — the services layer can be extracted into separate processes later if needed without rewriting the domain logic
 
@@ -44,9 +44,35 @@ Vercel deploys API routes (`src/app/api/`) as serverless functions. This has imp
 - **No persistent memory between requests.** Every invocation starts with a fresh process.
 - **All state lives in Supabase.** Nothing is stored in module-level variables or in-memory caches.
 - **AI context is rebuilt on every request.** The prompt builder fetches the athlete's current programme state, recent sessions, and today's readiness from Supabase before every Gemini call.
-- **Chat history is stored in Supabase.** The `chat_messages` table is the source of truth for conversation history. The last N messages are fetched and injected into the prompt.
+- **Chat history is stored in Supabase.** The `chat_threads` and `chat_messages` tables are the source of truth for conversation history. The last N messages are fetched and injected into the prompt.
 
 Concretely: if a user sends two chat messages in quick succession, each hits a separate serverless function invocation. There is no shared memory between them.
+
+## Multi-User Data Model
+
+The application now uses an invite-only multi-user model backed by Supabase Auth and app-owned profiles.
+
+- `profiles` is a one-to-one table keyed by `auth.users.id`, storing `email`, `display_name`, `role`, and `invite_status`.
+- `role` supports `user` and `superuser`.
+- `invite_status` supports `invited` and `active`.
+- User-owned domain tables are scoped by `user_id` and must always be queried with authenticated user filtering.
+
+User-owned tables:
+
+- `programmes`
+- `mesocycles`
+- `planned_sessions`
+- `session_logs`
+- `readiness_checkins`
+- `chat_messages`
+- `chat_threads`
+- `injury_areas`
+- `weekly_templates`
+
+Domain constraints:
+
+- One active programme per user is enforced at the database level (partial unique index) and validated in service/repository flows.
+- Chat messages are thread-aware via `chat_messages.thread_id` and ownership-scoped via user-scoped thread/message access patterns.
 
 ## Two Supabase Clients
 
@@ -62,6 +88,57 @@ Two Supabase client factories exist in `src/lib/supabase/`:
 - `server.ts` must **never** be imported from a file that runs in the browser. It uses the service role key which bypasses Row Level Security and has full database access.
 - API routes always use `server.ts`.
 - Client Components that need to read data call API routes — they do not query Supabase directly using `server.ts`.
+
+## Server Auth Helpers
+
+`src/lib/supabase/get-current-user.ts` exports the canonical `getCurrentUser()` and `requireSuperuser()` functions for server-side identity and role checks:
+
+```ts
+import { getCurrentUser, requireSuperuser } from '@/lib/supabase/get-current-user'
+
+// Inside an API route or Server Component:
+const user = await getCurrentUser() // throws UnauthenticatedError if no valid session
+// user.id — the Supabase Auth UUID
+// user.email — the user's email address (may be undefined)
+
+await requireSuperuser() // throws UnauthenticatedError, ForbiddenError, or AuthorizationCheckError
+```
+
+**Rules:**
+- All API routes that require authentication must call `getCurrentUser()` to identify the user. Never use a hardcoded user ID.
+- `getCurrentUser()` throws `UnauthenticatedError` if there is no valid session. API routes should delegate to the shared route auth handler and return a `401` response.
+- Routes that execute privileged actions (for example under `/api/dev`) must call `requireSuperuser()` before performing the action.
+- `requireSuperuser()` validates `profiles.role === 'superuser'` server-side and throws `ForbiddenError` for non-superusers.
+- `AuthorizationCheckError` means the server could not verify authorization safely; routes should let that fall through to their normal `500` path.
+- Never call `getCurrentUser()` from a Client Component. Call it in an API route or Server Component only.
+
+## Middleware and Route Gating
+
+`src/proxy.ts` runs on every request that is not a static asset. It:
+
+1. Refreshes the user's Supabase session by calling `supabase.auth.getUser()`.
+2. Redirects any unauthenticated request to `/auth/login` (307) unless the path starts with `/auth/`.
+
+**Public routes** (accessible without a valid session):
+- `/auth/login` — sign-in page
+- `/auth/callback` — auth code exchange
+- `/auth/confirm` — OTP verification for invite, recovery, and magic link flows
+
+All other routes — including `/`, `/api/**`, `/chat`, `/dev`, `/history`, `/profile`, `/programme/**`, `/readiness`, and `/session/**` — require an authenticated session.
+
+The proxy uses the anon key (`NEXT_PUBLIC_SUPABASE_ANON_KEY`) and **not** the service role secret. This is intentional: the anon key is safe for Edge/proxy because session validation only reads the JWT from cookies.
+
+## Auth Entry Flow
+
+Authentication entry points for invited users live under `src/app/auth/`:
+
+- `GET /auth/login`: email-only magic-link sign-in page backed by `supabase.auth.signInWithOtp({ email })`.
+- `GET /auth/callback`: exchanges Supabase auth codes for a cookie-backed session, finalizes invited users via auth lifecycle service, then redirects to a validated local `next` path (or `/`).
+- `GET /auth/confirm`: verifies Supabase OTP tokens for invite, magic-link, and recovery flows. Invite confirmations finalize the profile; magic links skip finalization; recovery redirects to `/auth/change-password`.
+
+Client components that need identity or profile metadata read it from a shared auth provider mounted in the root layout. The provider is seeded server-side using `getCurrentUser()` plus `getProfile()` and exposes `id`, `email`, `displayName`, `role`, and `inviteStatus` to the navigation and account settings UI.
+
+The callback route validates `next` to local paths only (`/something`) to prevent open redirect attacks.
 
 ## Layered Architecture
 
@@ -89,9 +166,37 @@ Each layer has a single responsibility. Violating these boundaries is the most c
 | `NEXT_PUBLIC_SUPABASE_URL` | Intentionally public | Supabase project URL — not sensitive |
 | `NEXT_PUBLIC_SUPABASE_ANON_KEY` | Intentionally public | Anon key — restricted by RLS |
 
-**RLS policy:** Row Level Security is enabled on all Supabase tables. The anon key (used in the browser) is blocked from accessing data unless a specific RLS policy permits it. This is a safety net — the primary access control is using the server client for all data operations.
+**RLS policy:** Row Level Security is enabled on all user-owned domain tables, `profiles`, and `chat_threads`. The anon key (used in the browser) is blocked from accessing data unless a specific RLS policy permits it. This is a safety net — the primary access control is using the server client for all data operations.
+
+## Integration Security Tests
+
+Authentication and authorization integration coverage lives under `*.integration.test.ts` and runs through a separate Jest config in `jest.integration.config.js`.
+
+- `npm run test` continues to run only unit/component tests.
+- `npm run test:integration` runs the Node-only integration suite against a dedicated Supabase environment.
+- Integration project reference: `tmtspymjfnemygpquyhw`.
+- Production project reference: `qsihlcmjjwarxrnmmsse`.
+- The integration suite requires `INTEGRATION_SUPABASE_URL`, `INTEGRATION_SUPABASE_ANON_KEY`, and `INTEGRATION_SUPABASE_SERVICE_ROLE_KEY`.
+- By default the suite refuses to run against a non-local Supabase host. Set `INTEGRATION_SUPABASE_ALLOW_REMOTE=true` only for an isolated test project.
+- Route integration tests use real Supabase JWTs converted into the SSR cookie format expected by `src/lib/supabase/server.ts`, so `getCurrentUser()` and `requireSuperuser()` execute against the real auth stack.
+- Direct RLS integration tests use anon-key clients authenticated with real user sessions to verify that cross-user queries are filtered by database policy.
+- All schema migrations in `supabase/migrations/` must be applied to both production and integration projects so integration test outcomes reflect production schema behavior.
 
 No secret must ever appear in a `NEXT_PUBLIC_` prefixed environment variable. The `NEXT_PUBLIC_` prefix causes Next.js to bundle the value into the client-side JavaScript bundle.
+
+## Structured Logging
+
+Structured operational logging is centralized in `src/lib/logger.ts`.
+
+- Use `createStructuredLog()` when a caller needs the sanitized payload without emitting it yet.
+- Use `logInfo()`, `logWarn()`, and `logError()` to emit structured logs with stable snake_case fields.
+- Standard fields align with ADR 005: `event`, `user_id`, `profile_role`, `route`, `entity_type`, `entity_id`, `outcome`, `duration_ms`, `request_id`, and `environment`.
+- Additional metadata belongs under `data` and is sanitized before logging.
+- Sensitive values such as tokens, cookies, passwords, prompts, chat message bodies, and raw response text must never be logged.
+- Auth and access-control logging currently covers login success/failure, superuser access denial, invite sending, and privileged dev action execution.
+- API routes log at the route boundary with `event`, `outcome`, and `route` on every entry, plus `userId`, `profileRole`, `entityType`, `entityId`, and safe `data` when available.
+- Route handlers use `logInfo()` for successful completions, `logWarn()` for expected handled failures, and `logError()` for unexpected exceptions.
+- AI and chat logging covers route handling, Gemini execution, context dependency failures, and message persistence failures using safe metadata such as duration, model identifier, message length, history count, warning count, session type, and dependency names only.
 
 ## Deployment
 
@@ -99,5 +204,5 @@ The application deploys automatically to Vercel on every push to `main`.
 
 - **Build command:** `next build` (Vercel default)
 - **Environment variables:** must be configured in the Vercel project dashboard — copy from `.env.local`
-- **Database:** Supabase is not managed by Vercel. Schema migrations must be run manually against the Supabase project. See `database.md` for the schema.
+- **Database:** Supabase is not managed by Vercel. Schema migrations must be run manually against both Supabase projects (`qsihlcmjjwarxrnmmsse` production and `tmtspymjfnemygpquyhw` integration). See `database.md` for the schema and migration workflow.
 - **No preview environments** — single-user app, `main` → production.

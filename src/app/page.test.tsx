@@ -103,7 +103,6 @@ const mockCheckin = {
   sleep_quality: 4,
   fatigue: 3,
   finger_health: 5,
-  shoulder_health: 4,
   life_stress: 2,
   illness_flag: false,
   notes: null,
@@ -191,17 +190,6 @@ describe('Home dashboard', () => {
     render(<Home />)
 
     await waitFor(() => expect(screen.getByText(/90 min/)).toBeInTheDocument())
-  })
-
-  it('renders the three quick-action buttons', async () => {
-    mockFetchResponses(mockReadinessOk(), mockSessionsOk())
-    render(<Home />)
-
-    await waitFor(() => {
-      expect(screen.getByText('Log Session')).toBeInTheDocument()
-      expect(screen.getByText('Check-in')).toBeInTheDocument()
-      expect(screen.getByText('Ask Coach')).toBeInTheDocument()
-    })
   })
 
   it('still renders when API fetch rejects', async () => {

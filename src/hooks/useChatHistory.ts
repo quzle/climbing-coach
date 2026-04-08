@@ -23,7 +23,20 @@ export type StoredChatMessage = {
 // CONSTANTS
 // =============================================================================
 
-const HISTORY_KEY = 'climbing-coach:chat-history'
+/**
+ * @description Returns the localStorage key for the given user (and optional
+ * thread). Scoped per user — and per thread when provided — to prevent history
+ * leakage when multiple accounts or conversations share a browser.
+ *
+ * @param userId The authenticated user's UUID
+ * @param threadId Optional chat-thread UUID for per-thread isolation
+ * @returns The localStorage key string
+ */
+function historyKey(userId: string, threadId: string | null): string {
+  return threadId
+    ? `climbing-coach:chat-history:${userId}:${threadId}`
+    : `climbing-coach:chat-history:${userId}`
+}
 
 /**
  * Maximum number of messages retained in localStorage. When the limit is
@@ -39,11 +52,12 @@ const MAX_MESSAGES = 50
  * @description Reads and parses chat history from localStorage.
  * Returns an empty array if reading fails or storage is unavailable.
  *
+ * @param key The user-scoped localStorage key
  * @returns Array of stored messages, oldest first
  */
-function loadHistory(): StoredChatMessage[] {
+function loadHistory(key: string): StoredChatMessage[] {
   try {
-    const raw = localStorage.getItem(HISTORY_KEY)
+    const raw = localStorage.getItem(key)
     if (!raw) return []
     return JSON.parse(raw) as StoredChatMessage[]
   } catch {
@@ -56,11 +70,12 @@ function loadHistory(): StoredChatMessage[] {
  * Logs a warning if storage is unavailable or quota is exceeded — the
  * in-memory state remains intact so chat continues to function.
  *
+ * @param key The user-scoped localStorage key
  * @param messages The full message array to persist
  */
-function saveHistory(messages: StoredChatMessage[]): void {
+function saveHistory(key: string, messages: StoredChatMessage[]): void {
   try {
-    localStorage.setItem(HISTORY_KEY, JSON.stringify(messages))
+    localStorage.setItem(key, JSON.stringify(messages))
   } catch (err) {
     console.warn('[useChatHistory] Failed to save history to localStorage:', err)
   }
@@ -70,10 +85,12 @@ function saveHistory(messages: StoredChatMessage[]): void {
  * @description Removes the history entry from localStorage.
  * Errors are silently swallowed — if storage is inaccessible there
  * is nothing useful to do.
+ *
+ * @param key The user-scoped localStorage key
  */
-function clearHistoryFromStorage(): void {
+function clearHistoryFromStorage(key: string): void {
   try {
-    localStorage.removeItem(HISTORY_KEY)
+    localStorage.removeItem(key)
   } catch {
     // Intentionally empty — storage may be locked in some security configs.
   }
@@ -103,10 +120,12 @@ export type UseChatHistoryReturn = {
  * History is loaded on mount; messages are written on every `addMessage`
  * call. The hook does not manage API calls — that is the page's responsibility.
  *
+ * @param userId The authenticated user's UUID — used to scope the localStorage key
+ * @param threadId Optional chat-thread UUID for per-thread key isolation
  * @returns Chat history state and helpers to add or clear messages.
  *
  * @example
- * const { messages, addMessage, clearHistory } = useChatHistory()
+ * const { messages, addMessage, clearHistory } = useChatHistory(userId)
  *
  * // Append a user message
  * addMessage({ id: crypto.randomUUID(), role: 'user', content: text, ... })
@@ -114,13 +133,14 @@ export type UseChatHistoryReturn = {
  * // Pass history to the API
  * fetch('/api/chat', { body: JSON.stringify({ message: text, history: messages }) })
  */
-export function useChatHistory(): UseChatHistoryReturn {
+export function useChatHistory(userId: string, threadId: string | null = null): UseChatHistoryReturn {
+  const key = historyKey(userId, threadId)
   const [messages, setMessages] = useState<StoredChatMessage[]>([])
 
   // Load persisted history on mount only.
   useEffect(() => {
-    setMessages(loadHistory())
-  }, [])
+    setMessages(loadHistory(key))
+  }, [key])
 
   /**
    * @description Appends `message` to the history array and persists the
@@ -133,18 +153,18 @@ export function useChatHistory(): UseChatHistoryReturn {
       const updated = [...prev, message]
       const capped =
         updated.length > MAX_MESSAGES ? updated.slice(updated.length - MAX_MESSAGES) : updated
-      saveHistory(capped)
+      saveHistory(key, capped)
       return capped
     })
-  }, [])
+  }, [key])
 
   /**
    * @description Removes all messages from state and localStorage.
    */
   const clearHistory = useCallback(() => {
     setMessages([])
-    clearHistoryFromStorage()
-  }, [])
+    clearHistoryFromStorage(key)
+  }, [key])
 
   return { messages, addMessage, clearHistory }
 }

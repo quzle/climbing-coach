@@ -1,14 +1,27 @@
 /**
  * @jest-environment node
  */
+import { UnauthenticatedError } from '@/lib/errors'
 import { getProgrammeBuilderSnapshot } from '@/services/training/programmeService'
+import { getCurrentUser } from '@/lib/supabase/get-current-user'
 import { GET } from './route'
 
 jest.mock('@/services/training/programmeService', () => ({
   getProgrammeBuilderSnapshot: jest.fn(),
 }))
 
+jest.mock('@/lib/supabase/get-current-user', () => ({
+  getCurrentUser: jest.fn(),
+}))
+
+jest.mock('@/lib/logger', () => ({
+  logInfo: jest.fn(),
+  logWarn: jest.fn(),
+  logError: jest.fn(),
+}))
+
 const mockGetProgrammeBuilderSnapshot = getProgrammeBuilderSnapshot as jest.Mock
+const mockGetCurrentUser = getCurrentUser as jest.Mock
 
 const mockSnapshot = {
   currentProgramme: {
@@ -41,6 +54,7 @@ const mockSnapshot = {
 
 beforeEach(() => {
   jest.clearAllMocks()
+  mockGetCurrentUser.mockResolvedValue({ id: 'user-1', email: 'user@example.com' })
   mockGetProgrammeBuilderSnapshot.mockResolvedValue({
     data: mockSnapshot,
     error: null,
@@ -55,6 +69,7 @@ describe('GET /api/programme', () => {
     expect(response.status).toBe(200)
     expect(body.data).toEqual(mockSnapshot)
     expect(body.error).toBeNull()
+    expect(mockGetProgrammeBuilderSnapshot).toHaveBeenCalledWith('user-1')
   })
 
   it('returns 500 when the service fails', async () => {
@@ -69,5 +84,16 @@ describe('GET /api/programme', () => {
     expect(response.status).toBe(500)
     expect(body.data).toBeNull()
     expect(body.error).toContain('Failed to load programme data')
+  })
+
+  it('returns 401 when unauthenticated', async () => {
+    mockGetCurrentUser.mockRejectedValue(new UnauthenticatedError())
+
+    const response = await GET()
+    const body = await response.json()
+
+    expect(response.status).toBe(401)
+    expect(body).toEqual({ data: null, error: 'Unauthenticated.' })
+    expect(mockGetProgrammeBuilderSnapshot).not.toHaveBeenCalled()
   })
 })

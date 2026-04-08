@@ -45,6 +45,7 @@ function makePlannedSession(overrides?: Partial<PlannedSession>): PlannedSession
     session_type: 'bouldering',
     status: 'planned',
     template_id: 'template-1',
+    user_id: 'user-1',
     ...overrides,
   }
 }
@@ -62,8 +63,9 @@ describe('plannedSessionRepository', () => {
     const sessions = [makePlannedSession()]
     mockChain.order.mockResolvedValue({ data: sessions, error: null })
 
-    const result = await getPlannedSessionsInRange('2026-03-25', '2026-03-31')
+    const result = await getPlannedSessionsInRange('2026-03-25', '2026-03-31', 'user-1')
 
+    expect(mockChain.eq).toHaveBeenCalledWith('user_id', 'user-1')
     expect(mockChain.gte).toHaveBeenCalledWith('planned_date', '2026-03-25')
     expect(mockChain.lte).toHaveBeenCalledWith('planned_date', '2026-03-31')
     expect(result.data).toEqual(sessions)
@@ -73,8 +75,9 @@ describe('plannedSessionRepository', () => {
     const sessions = [makePlannedSession()]
     mockChain.order.mockResolvedValue({ data: sessions, error: null })
 
-    const result = await getUpcomingPlannedSessions(7)
+    const result = await getUpcomingPlannedSessions(7, 'user-1')
 
+    expect(mockChain.eq).toHaveBeenCalledWith('user_id', 'user-1')
     expect(mockChain.gte).toHaveBeenCalled()
     expect(mockChain.lte).toHaveBeenCalled()
     expect(result.data).toEqual(sessions)
@@ -84,9 +87,10 @@ describe('plannedSessionRepository', () => {
     const session = makePlannedSession()
     mockChain.single.mockResolvedValue({ data: session, error: null })
 
-    const result = await getPlannedSessionById('planned-session-1')
+    const result = await getPlannedSessionById('planned-session-1', 'user-1')
 
     expect(mockChain.eq).toHaveBeenCalledWith('id', 'planned-session-1')
+    expect(mockChain.eq).toHaveBeenCalledWith('user_id', 'user-1')
     expect(result.data).toEqual(session)
   })
 
@@ -96,6 +100,7 @@ describe('plannedSessionRepository', () => {
       planned_date: '2026-03-26',
       session_type: 'bouldering',
       template_id: 'template-1',
+      user_id: 'user-1',
     }
     const session = makePlannedSession()
     mockChain.single.mockResolvedValue({ data: session, error: null })
@@ -111,9 +116,10 @@ describe('plannedSessionRepository', () => {
     const session = makePlannedSession({ status: 'completed' })
     mockChain.single.mockResolvedValue({ data: session, error: null })
 
-    const result = await updatePlannedSession('planned-session-1', updates)
+    const result = await updatePlannedSession('planned-session-1', updates, 'user-1')
 
     expect(mockChain.update).toHaveBeenCalledWith(updates)
+    expect(mockChain.eq).toHaveBeenCalledWith('user_id', 'user-1')
     expect(result.data?.status).toBe('completed')
   })
 
@@ -121,10 +127,11 @@ describe('plannedSessionRepository', () => {
     const session = makePlannedSession()
     mockChain.single.mockResolvedValue({ data: session, error: null })
 
-    const result = await deletePlannedSession('planned-session-1')
+    const result = await deletePlannedSession('planned-session-1', 'user-1')
 
     expect(mockChain.delete).toHaveBeenCalledTimes(1)
     expect(mockChain.eq).toHaveBeenCalledWith('id', 'planned-session-1')
+    expect(mockChain.eq).toHaveBeenCalledWith('user_id', 'user-1')
     expect(result.data?.id).toBe('planned-session-1')
   })
 })

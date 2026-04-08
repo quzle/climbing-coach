@@ -1,8 +1,10 @@
 /**
  * @jest-environment node
  */
+import { UnauthenticatedError } from '@/lib/errors'
 import { NextRequest } from 'next/server'
 import { createMesocycle, getMesocyclesByProgramme } from '@/services/data/mesocycleRepository'
+import { getCurrentUser } from '@/lib/supabase/get-current-user'
 import { GET, POST } from './route'
 
 jest.mock('@/services/data/mesocycleRepository', () => ({
@@ -10,8 +12,19 @@ jest.mock('@/services/data/mesocycleRepository', () => ({
   createMesocycle: jest.fn(),
 }))
 
+jest.mock('@/lib/supabase/get-current-user', () => ({
+  getCurrentUser: jest.fn(),
+}))
+
+jest.mock('@/lib/logger', () => ({
+  logInfo: jest.fn(),
+  logWarn: jest.fn(),
+  logError: jest.fn(),
+}))
+
 const mockGetMesocyclesByProgramme = getMesocyclesByProgramme as jest.Mock
 const mockCreateMesocycle = createMesocycle as jest.Mock
+const mockGetCurrentUser = getCurrentUser as jest.Mock
 
 const mesocycle = {
   id: '11711946-7ec0-4640-9f03-2be6ac3cd571',
@@ -30,6 +43,7 @@ const mesocycle = {
 
 beforeEach(() => {
   jest.clearAllMocks()
+  mockGetCurrentUser.mockResolvedValue({ id: 'user-1', email: 'user@example.com' })
   mockGetMesocyclesByProgramme.mockResolvedValue({ data: [mesocycle], error: null })
   mockCreateMesocycle.mockResolvedValue({ data: mesocycle, error: null })
 })
@@ -43,12 +57,41 @@ describe('GET /api/mesocycles', () => {
     )
 
     expect(response.status).toBe(200)
-    expect(mockGetMesocyclesByProgramme).toHaveBeenCalledWith(mesocycle.programme_id)
+    expect(mockGetMesocyclesByProgramme).toHaveBeenCalledWith(mesocycle.programme_id, 'user-1')
   })
 
   it('returns 400 when programme_id is missing', async () => {
     const response = await GET(new NextRequest('http://localhost/api/mesocycles'))
     expect(response.status).toBe(400)
+  })
+
+  it('returns 401 when unauthenticated', async () => {
+    mockGetCurrentUser.mockRejectedValue(new UnauthenticatedError())
+
+    const response = await GET(
+      new NextRequest(
+        `http://localhost/api/mesocycles?programme_id=${mesocycle.programme_id}`,
+      ),
+    )
+    const body = await response.json()
+
+    expect(response.status).toBe(401)
+    expect(body).toEqual({ data: null, error: 'Unauthenticated.' })
+    expect(mockGetMesocyclesByProgramme).not.toHaveBeenCalled()
+  })
+
+  it('returns 500 when service returns an error', async () => {
+    mockGetMesocyclesByProgramme.mockResolvedValue({ data: null, error: 'Database error' })
+
+    const response = await GET(
+      new NextRequest(
+        `http://localhost/api/mesocycles?programme_id=${mesocycle.programme_id}`,
+      ),
+    )
+    const body = await response.json()
+
+    expect(response.status).toBe(500)
+    expect(body).toEqual({ data: null, error: 'Failed to load mesocycles.' })
   })
 })
 
@@ -69,6 +112,66 @@ describe('POST /api/mesocycles', () => {
 
     const response = await POST(request)
     expect(response.status).toBe(201)
-    expect(mockCreateMesocycle).toHaveBeenCalled()
+    expect(mockCreateMesocycle).toHaveBeenCalledWith(
+      expect.objectContaining({ user_id: 'user-1' }),
+    )
+  })
+
+  it('returns 400 for invalid payload', async () => {
+    const request = new NextRequest('http://localhost/api/mesocycles', {
+      method: 'POST',
+      body: JSON.stringify({ name: '' }),
+      headers: { 'Content-Type': 'application/json' },
+    })
+
+    const response = await POST(request)
+    expect(response.status).toBe(400)
+  })
+
+  it('returns 401 when unauthenticated', async () => {
+    mockGetCurrentUser.mockRejectedValue(new UnauthenticatedError())
+
+    const request = new NextRequest('http://localhost/api/mesocycles', {
+      method: 'POST',
+      body: JSON.stringify({
+        programme_id: mesocycle.programme_id,
+        name: mesocycle.name,
+        focus: mesocycle.focus,
+        phase_type: mesocycle.phase_type,
+        planned_start: mesocycle.planned_start,
+        planned_end: mesocycle.planned_end,
+      }),
+      headers: { 'Content-Type': 'application/json' },
+    })
+
+    const response = await POST(request)
+    const body = await response.json()
+
+    expect(response.status).toBe(401)
+    expect(body).toEqual({ data: null, error: 'Unauthenticated.' })
+    expect(mockCreateMesocycle).not.toHaveBeenCalled()
+  })
+
+  it('returns 500 when service returns an error', async () => {
+    mockCreateMesocycle.mockResolvedValue({ data: null, error: 'Database error' })
+
+    const request = new NextRequest('http://localhost/api/mesocycles', {
+      method: 'POST',
+      body: JSON.stringify({
+        programme_id: mesocycle.programme_id,
+        name: mesocycle.name,
+        focus: mesocycle.focus,
+        phase_type: mesocycle.phase_type,
+        planned_start: mesocycle.planned_start,
+        planned_end: mesocycle.planned_end,
+      }),
+      headers: { 'Content-Type': 'application/json' },
+    })
+
+    const response = await POST(request)
+    const body = await response.json()
+
+    expect(response.status).toBe(500)
+    expect(body).toEqual({ data: null, error: 'Failed to create mesocycle.' })
   })
 })

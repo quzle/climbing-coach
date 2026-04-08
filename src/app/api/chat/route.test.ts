@@ -1,8 +1,16 @@
 /**
  * @jest-environment node
  */
+import { UnauthenticatedError } from '@/lib/errors'
 import { NextRequest } from 'next/server'
+import { logError, logInfo, logWarn } from '@/lib/logger'
+import { getCurrentUser } from '@/lib/supabase/get-current-user'
 import { sendChatMessage } from '@/services/ai/geminiClient'
+import {
+  createChatThread,
+  getChatThreadById,
+  getChatThreadsByUser,
+} from '@/services/data/chatThreadsRepository'
 import { POST } from './route'
 
 // =============================================================================
@@ -11,6 +19,22 @@ import { POST } from './route'
 
 jest.mock('@/services/ai/geminiClient', () => ({
   sendChatMessage: jest.fn(),
+}))
+
+jest.mock('@/lib/supabase/get-current-user', () => ({
+  getCurrentUser: jest.fn(),
+}))
+
+jest.mock('@/services/data/chatThreadsRepository', () => ({
+  createChatThread: jest.fn(),
+  getChatThreadById: jest.fn(),
+  getChatThreadsByUser: jest.fn(),
+}))
+
+jest.mock('@/lib/logger', () => ({
+  logError: jest.fn(),
+  logInfo: jest.fn(),
+  logWarn: jest.fn(),
 }))
 
 // =============================================================================
@@ -31,6 +55,20 @@ function makeRequest(body: unknown): NextRequest {
 
 beforeEach(() => {
   jest.clearAllMocks()
+  ;(getCurrentUser as jest.Mock).mockResolvedValue({ id: 'user-1', email: 'user@example.com' })
+  const threadId = '11111111-1111-4111-8111-111111111111'
+  ;(getChatThreadsByUser as jest.Mock).mockResolvedValue({
+    data: [{ id: threadId, user_id: 'user-1', title: null, created_at: null, updated_at: null }],
+    error: null,
+  })
+  ;(getChatThreadById as jest.Mock).mockResolvedValue({
+    data: { id: threadId, user_id: 'user-1', title: null, created_at: null, updated_at: null },
+    error: null,
+  })
+  ;(createChatThread as jest.Mock).mockResolvedValue({
+    data: { id: threadId, user_id: 'user-1', title: null, created_at: null, updated_at: null },
+    error: null,
+  })
   ;(sendChatMessage as jest.Mock).mockResolvedValue({
     response: 'Mock coach response',
     warnings: [],
@@ -49,7 +87,26 @@ describe('POST /api/chat', () => {
 
     expect(response.status).toBe(200)
     expect(body.data.response).toBe('Mock coach response')
+    expect(body.data.thread_id).toBe('11111111-1111-4111-8111-111111111111')
     expect(body.error).toBeNull()
+    expect(sendChatMessage).toHaveBeenCalledWith('What should I train today?', [], {
+      userId: 'user-1',
+      threadId: '11111111-1111-4111-8111-111111111111',
+    })
+    expect(logInfo).toHaveBeenCalledWith(
+      expect.objectContaining({
+        event: 'chat_request_handled',
+        outcome: 'success',
+        route: '/api/chat',
+        entityType: 'chat_request',
+        data: {
+          thread_id: '11111111-1111-4111-8111-111111111111',
+          history_count: 0,
+          message_length: 26,
+          warnings_count: 0,
+        },
+      }),
+    )
   })
 
   it('returns 400 when message is empty', async () => {
@@ -60,6 +117,18 @@ describe('POST /api/chat', () => {
     expect(response.status).toBe(400)
     expect(body.error).not.toBeNull()
     expect(sendChatMessage).not.toHaveBeenCalled()
+    expect(logWarn).toHaveBeenCalledWith(
+      expect.objectContaining({
+        event: 'chat_request_handled',
+        outcome: 'failure',
+        route: '/api/chat',
+        entityType: 'chat_request',
+        data: {
+          reason: 'validation_failed',
+          issue_count: 1,
+        },
+      }),
+    )
   })
 
   it('returns 400 when message exceeds 2000 characters', async () => {
@@ -88,6 +157,69 @@ describe('POST /api/chat', () => {
     expect(body.data.warnings).toContain('🔴 ILLNESS FLAG ACTIVE')
   })
 
+  it('uses provided thread_id when valid', async () => {
+    const request = makeRequest({
+      message: 'Continue thread',
+      history: [],
+      thread_id: '11111111-1111-4111-8111-111111111111',
+    })
+
+    const response = await POST(request)
+    const body = await response.json()
+
+    expect(response.status).toBe(200)
+    expect(getChatThreadById).toHaveBeenCalledWith('11111111-1111-4111-8111-111111111111', 'user-1')
+    expect(body.data.thread_id).toBe('11111111-1111-4111-8111-111111111111')
+  })
+
+  it('returns 404 when provided thread is not found', async () => {
+    ;(getChatThreadById as jest.Mock).mockResolvedValue({ data: null, error: 'not found' })
+
+    const response = await POST(makeRequest({
+      message: 'Hello',
+      history: [],
+      thread_id: '11111111-1111-4111-8111-111111111111',
+    }))
+    const body = await response.json()
+
+    expect(response.status).toBe(404)
+    expect(body).toEqual({ data: null, error: 'Chat thread not found.' })
+    expect(sendChatMessage).not.toHaveBeenCalled()
+  })
+
+  it('creates a thread when none exists', async () => {
+    ;(getChatThreadsByUser as jest.Mock).mockResolvedValue({ data: [], error: null })
+
+    const response = await POST(makeRequest({ message: 'Hello', history: [] }))
+    const body = await response.json()
+
+    expect(response.status).toBe(200)
+    expect(createChatThread).toHaveBeenCalledWith({ user_id: 'user-1', title: null })
+    expect(body.data.thread_id).toBe('11111111-1111-4111-8111-111111111111')
+  })
+
+  it('returns 500 when thread resolution fails', async () => {
+    ;(getChatThreadsByUser as jest.Mock).mockResolvedValue({ data: null, error: 'DB error' })
+
+    const response = await POST(makeRequest({ message: 'Hello', history: [] }))
+    const body = await response.json()
+
+    expect(response.status).toBe(500)
+    expect(body).toEqual({ data: null, error: 'Failed to resolve chat thread.' })
+    expect(sendChatMessage).not.toHaveBeenCalled()
+  })
+
+  it('returns 401 when unauthenticated', async () => {
+    ;(getCurrentUser as jest.Mock).mockRejectedValue(new UnauthenticatedError())
+
+    const response = await POST(makeRequest({ message: 'Hello', history: [] }))
+    const body = await response.json()
+
+    expect(response.status).toBe(401)
+    expect(body).toEqual({ data: null, error: 'Unauthenticated.' })
+    expect(sendChatMessage).not.toHaveBeenCalled()
+  })
+
   it('returns 500 when AI service throws', async () => {
     ;(sendChatMessage as jest.Mock).mockRejectedValue(new Error('Gemini unavailable'))
     const request = makeRequest({ message: 'Hello', history: [] })
@@ -97,6 +229,15 @@ describe('POST /api/chat', () => {
     expect(response.status).toBe(500)
     expect(body.error).not.toBeNull()
     expect(body.data).toBeNull()
+    expect(logError).toHaveBeenCalledWith(
+      expect.objectContaining({
+        event: 'chat_request_handled',
+        outcome: 'failure',
+        route: '/api/chat',
+        entityType: 'chat_request',
+        error: expect.any(Error),
+      }),
+    )
   })
 
   it('uses empty array as default when history is omitted', async () => {
@@ -104,6 +245,9 @@ describe('POST /api/chat', () => {
     const response = await POST(request)
 
     expect(response.status).toBe(200)
-    expect(sendChatMessage).toHaveBeenCalledWith('Hello', [])
+    expect(sendChatMessage).toHaveBeenCalledWith('Hello', [], {
+      userId: 'user-1',
+      threadId: '11111111-1111-4111-8111-111111111111',
+    })
   })
 })

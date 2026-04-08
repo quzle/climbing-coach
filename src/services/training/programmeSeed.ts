@@ -427,6 +427,7 @@ function buildProgrammeBlueprint(): ProgrammeBlueprint {
       start_date: toIsoDate(programmeStart),
       target_date: toIsoDate(programmeEnd),
       notes: buildSeedNotes('Phase 2F starter seed for programme-layer development.'),
+      user_id: '',
     },
     mesocycles,
   }
@@ -436,6 +437,7 @@ function buildPlannedSessionsForMesocycle(
   mesocycleId: string,
   mesocycle: MesocycleBlueprint,
   templateIdsByDay: Map<number, string>,
+  userId: string,
 ): PlannedSessionInsert[] {
   const startDate = parseIsoDateUtc(mesocycle.plannedStart)
   const plannedSessions: PlannedSessionInsert[] = []
@@ -460,6 +462,7 @@ function buildPlannedSessionsForMesocycle(
           duration_mins: template.durationMins,
           ai_plan_text: aiPlanText(mesocycle.name, template, weekIndex + 1),
         },
+        user_id: userId,
       })
     }
   }
@@ -472,9 +475,10 @@ async function rollbackSeedRows(
   createdMesocycleIds: string[],
   createdWeeklyTemplateIds: string[],
   createdPlannedSessionIds: string[],
+  userId: string,
 ): Promise<void> {
   for (const plannedSessionId of [...createdPlannedSessionIds].reverse()) {
-    const deleteResult = await deletePlannedSession(plannedSessionId)
+    const deleteResult = await deletePlannedSession(plannedSessionId, userId)
     if (deleteResult.error !== null) {
       console.error(
         '[programmeSeed.rollbackSeedRows] deletePlannedSession:',
@@ -484,7 +488,7 @@ async function rollbackSeedRows(
   }
 
   for (const templateId of [...createdWeeklyTemplateIds].reverse()) {
-    const deleteResult = await deleteWeeklyTemplate(templateId)
+    const deleteResult = await deleteWeeklyTemplate(templateId, userId)
     if (deleteResult.error !== null) {
       console.error(
         '[programmeSeed.rollbackSeedRows] deleteWeeklyTemplate:',
@@ -494,7 +498,7 @@ async function rollbackSeedRows(
   }
 
   for (const mesocycleId of [...createdMesocycleIds].reverse()) {
-    const deleteResult = await deleteMesocycle(mesocycleId)
+    const deleteResult = await deleteMesocycle(mesocycleId, userId)
     if (deleteResult.error !== null) {
       console.error(
         '[programmeSeed.rollbackSeedRows] deleteMesocycle:',
@@ -504,7 +508,7 @@ async function rollbackSeedRows(
   }
 
   if (programmeId !== null) {
-    const deleteResult = await deleteProgramme(programmeId)
+    const deleteResult = await deleteProgramme(programmeId, userId)
     if (deleteResult.error !== null) {
       console.error('[programmeSeed.rollbackSeedRows] deleteProgramme:', deleteResult.error)
     }
@@ -517,7 +521,7 @@ async function rollbackSeedRows(
  * Re-running the seed is idempotent: once the marked programme exists, no duplicate rows are created.
  * @returns Summary of what was created, or a non-error summary when the seed already exists.
  */
-export async function seedSummerMultipitchProgramme(): Promise<
+export async function seedSummerMultipitchProgramme(userId: string): Promise<
   ApiResponse<SeedProgrammeResult>
 > {
   let createdProgrammeId: string | null = null
@@ -531,12 +535,13 @@ export async function seedSummerMultipitchProgramme(): Promise<
       createdMesocycleIds,
       createdWeeklyTemplateIds,
       createdPlannedSessionIds,
+      userId,
     )
     return { data: null, error: message }
   }
 
   try {
-    const existingProgrammesResult = await getProgrammes()
+    const existingProgrammesResult = await getProgrammes(userId)
     if (existingProgrammesResult.error !== null) {
       console.error(
         '[programmeSeed.seedSummerMultipitchProgramme] getProgrammes:',
@@ -546,6 +551,7 @@ export async function seedSummerMultipitchProgramme(): Promise<
     }
 
     const blueprint = buildProgrammeBlueprint()
+    blueprint.programme.user_id = userId
     const existingProgramme = (existingProgrammesResult.data ?? []).find(
       (programme) =>
         (programme.notes?.includes(PHASE_2F_SEED_MARKER) ?? false) ||
@@ -596,6 +602,7 @@ export async function seedSummerMultipitchProgramme(): Promise<
         actual_end: null,
         status: mesocycle.status,
         interruption_notes: null,
+        user_id: userId,
       } satisfies MesocycleInsert)
 
       if (mesocycleResult.error !== null || mesocycleResult.data === null) {
@@ -620,6 +627,7 @@ export async function seedSummerMultipitchProgramme(): Promise<
           duration_mins: template.durationMins,
           primary_focus: template.primaryFocus,
           notes: template.notes,
+          user_id: userId,
         } satisfies WeeklyTemplateInsert)
 
         if (templateResult.error !== null || templateResult.data === null) {
@@ -642,6 +650,7 @@ export async function seedSummerMultipitchProgramme(): Promise<
           mesocycleResult.data.id,
           mesocycle,
           templateIdsByDay,
+          userId,
         )
 
         for (const plannedSession of plannedSessions) {
@@ -682,6 +691,7 @@ export async function seedSummerMultipitchProgramme(): Promise<
       createdMesocycleIds,
       createdWeeklyTemplateIds,
       createdPlannedSessionIds,
+      userId,
     )
     console.error('[programmeSeed.seedSummerMultipitchProgramme] unexpected error', err)
     return { data: null, error: 'An unexpected error occurred' }

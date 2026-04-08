@@ -31,13 +31,23 @@ export type SessionDraft = {
 // CONSTANTS
 // =============================================================================
 
-const DRAFT_KEY = 'climbing-coach:session-draft'
-
 /**
  * Drafts older than this are discarded on load.
  * A session started yesterday should not be restored today.
  */
 const DRAFT_EXPIRY_HOURS = 12
+
+/**
+ * @description Returns the localStorage key for the given user's draft.
+ * Scoped per user to prevent draft leakage when multiple accounts share a
+ * browser.
+ *
+ * @param userId The authenticated user's UUID
+ * @returns The localStorage key string
+ */
+function draftKey(userId: string): string {
+  return `climbing-coach:session-draft:${userId}`
+}
 
 // =============================================================================
 // PRIVATE HELPERS
@@ -62,17 +72,18 @@ function isDraftExpired(draft: SessionDraft): boolean {
  * Returns null if reading fails, the JSON is corrupted, or the draft
  * has expired (also clears the expired draft from storage).
  *
+ * @param key The user-scoped localStorage key
  * @returns The stored draft, or null if none / expired / unreadable
  */
-function loadDraft(): SessionDraft | null {
+function loadDraft(key: string): SessionDraft | null {
   try {
-    const raw = localStorage.getItem(DRAFT_KEY)
+    const raw = localStorage.getItem(key)
     if (!raw) return null
 
     const parsed = JSON.parse(raw) as SessionDraft
 
     if (isDraftExpired(parsed)) {
-      clearDraftFromStorage()
+      clearDraftFromStorage(key)
       return null
     }
 
@@ -88,11 +99,12 @@ function loadDraft(): SessionDraft | null {
  * the draft is held in React state regardless, so the form continues
  * to function without persistence.
  *
+ * @param key The user-scoped localStorage key
  * @param draft The draft to persist
  */
-function saveDraftToStorage(draft: SessionDraft): void {
+function saveDraftToStorage(key: string, draft: SessionDraft): void {
   try {
-    localStorage.setItem(DRAFT_KEY, JSON.stringify(draft))
+    localStorage.setItem(key, JSON.stringify(draft))
   } catch (err) {
     console.warn('[useDraftSession] Failed to save draft to localStorage:', err)
   }
@@ -102,10 +114,12 @@ function saveDraftToStorage(draft: SessionDraft): void {
  * @description Removes the draft entry from localStorage.
  * Errors are silently swallowed — if storage is inaccessible there
  * is nothing useful to do.
+ *
+ * @param key The user-scoped localStorage key
  */
-function clearDraftFromStorage(): void {
+function clearDraftFromStorage(key: string): void {
   try {
-    localStorage.removeItem(DRAFT_KEY)
+    localStorage.removeItem(key)
   } catch {
     // Intentionally empty — storage may be locked in some security configs.
   }
@@ -169,8 +183,9 @@ export type UseDraftSessionReturn = {
  *
  * @returns Draft state and imperative helpers for save / clear / restore.
  *
+ * @param userId The authenticated user's UUID — used to scope the localStorage key
  * @example
- * const { hasDraft, draft, saveDraft, clearDraft, restoreDraft } = useDraftSession()
+ * const { hasDraft, draft, saveDraft, clearDraft, restoreDraft } = useDraftSession(userId)
  *
  * // Offer restore prompt
  * if (hasDraft) { ... }
@@ -181,16 +196,17 @@ export type UseDraftSessionReturn = {
  * // Populate form from draft
  * const saved = restoreDraft()
  */
-export function useDraftSession(): UseDraftSessionReturn {
+export function useDraftSession(userId: string): UseDraftSessionReturn {
+  const key = draftKey(userId)
   const [draft, setDraft] = useState<SessionDraft | null>(null)
 
   // Load on mount — do not auto-restore, just make it available.
   useEffect(() => {
-    const stored = loadDraft()
+    const stored = loadDraft(key)
     if (stored !== null) {
       setDraft(stored)
     }
-  }, [])
+  }, [key])
 
   /**
    * @description Merges `updates` into the current draft and persists the
@@ -207,9 +223,9 @@ export function useDraftSession(): UseDraftSessionReturn {
         lastSaved: new Date().toISOString(),
       }
       setDraft(newDraft)
-      saveDraftToStorage(newDraft)
+      saveDraftToStorage(key, newDraft)
     },
-    [draft],
+    [draft, key],
   )
 
   /**
@@ -219,8 +235,8 @@ export function useDraftSession(): UseDraftSessionReturn {
    */
   const clearDraft = useCallback(() => {
     setDraft(null)
-    clearDraftFromStorage()
-  }, [])
+    clearDraftFromStorage(key)
+  }, [key])
 
   /**
    * @description Returns the current draft from React state.

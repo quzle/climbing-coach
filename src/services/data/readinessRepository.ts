@@ -13,40 +13,6 @@ type SupabaseErrorShape = {
   hint?: string
 }
 
-function hasLegacyRequiredColumnError(error: SupabaseErrorShape): boolean {
-  const message = `${error.message ?? ''} ${error.details ?? ''}`.toLowerCase()
-  if (error.code !== '23502') {
-    return false
-  }
-
-  return /shoulder_health/.test(message)
-}
-
-function getLegacyShoulderHealth(injuryAreaHealth: InjuryAreaHealth[]): number {
-  const shoulderHealthEntries = injuryAreaHealth
-    .filter((area) => area.area === 'shoulder_left' || area.area === 'shoulder_right')
-    .map((area) => area.health)
-
-  if (shoulderHealthEntries.length === 0) {
-    return 5
-  }
-
-  return Math.min(...shoulderHealthEntries)
-}
-
-function buildLegacyCompatiblePayload(
-  payload: ReadinessCheckinInsert,
-  injuryAreaHealth: InjuryAreaHealth[],
-): ReadinessCheckinInsert {
-  const legacyPayload = {
-    ...payload,
-    shoulder_health: getLegacyShoulderHealth(injuryAreaHealth),
-  }
-
-  // Cast is intentional: legacy keys are only needed for older production schemas.
-  return legacyPayload as unknown as ReadinessCheckinInsert
-}
-
 // =============================================================================
 // PRIVATE HELPERS
 // =============================================================================
@@ -118,7 +84,7 @@ function daysAgoDate(days: number): string {
  *
  * @returns The check-in record for today, or null if none exists
  */
-export async function getTodaysCheckin(): Promise<
+export async function getTodaysCheckin(userId: string): Promise<
   ApiResponse<ReadinessCheckin | null>
 > {
   try {
@@ -126,6 +92,7 @@ export async function getTodaysCheckin(): Promise<
     const { data, error } = await supabase
       .from('readiness_checkins')
       .select('*')
+      .eq('user_id', userId)
       .eq('date', today())
       .maybeSingle()
 
@@ -150,12 +117,14 @@ export async function getTodaysCheckin(): Promise<
  */
 export async function getRecentCheckins(
   days: number,
+  userId: string,
 ): Promise<ApiResponse<ReadinessCheckin[]>> {
   try {
     const supabase = await createClient()
     const { data, error } = await supabase
       .from('readiness_checkins')
       .select('*')
+      .eq('user_id', userId)
       .gte('date', daysAgoDate(days))
       .lte('date', today())
       .order('date', { ascending: false })
@@ -194,31 +163,11 @@ export async function createCheckin(
       injury_area_health: injuryAreaHealth,
     }
 
-    let { data, error } = await supabase
+    const { data, error } = await supabase
       .from('readiness_checkins')
       .insert(insertPayload)
       .select()
       .single()
-
-    if (error) {
-      const firstError = error as SupabaseErrorShape
-
-      if (hasLegacyRequiredColumnError(firstError)) {
-        const legacyPayload = buildLegacyCompatiblePayload(insertPayload, injuryAreaHealth)
-        const retryResult = await supabase
-          .from('readiness_checkins')
-          .insert(legacyPayload)
-          .select()
-          .single()
-
-        data = retryResult.data
-        error = retryResult.error
-
-        if (retryResult.error === null) {
-          return { data: retryResult.data, error: null }
-        }
-      }
-    }
 
     if (error) {
       const supabaseError = error as SupabaseErrorShape
@@ -246,8 +195,7 @@ export async function createCheckin(
       if (
         supabaseError.code === 'PGRST204' ||
         supabaseError.code === '42703' ||
-        supabaseError.code === '42P01' ||
-        hasLegacyRequiredColumnError(supabaseError)
+        supabaseError.code === '42P01'
       ) {
         return {
           data: null,
@@ -271,12 +219,13 @@ export async function createCheckin(
  *
  * @returns `true` if a check-in exists for today, `false` otherwise
  */
-export async function hasCheckedInToday(): Promise<ApiResponse<boolean>> {
+export async function hasCheckedInToday(userId: string): Promise<ApiResponse<boolean>> {
   try {
     const supabase = await createClient()
     const { data, error } = await supabase
       .from('readiness_checkins')
       .select('id')
+      .eq('user_id', userId)
       .eq('date', today())
       .maybeSingle()
 
@@ -302,12 +251,14 @@ export async function hasCheckedInToday(): Promise<ApiResponse<boolean>> {
  */
 export async function getAverageReadiness(
   days: number,
+  userId: string,
 ): Promise<ApiResponse<number>> {
   try {
     const supabase = await createClient()
     const { data, error } = await supabase
       .from('readiness_checkins')
       .select('readiness_score')
+      .eq('user_id', userId)
       .gte('date', daysAgoDate(days))
       .lte('date', today())
 
@@ -349,12 +300,13 @@ export async function getAverageReadiness(
  * athlete to reset and resubmit their check-in on the same day.
  * @returns The deleted check-in row, or an error if none exists.
  */
-export async function deleteTodaysCheckin(): Promise<ApiResponse<ReadinessCheckin>> {
+export async function deleteTodaysCheckin(userId: string): Promise<ApiResponse<ReadinessCheckin>> {
   try {
     const supabase = await createClient()
     const { data, error } = await supabase
       .from('readiness_checkins')
       .delete()
+      .eq('user_id', userId)
       .eq('date', today())
       .select()
       .single()
@@ -373,12 +325,14 @@ export async function deleteTodaysCheckin(): Promise<ApiResponse<ReadinessChecki
 
 export async function getReadinessTrend(
   days: number,
+  userId: string,
 ): Promise<ApiResponse<{ date: string; score: number }[]>> {
   try {
     const supabase = await createClient()
     const { data, error } = await supabase
       .from('readiness_checkins')
       .select('date, readiness_score')
+      .eq('user_id', userId)
       .gte('date', daysAgoDate(days))
       .lte('date', today())
       .order('date', { ascending: true })

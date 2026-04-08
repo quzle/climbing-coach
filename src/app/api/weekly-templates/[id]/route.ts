@@ -4,6 +4,7 @@ import {
   getWeeklyTemplateById,
   updateWeeklyTemplate,
 } from '@/services/data/weeklyTemplateRepository'
+import { getCurrentUser } from '@/lib/supabase/get-current-user'
 import type { ApiResponse, WeeklyTemplate } from '@/types'
 
 const paramsSchema = z.object({ id: z.string().uuid() })
@@ -42,6 +43,7 @@ export async function GET(
   context: { params: Promise<{ id: string }> },
 ): Promise<NextResponse<ApiResponse<{ weeklyTemplate: WeeklyTemplate }>>> {
   try {
+    const user = await getCurrentUser()
     const parsedParams = paramsSchema.safeParse(await context.params)
     if (!parsedParams.success) {
       return NextResponse.json(
@@ -50,7 +52,7 @@ export async function GET(
       )
     }
 
-    const result = await getWeeklyTemplateById(parsedParams.data.id)
+    const result = await getWeeklyTemplateById(parsedParams.data.id, user.id)
     if (result.error !== null || result.data === null) {
       return NextResponse.json(
         { data: null, error: 'Failed to load weekly template.' },
@@ -77,6 +79,7 @@ export async function PUT(
   context: { params: Promise<{ id: string }> },
 ): Promise<NextResponse<ApiResponse<{ weeklyTemplate: WeeklyTemplate }>>> {
   try {
+    const user = await getCurrentUser()
     const parsedParams = paramsSchema.safeParse(await context.params)
     if (!parsedParams.success) {
       return NextResponse.json(
@@ -94,7 +97,7 @@ export async function PUT(
       )
     }
 
-    const result = await updateWeeklyTemplate(parsedParams.data.id, parsedBody.data)
+    const result = await updateWeeklyTemplate(parsedParams.data.id, parsedBody.data, user.id)
     if (result.error !== null || result.data === null) {
       return NextResponse.json(
         { data: null, error: 'Failed to update weekly template.' },

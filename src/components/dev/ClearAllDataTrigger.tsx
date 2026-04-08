@@ -12,18 +12,34 @@ type ClearState =
   | { status: 'success'; tablesCleared: Record<string, number> }
   | { status: 'error'; message: string }
 
+type ClearAllDataTriggerProps = {
+  targetUserId: string | null
+}
+
 /**
  * @description Dev-only trigger that deletes all rows from all application tables.
  * Requires a confirmation step before executing.
  */
-export function ClearAllDataTrigger(): React.JSX.Element {
+export function ClearAllDataTrigger({
+  targetUserId,
+}: ClearAllDataTriggerProps): React.JSX.Element {
   const [state, setState] = useState<ClearState>({ status: 'idle' })
 
   async function handleClearAll(): Promise<void> {
+    if (targetUserId === null) {
+      return
+    }
+
     setState({ status: 'clearing' })
 
     try {
-      const response = await fetch('/api/dev/clear-all', { method: 'POST' })
+      const response = await fetch('/api/dev/clear-all', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ targetUserId }),
+      })
       const json = (await response.json()) as ApiResponse<ClearAllResult>
 
       if (!response.ok || json.error !== null || json.data === null) {
@@ -57,11 +73,18 @@ export function ClearAllDataTrigger(): React.JSX.Element {
           type="button"
           variant="destructive"
           className="min-h-[44px]"
+          disabled={targetUserId === null}
           onClick={() => setState({ status: 'confirming' })}
         >
           Clear All Data
         </Button>
       )}
+
+      {targetUserId === null ? (
+        <p className="text-sm text-amber-700" role="status">
+          Select a target user before resetting data.
+        </p>
+      ) : null}
 
       {state.status === 'confirming' && (
         <div className="space-y-2">

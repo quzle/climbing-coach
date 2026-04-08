@@ -1,5 +1,6 @@
 import React from 'react'
 import { render, type RenderOptions } from '@testing-library/react'
+import { AuthProvider } from '@/components/providers/auth-provider'
 
 // ---------------------------------------------------------------------------
 // Global test providers
@@ -8,7 +9,7 @@ import { render, type RenderOptions } from '@testing-library/react'
 // as the app grows.
 // ---------------------------------------------------------------------------
 function AllProviders({ children }: { children: React.ReactNode }): React.JSX.Element {
-  return <>{children}</>
+  return <AuthProvider initialUser={null}>{children}</AuthProvider>
 }
 
 function customRender(

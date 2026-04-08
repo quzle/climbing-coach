@@ -33,9 +33,13 @@ yarn-error.log*
 # env files (can opt-in for committing if needed)
 .env*
 !.env.example
+.env.integration.local
 
 # vercel
 .vercel
+
+# supabase
+supabase/.temp
 
 # typescript
 *.tsbuildinfo
@@ -43,3 +47,6 @@ next-env.d.ts
 
 #claude (add when git committing then remove)
 .claude/
+
+# bash script
+run-issues.sh

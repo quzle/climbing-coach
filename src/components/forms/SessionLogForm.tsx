@@ -9,6 +9,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Form } from '@/components/ui/form'
 import { WarningBanner } from '@/components/ui/WarningBanner'
 import { useDraftSession } from '@/hooks/useDraftSession'
+import { useAuth } from '@/hooks/useAuth'
 import { DraftRestoreBanner } from '@/components/forms/DraftRestoreBanner'
 import { SessionTypeSelector } from '@/components/forms/SessionTypeSelector'
 import { CommonFields } from '@/components/forms/session-fields/CommonFields'
@@ -164,9 +165,10 @@ export function SessionLogForm({
   initialInjuryAreas = [],
 }: SessionLogFormProps): React.ReactElement {
   const router = useRouter()
+  const { user } = useAuth()
 
   // ── Draft persistence ────────────────────────────────────────────────────
-  const { draft, hasDraft, saveDraft, clearDraft } = useDraftSession()
+  const { draft, hasDraft, saveDraft, clearDraft } = useDraftSession(user?.id ?? '')
 
   // ── Stage + type state ──────────────────────────────────────────────────
   const [stage, setStage] = useState<1 | 2>(defaultSessionType ? 2 : 1)

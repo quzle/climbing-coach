@@ -16,6 +16,7 @@ import {
   deleteWeeklyTemplate,
 } from '@/services/data/weeklyTemplateRepository'
 import type { Mesocycle, PlannedSession, Programme, WeeklyTemplate } from '@/types'
+import { SINGLE_USER_PLACEHOLDER_ID } from '@/lib/placeholder-user-id'
 import { seedSummerMultipitchProgramme } from './programmeSeed'
 
 jest.mock('@/services/data/programmeRepository', () => ({
@@ -57,7 +58,10 @@ function makeProgramme(overrides?: Partial<Programme>): Programme {
     name: 'Summer Multipitch Season',
     notes: null,
     start_date: '2026-03-23',
+    status: 'active',
     target_date: '2026-07-12',
+    athlete_profile: null,
+    user_id: 'user-1',
     ...overrides,
   }
 }
@@ -76,6 +80,7 @@ function makeMesocycle(index: number, overrides?: Partial<Mesocycle>): Mesocycle
     planned_start: '2026-03-23',
     programme_id: 'programme-1',
     status: index === 1 ? 'active' : 'planned',
+    user_id: 'user-1',
     ...overrides,
   }
 }
@@ -91,6 +96,7 @@ function makeWeeklyTemplate(index: number, overrides?: Partial<WeeklyTemplate>):
     primary_focus: 'Focus',
     session_label: `Template ${index}`,
     session_type: 'lead',
+    user_id: 'user-1',
     ...overrides,
   }
 }
@@ -106,6 +112,7 @@ function makePlannedSession(index: number, overrides?: Partial<PlannedSession>):
     session_type: 'lead',
     status: 'planned',
     template_id: 'template-1',
+    user_id: 'user-1',
     ...overrides,
   }
 }
@@ -180,6 +187,7 @@ describe('seedSummerMultipitchProgramme', () => {
     const result = await seedSummerMultipitchProgramme()
 
     expect(result.error).toBeNull()
+    expect(mockGetProgrammes).toHaveBeenCalledWith(SINGLE_USER_PLACEHOLDER_ID)
     expect(result.data).toEqual({
       seeded: true,
       programmeId: 'programme-1',
@@ -239,5 +247,13 @@ describe('seedSummerMultipitchProgramme', () => {
     expect(result.data).toBeNull()
     expect(result.error).toBe('insert failed')
     expect(mockCreateMesocycle).not.toHaveBeenCalled()
+  })
+
+  it('passes user scope when deleting planned sessions during rollback', async () => {
+    mockCreatePlannedSession.mockResolvedValueOnce({ data: null, error: 'insert failed' })
+
+    await seedSummerMultipitchProgramme()
+
+    expect(mockDeletePlannedSession.mock.calls.every((call) => call[1] === SINGLE_USER_PLACEHOLDER_ID)).toBe(true)
   })
 })

@@ -14,15 +14,15 @@ import type { ApiResponse, ProgrammeBuilderSnapshot } from '@/types'
  *
  * @returns ProgrammeBuilderSnapshot with safe empty/null fallbacks
  */
-export async function getProgrammeBuilderSnapshot(): Promise<
-  ApiResponse<ProgrammeBuilderSnapshot>
-> {
+export async function getProgrammeBuilderSnapshot(
+  userId: string,
+): Promise<ApiResponse<ProgrammeBuilderSnapshot>> {
   try {
     const [activeProgrammeResult, activeMesocycleResult, upcomingSessionsResult] =
       await Promise.all([
-        getActiveProgramme(),
-        getActiveMesocycle(),
-        getUpcomingPlannedSessions(7),
+        getActiveProgramme(userId),
+        getActiveMesocycle(userId),
+        getUpcomingPlannedSessions(7, userId),
       ])
 
     if (activeProgrammeResult.error !== null) {
@@ -49,10 +49,10 @@ export async function getProgrammeBuilderSnapshot(): Promise<
 
     const [mesocyclesResult, templateResult] = await Promise.all([
       currentProgramme !== null
-        ? getMesocyclesByProgramme(currentProgramme.id)
+        ? getMesocyclesByProgramme(currentProgramme.id, userId)
         : Promise.resolve({ data: [], error: null }),
       activeMesocycle !== null
-        ? getWeeklyTemplateByMesocycle(activeMesocycle.id)
+        ? getWeeklyTemplateByMesocycle(activeMesocycle.id, userId)
         : Promise.resolve({ data: [], error: null }),
     ])
 

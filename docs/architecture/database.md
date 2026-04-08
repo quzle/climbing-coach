@@ -2,7 +2,62 @@
 
 This document describes the complete Supabase Postgres schema for the Climbing Coach application.
 
-Run this schema against your Supabase project via the SQL Editor before starting the application.
+Schema changes are managed as SQL migration files in `supabase/migrations/`. Run each migration in order against your Supabase project via the SQL Editor before starting the application.
+
+## Supabase Projects and Migration Policy
+
+The project currently uses two Supabase projects:
+
+- **Production:** `qsihlcmjjwarxrnmmsse`
+- **Integration test:** `tmtspymjfnemygpquyhw`
+
+The integration project is a non-production environment used for:
+
+- running `npm run test:integration` against real Supabase Auth + RLS behavior
+- validating route-level auth handling with real JWT-backed sessions
+- validating row ownership enforcement before production rollout
+
+### Required migration workflow (both databases)
+
+Every new migration must be applied to **both** projects to keep schemas aligned.
+
+1. Add migration SQL in `supabase/migrations/`.
+2. Apply to production (`qsihlcmjjwarxrnmmsse`).
+3. Apply to integration (`tmtspymjfnemygpquyhw`).
+4. Regenerate `src/lib/database.types.ts` from production only.
+5. Run unit tests and integration tests.
+
+Never consider a migration complete until both Supabase projects have the same migration history.
+
+Auth and authorization integration coverage is exercised separately from unit tests through `npm run test:integration`. That suite seeds local Supabase users via the service role, then verifies route-level auth handling and direct RLS filtering with real anon-key sessions.
+
+---
+
+## `profiles`
+
+Application-owned user metadata. One row per `auth.users` entry (one-to-one).
+
+Created by migration `20260330000001_create_profiles_table.sql`.
+
+| Column | Type | Nullable | Default | Description |
+|---|---|---|---|---|
+| `id` | `uuid` | No | — | Primary key — references `auth.users(id)` (cascade delete) |
+| `email` | `text` | No | — | User's email address |
+| `display_name` | `text` | Yes | `null` | Optional display name |
+| `role` | `text` | No | `'user'` | MVP values: `user`, `superuser` |
+| `invite_status` | `text` | No | `'invited'` | MVP values: `invited`, `active` |
+| `created_at` | `timestamptz` | No | `now()` | Row creation timestamp |
+| `updated_at` | `timestamptz` | No | `now()` | Last update timestamp |
+
+**Relationships:** `id` → `auth.users(id)` (one-to-one, cascade delete).
+
+**Business rules:** A profile row is created when a superuser sends an invite (`invite_status = 'invited'`). On the user's first successful sign-in the application transitions `invite_status` to `'active'`. `role` is managed by superuser tooling only.
+
+**RLS:** Enabled by migration `20260402000001_add_rls_to_profiles.sql`. Authenticated users can:
+- `SELECT` only their own profile (`auth.uid() = id`)
+- `UPDATE` only their own profile (`USING auth.uid() = id` and `WITH CHECK auth.uid() = id`)
+
+No `INSERT` or `DELETE` policy is granted to `authenticated`.
 
 ---
 
@@ -16,14 +71,14 @@ Represents a structured training programme (e.g. a 12-week block targeting 7a on
 | `name` | `text` | No | Human-readable programme name |
 | `goal` | `text` | Yes | Target grade or objective (e.g. "7a onsight") |
 | `start_date` | `date` | Yes | Planned programme start date |
-| `end_date` | `date` | Yes | Planned programme end date |
-| `status` | `text` | No | `active`, `completed`, or `paused` |
+| `target_date` | `date` | Yes | Planned programme end date |
+| `status` | `text` | No | `active`, `completed`, or `paused` (default `active`) |
 | `notes` | `text` | Yes | Free-text notes about the programme |
 | `created_at` | `timestamptz` | No | Row creation timestamp |
 
 **Relationships:** None — top-level entity.
 
-**Business rules:** Only one programme should have `status = 'active'` at a time. Application logic enforces this; no database constraint.
+**Business rules:** Only one programme per user may have `status = 'active'` at any time. This is enforced by a partial unique index `idx_programmes_one_active_per_user ON programmes(user_id) WHERE (status = 'active')` (added in migration `20260330000002_add_programme_status_constraint.sql`). Before activating a new programme the existing active programme must be transitioned to `completed` or `paused`.
 
 ---
 
@@ -196,13 +251,38 @@ The `log_data` jsonb field stores session-specific structured data. The shape de
 
 Stores the full conversation history between the athlete and the AI coach.
 
+`thread_id` column added by migration `20260330000002_add_thread_id_to_chat_messages.sql`.
+
 | Column | Type | Nullable | Description |
 |---|---|---|---|
 | `id` | `uuid` | No | Primary key |
+| `user_id` | `uuid` | No | Owner — references `auth.users(id)` |
+| `thread_id` | `uuid` | Yes | FK → `chat_threads.id` (set null on thread delete) |
 | `role` | `text` | No | `user` or `assistant` |
 | `content` | `text` | No | Message text |
+| `context_snapshot` | `jsonb` | Yes | Athlete context snapshot captured at send time |
 | `created_at` | `timestamptz` | No | Message timestamp (used for ordering and recency window) |
 
-**Relationships:** None.
+**Relationships:** `user_id` → `auth.users(id)`. `thread_id` → `chat_threads(id)` (set null on delete).
 
-**Business rules:** The prompt builder fetches the most recent 10 messages ordered by `created_at` descending. There is no hard limit on total rows — implement a cleanup job if the table grows excessively.
+**Business rules:** The prompt builder fetches the most recent 20 messages ordered by `created_at` descending. `thread_id` is nullable to preserve messages created before threading was introduced; future work may back-fill this column. There is no hard limit on total rows — implement a cleanup job if the table grows excessively.
+
+---
+
+## `chat_threads`
+
+Groups chat messages into per-user conversation threads. Introduced to support the multi-user ownership model and future thread history expansion.
+
+| Column | Type | Nullable | Description |
+|---|---|---|---|
+| `id` | `uuid` | No | Primary key |
+| `user_id` | `uuid` | No | Owner — references `auth.users(id)` |
+| `title` | `text` | Yes | Optional human-readable thread name (e.g. AI-generated or user-assigned) |
+| `created_at` | `timestamptz` | No | Row creation timestamp |
+| `updated_at` | `timestamptz` | No | Last-updated timestamp (used for ordering threads by recency) |
+
+**Relationships:** `user_id` → `auth.users(id)`.
+
+**Business rules:** The MVP exposes one default thread per user in the UI. The schema supports multiple threads per user without a redesign. `updated_at` should be refreshed whenever a message is added to the thread.
+
+**RLS:** Enabled by migration `20260402000002_add_rls_to_chat_threads.sql`. Authenticated users can access only their own thread rows via one owner policy using `auth.uid() = user_id` in both `USING` and `WITH CHECK`.

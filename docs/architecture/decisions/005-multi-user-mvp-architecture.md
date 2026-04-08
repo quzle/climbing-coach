@@ -2,8 +2,9 @@
 
 ## Status
 
-Accepted.
-Planned before implementation begins.
+Accepted and implemented for the multi-user MVP baseline.
+
+Implementation outcome snapshot updated 2026-04-02.
 
 ## Date
 
@@ -230,3 +231,27 @@ Reason:
 ## Implementation Notes
 
 The execution order and dependency structure for this ADR are documented in `docs/architecture/multi-user-migration-plan.md`.
+
+## Implementation Outcomes (2026-04-02 Snapshot)
+
+### Completed Outcomes
+
+- Multi-user ownership model is implemented across user-owned domain tables with explicit `user_id` scoping.
+- `profiles` lifecycle is implemented for invite-only onboarding, with server-side `role` and `invite_status` transitions.
+- Chat persistence is thread-based (`chat_threads` + `chat_messages.thread_id`) and route/repository support is in place.
+- API route auth resolution and ownership propagation are implemented across core route families (`programmes`, `mesocycles`, `planned_sessions`, `sessions`, `readiness`, `injury_areas`, `weekly_templates`, `chat`).
+- Privileged `/api/dev/*` actions enforce server-side `requireSuperuser()` checks.
+- Structured logging baseline is implemented (`logInfo`, `logWarn`, `logError`) with ADR-aligned field conventions.
+- Baseline RLS hardening is in place for user-owned tables, `profiles`, and `chat_threads`.
+- Integration auth/RLS test harness is implemented and validated against a dedicated integration Supabase project.
+
+### Operational Model in Use
+
+- Production Supabase project: `qsihlcmjjwarxrnmmsse`.
+- Integration Supabase project: `tmtspymjfnemygpquyhw`.
+- Migration policy: every schema migration is applied to both projects, then `src/lib/database.types.ts` is regenerated from production.
+
+### Known Transitional Items
+
+- Supabase dashboard email-template setup steps (allowed redirect URLs and token-hash invite/magic-link templates) remain explicit operational prerequisites in the migration plan.
+- A small number of legacy route behaviors are documented transparently in API docs and tracked for follow-up refactor hardening.

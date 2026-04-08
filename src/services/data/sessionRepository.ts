@@ -114,28 +114,31 @@ function daysAgoDate(days: number): string {
  * first.
  *
  * @param days Number of days to look back (e.g. 7, 30)
+ * @param userId The user UUID to verify ownership
  * @returns Array of session logs ordered by date descending
  */
 export async function getRecentSessions(
   days: number,
+  userId: string,
 ): Promise<ApiResponse<SessionLog[]>> {
   try {
     const supabase = await createClient()
     const { data, error } = await supabase
       .from('session_logs')
       .select('*')
+      .eq('user_id', userId)
       .gte('date', daysAgoDate(days))
       .lte('date', today())
       .order('date', { ascending: false })
 
     if (error) {
-      console.error('[sessionRepository.getRecentSessions]', error)
+      console.error('[sessionRepository.getRecentSessions]', { days, userId }, error)
       return { data: null, error: 'Failed to fetch recent sessions' }
     }
 
     return { data: data ?? [], error: null }
   } catch (err) {
-    console.error('[sessionRepository.getRecentSessions] unexpected error', err)
+    console.error('[sessionRepository.getRecentSessions] unexpected error', { days, userId }, err)
     return { data: null, error: 'An unexpected error occurred' }
   }
 }
@@ -145,10 +148,12 @@ export async function getRecentSessions(
  * no matching record exists.
  *
  * @param id The session UUID
+ * @param userId The user UUID to verify ownership
  * @returns The matching session log record
  */
 export async function getSessionById(
   id: string,
+  userId: string,
 ): Promise<ApiResponse<SessionLog>> {
   try {
     const supabase = await createClient()
@@ -156,16 +161,17 @@ export async function getSessionById(
       .from('session_logs')
       .select('*')
       .eq('id', id)
+      .eq('user_id', userId)
       .single()
 
     if (error) {
-      console.error('[sessionRepository.getSessionById]', error)
+      console.error('[sessionRepository.getSessionById]', { id, userId }, error)
       return { data: null, error: 'Failed to fetch session' }
     }
 
     return { data, error: null }
   } catch (err) {
-    console.error('[sessionRepository.getSessionById] unexpected error', err)
+    console.error('[sessionRepository.getSessionById] unexpected error', { id, userId }, err)
     return { data: null, error: 'An unexpected error occurred' }
   }
 }
@@ -173,7 +179,7 @@ export async function getSessionById(
 /**
  * @description Inserts a new session log record and returns the created row.
  *
- * @param input The session data to insert
+ * @param input The session data to insert (must include user_id)
  * @returns The newly created session log
  */
 export async function createSession(
@@ -188,13 +194,13 @@ export async function createSession(
       .single()
 
     if (error) {
-      console.error('[sessionRepository.createSession]', error)
+      console.error('[sessionRepository.createSession]', { userId: input.user_id }, error)
       return { data: null, error: 'Failed to create session' }
     }
 
     return { data, error: null }
   } catch (err) {
-    console.error('[sessionRepository.createSession] unexpected error', err)
+    console.error('[sessionRepository.createSession] unexpected error', { userId: input.user_id }, err)
     return { data: null, error: 'An unexpected error occurred' }
   }
 }
@@ -205,11 +211,13 @@ export async function createSession(
  *
  * @param id The session UUID to update
  * @param updates Partial session fields to apply
+ * @param userId The user UUID to verify ownership
  * @returns The updated session log record
  */
 export async function updateSession(
   id: string,
   updates: SessionLogUpdate,
+  userId: string,
 ): Promise<ApiResponse<SessionLog>> {
   try {
     const supabase = await createClient()
@@ -217,17 +225,18 @@ export async function updateSession(
       .from('session_logs')
       .update(updates)
       .eq('id', id)
+      .eq('user_id', userId)
       .select()
       .single()
 
     if (error) {
-      console.error('[sessionRepository.updateSession]', error)
+      console.error('[sessionRepository.updateSession]', { id, userId }, error)
       return { data: null, error: 'Failed to update session' }
     }
 
     return { data, error: null }
   } catch (err) {
-    console.error('[sessionRepository.updateSession] unexpected error', err)
+    console.error('[sessionRepository.updateSession] unexpected error', { id, userId }, err)
     return { data: null, error: 'An unexpected error occurred' }
   }
 }
@@ -239,13 +248,15 @@ export async function updateSession(
  *
  * @param id The session UUID
  * @param deviation Free-text description of how the session deviated from plan
+ * @param userId The user UUID to verify ownership
  * @returns The updated session log record
  */
 export async function updateSessionDeviation(
   id: string,
   deviation: string,
+  userId: string,
 ): Promise<ApiResponse<SessionLog>> {
-  return updateSession(id, { deviation_from_plan: deviation })
+  return updateSession(id, { deviation_from_plan: deviation }, userId)
 }
 
 /**
@@ -254,24 +265,27 @@ export async function updateSessionDeviation(
  *
  * @param type The session type to filter by (e.g. 'bouldering', 'fingerboard')
  * @param days Number of days to look back
+ * @param userId The user UUID to verify ownership
  * @returns Array of matching session logs ordered by date descending
  */
 export async function getSessionsByType(
   type: SessionType,
   days: number,
+  userId: string,
 ): Promise<ApiResponse<SessionLog[]>> {
   try {
     const supabase = await createClient()
     const { data, error } = await supabase
       .from('session_logs')
       .select('*')
+      .eq('user_id', userId)
       .eq('session_type', type)
       .gte('date', daysAgoDate(days))
       .lte('date', today())
       .order('date', { ascending: false })
 
     if (error) {
-      console.error('[sessionRepository.getSessionsByType]', error)
+      console.error('[sessionRepository.getSessionsByType]', { type, days, userId }, error)
       return { data: null, error: 'Failed to fetch sessions by type' }
     }
 
@@ -279,6 +293,7 @@ export async function getSessionsByType(
   } catch (err) {
     console.error(
       '[sessionRepository.getSessionsByType] unexpected error',
+      { type, days, userId },
       err,
     )
     return { data: null, error: 'An unexpected error occurred' }
@@ -291,23 +306,26 @@ export async function getSessionsByType(
  *
  * @param startDate ISO date string 'YYYY-MM-DD' (inclusive)
  * @param endDate ISO date string 'YYYY-MM-DD' (inclusive)
+ * @param userId The user UUID to verify ownership
  * @returns Array of session logs ordered by date ascending
  */
 export async function getSessionsInDateRange(
   startDate: string,
   endDate: string,
+  userId: string,
 ): Promise<ApiResponse<SessionLog[]>> {
   try {
     const supabase = await createClient()
     const { data, error } = await supabase
       .from('session_logs')
       .select('*')
+      .eq('user_id', userId)
       .gte('date', startDate)
       .lte('date', endDate)
       .order('date', { ascending: true })
 
     if (error) {
-      console.error('[sessionRepository.getSessionsInDateRange]', error)
+      console.error('[sessionRepository.getSessionsInDateRange]', { startDate, endDate, userId }, error)
       return { data: null, error: 'Failed to fetch sessions in date range' }
     }
 
@@ -315,6 +333,7 @@ export async function getSessionsInDateRange(
   } catch (err) {
     console.error(
       '[sessionRepository.getSessionsInDateRange] unexpected error',
+      { startDate, endDate, userId },
       err,
     )
     return { data: null, error: 'An unexpected error occurred' }
@@ -326,19 +345,21 @@ export async function getSessionsInDateRange(
  * week (Monday to today inclusive). Used on the home dashboard training
  * summary.
  *
+ * @param userId The user UUID to verify ownership
  * @returns Number of sessions logged since Monday of the current week
  */
-export async function getSessionCountThisWeek(): Promise<ApiResponse<number>> {
+export async function getSessionCountThisWeek(userId: string): Promise<ApiResponse<number>> {
   try {
     const supabase = await createClient()
     const { data, error } = await supabase
       .from('session_logs')
       .select('id')
+      .eq('user_id', userId)
       .gte('date', getMondayOfCurrentWeek())
       .lte('date', today())
 
     if (error) {
-      console.error('[sessionRepository.getSessionCountThisWeek]', error)
+      console.error('[sessionRepository.getSessionCountThisWeek]', { userId }, error)
       return { data: null, error: 'Failed to count sessions this week' }
     }
 
@@ -346,6 +367,7 @@ export async function getSessionCountThisWeek(): Promise<ApiResponse<number>> {
   } catch (err) {
     console.error(
       '[sessionRepository.getSessionCountThisWeek] unexpected error',
+      { userId },
       err,
     )
     return { data: null, error: 'An unexpected error occurred' }
@@ -357,9 +379,10 @@ export async function getSessionCountThisWeek(): Promise<ApiResponse<number>> {
  * string, or null if no sessions have been logged yet. Used to calculate
  * days since last session for the AI coaching context.
  *
+ * @param userId The user UUID to verify ownership
  * @returns ISO date string of the most recent session, or null
  */
-export async function getLastSessionDate(): Promise<
+export async function getLastSessionDate(userId: string): Promise<
   ApiResponse<string | null>
 > {
   try {
@@ -367,12 +390,13 @@ export async function getLastSessionDate(): Promise<
     const { data, error } = await supabase
       .from('session_logs')
       .select('date')
+      .eq('user_id', userId)
       .order('date', { ascending: false })
       .limit(1)
       .maybeSingle()
 
     if (error) {
-      console.error('[sessionRepository.getLastSessionDate]', error)
+      console.error('[sessionRepository.getLastSessionDate]', { userId }, error)
       return { data: null, error: 'Failed to fetch last session date' }
     }
 
@@ -380,6 +404,7 @@ export async function getLastSessionDate(): Promise<
   } catch (err) {
     console.error(
       '[sessionRepository.getLastSessionDate] unexpected error',
+      { userId },
       err,
     )
     return { data: null, error: 'An unexpected error occurred' }
@@ -397,9 +422,10 @@ export async function getLastSessionDate(): Promise<
  * TODO (Phase 3): Add date range filtering to avoid loading the full history
  * as the session_logs table grows.
  *
+ * @param userId The user UUID to verify ownership
  * @returns Array of { date, best_grade, session_type } ordered by date ascending
  */
-export async function getGradeProgressionData(): Promise<
+export async function getGradeProgressionData(userId: string): Promise<
   ApiResponse<{ date: string; best_grade: string; session_type: SessionType }[]>
 > {
   try {
@@ -409,11 +435,12 @@ export async function getGradeProgressionData(): Promise<
     const { data, error } = await supabase
       .from('session_logs')
       .select('date, session_type, log_data')
+      .eq('user_id', userId)
       .in('session_type', climbingTypes)
       .order('date', { ascending: true })
 
     if (error) {
-      console.error('[sessionRepository.getGradeProgressionData]', error)
+      console.error('[sessionRepository.getGradeProgressionData]', { userId }, error)
       return { data: null, error: 'Failed to fetch grade progression data' }
     }
 
@@ -442,6 +469,7 @@ export async function getGradeProgressionData(): Promise<
   } catch (err) {
     console.error(
       '[sessionRepository.getGradeProgressionData] unexpected error',
+      { userId },
       err,
     )
     return { data: null, error: 'An unexpected error occurred' }

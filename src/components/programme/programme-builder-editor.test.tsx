@@ -11,7 +11,10 @@ const snapshot: ProgrammeBuilderSnapshot = {
     name: 'Summer Season',
     notes: null,
     start_date: '2026-01-05',
+    status: 'active',
     target_date: '2026-04-26',
+    athlete_profile: null,
+    user_id: 'user-1',
   },
   activeMesocycle: {
     id: '11711946-7ec0-4640-9f03-2be6ac3cd571',
@@ -26,6 +29,7 @@ const snapshot: ProgrammeBuilderSnapshot = {
     planned_start: '2026-03-03',
     programme_id: '9f9d2ebd-cd7c-4d2d-b1f8-a8fae1f019d1',
     status: 'active',
+    user_id: 'user-1',
   },
   mesocycles: [],
   currentWeeklyTemplate: [
@@ -39,6 +43,7 @@ const snapshot: ProgrammeBuilderSnapshot = {
       primary_focus: 'Power',
       session_label: 'Limit Bouldering',
       session_type: 'bouldering',
+      user_id: 'user-1',
     },
   ],
   upcomingPlannedSessions: [],
@@ -75,21 +80,6 @@ describe('ProgrammeBuilderEditor', () => {
       expect(global.fetch).toHaveBeenCalledWith(
         '/api/programmes/9f9d2ebd-cd7c-4d2d-b1f8-a8fae1f019d1',
         expect.objectContaining({ method: 'PUT' }),
-      )
-    })
-    await waitFor(() => expect(onSaved).toHaveBeenCalled())
-  })
-
-  it('calls generation endpoint when generate button is clicked', async () => {
-    const onSaved = jest.fn().mockResolvedValue(undefined)
-    render(<ProgrammeBuilderEditor snapshot={snapshot} onSaved={onSaved} />)
-
-    fireEvent.click(screen.getByRole('button', { name: 'Generate Week Sessions' }))
-
-    await waitFor(() => {
-      expect(global.fetch).toHaveBeenCalledWith(
-        '/api/planned-sessions/generate',
-        expect.objectContaining({ method: 'POST' }),
       )
     })
     await waitFor(() => expect(onSaved).toHaveBeenCalled())

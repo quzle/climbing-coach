@@ -1,7 +1,7 @@
 import Link from 'next/link'
 import { notFound } from 'next/navigation'
-import { SeedProgrammeTrigger } from '@/components/dev/SeedProgrammeTrigger'
-import { ClearAllDataTrigger } from '@/components/dev/ClearAllDataTrigger'
+import { InviteManagementControls } from '@/components/dev/InviteManagementControls'
+import { SeedDataTools } from '@/components/dev/SeedDataTools'
 
 const DEV_CARDS = [
   {
@@ -67,9 +67,9 @@ export default function DevPage(): React.ReactElement {
           <p className="mt-1 text-slate-600">Only visible in development mode</p>
         </div>
 
-        <SeedProgrammeTrigger />
+        <InviteManagementControls />
 
-        <ClearAllDataTrigger />
+        <SeedDataTools />
 
         <div className="grid grid-cols-2 gap-3">
           {DEV_CARDS.map((card) => (

@@ -60,7 +60,10 @@ function makeProgramme(overrides?: Partial<Programme>): Programme {
     name: 'Summer Multipitch Season',
     notes: null,
     start_date: '2026-01-05',
+    status: 'active',
     target_date: '2026-04-26',
+    athlete_profile: null,
+    user_id: 'user-1',
     ...overrides,
   }
 }
@@ -79,6 +82,7 @@ function makeMesocycle(overrides?: Partial<Mesocycle>): Mesocycle {
     planned_start: '2026-03-03',
     programme_id: 'programme-1',
     status: 'active',
+    user_id: 'user-1',
     ...overrides,
   }
 }
@@ -94,6 +98,7 @@ function makeWeeklyTemplate(overrides?: Partial<WeeklyTemplate>): WeeklyTemplate
     primary_focus: 'Power',
     session_label: 'Limit Bouldering',
     session_type: 'bouldering',
+    user_id: 'user-1',
     ...overrides,
   }
 }
@@ -109,6 +114,7 @@ function makePlannedSession(overrides?: Partial<PlannedSession>): PlannedSession
     session_type: 'bouldering',
     status: 'planned',
     template_id: 'template-1',
+    user_id: 'user-1',
     ...overrides,
   }
 }
@@ -131,24 +137,31 @@ describe('buildSystemPrompt', () => {
   })
 
   it('includes athlete profile information', () => {
-    const prompt = buildSystemPrompt(makeAthleteContext())
+    const prompt = buildSystemPrompt(makeAthleteContext({
+      currentProgramme: makeProgramme({
+        athlete_profile: {
+          current_grade_onsight: '6c/7a',
+          strengths: 'limestone and granite',
+        },
+      }),
+    }))
 
+    expect(prompt).toContain('ATHLETE LEVEL')
     expect(prompt).toContain('6c/7a')
     expect(prompt).toContain('limestone and granite')
-    expect(prompt).toContain('Autumn 2025')
   })
 
   it('includes injury area reference in athlete profile', () => {
     const prompt = buildSystemPrompt(makeAthleteContext())
 
-    expect(prompt).toContain('injury area')
+    expect(prompt).toContain('Injury areas')
     expect(prompt).toContain('CURRENT ATHLETE CONTEXT')
   })
 
-  it('includes return-to-training protocol', () => {
+  it('includes progression and recovery rules', () => {
     const prompt = buildSystemPrompt(makeAthleteContext())
 
-    expect(prompt).toContain('RETURN-TO-TRAINING')
+    expect(prompt).toContain('3:1 loading')
     expect(prompt).toContain('60%')
   })
 
@@ -156,7 +169,7 @@ describe('buildSystemPrompt', () => {
     const prompt = buildSystemPrompt(makeAthleteContext())
 
     expect(prompt).toContain('onsight')
-    expect(prompt).toContain('Route reading')
+    expect(prompt).toContain('route reading')
   })
 
   it('includes the dynamic context section', () => {
@@ -207,7 +220,7 @@ describe('buildSystemPrompt', () => {
     const prompt = buildSystemPrompt(makeAthleteContext())
 
     expect(prompt).toContain('illness_flag')
-    expect(prompt).toContain('finger_health')
+    expect(prompt).toContain('FINGER HEALTH')
     expect(prompt).toContain('TRACKED INJURY AREAS')
   })
 

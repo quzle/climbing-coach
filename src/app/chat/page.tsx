@@ -8,6 +8,7 @@ import { ChatMessage } from '@/components/chat/ChatMessage'
 import { ChatInput } from '@/components/chat/ChatInput'
 import { ResetChatDialog } from '@/components/chat/ResetChatDialog'
 import { useChatHistory, type StoredChatMessage } from '@/hooks/useChatHistory'
+import { useAuth } from '@/hooks/useAuth'
 import type { ApiResponse } from '@/types'
 
 // =============================================================================
@@ -18,8 +19,9 @@ import type { ApiResponse } from '@/types'
 function ChatContent(): React.JSX.Element {
   const searchParams = useSearchParams()
   const initialValue = searchParams.get('message') ?? ''
+  const { user } = useAuth()
 
-  const { messages, addMessage, clearHistory } = useChatHistory()
+  const { messages, addMessage, clearHistory } = useChatHistory(user?.id ?? '')
   const [isLoading, setIsLoading] = useState(false)
   const [warnings, setWarnings] = useState<string[]>([])
   const bottomRef = useRef<HTMLDivElement>(null)

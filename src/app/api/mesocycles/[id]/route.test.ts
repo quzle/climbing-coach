@@ -3,6 +3,7 @@
  */
 import { NextRequest } from 'next/server'
 import { getMesocycleById, updateMesocycle } from '@/services/data/mesocycleRepository'
+import { getCurrentUser } from '@/lib/supabase/get-current-user'
 import { GET, PUT } from './route'
 
 jest.mock('@/services/data/mesocycleRepository', () => ({
@@ -10,8 +11,19 @@ jest.mock('@/services/data/mesocycleRepository', () => ({
   updateMesocycle: jest.fn(),
 }))
 
+jest.mock('@/lib/supabase/get-current-user', () => ({
+  getCurrentUser: jest.fn(),
+}))
+
+jest.mock('@/lib/logger', () => ({
+  logInfo: jest.fn(),
+  logWarn: jest.fn(),
+  logError: jest.fn(),
+}))
+
 const mockGetMesocycleById = getMesocycleById as jest.Mock
 const mockUpdateMesocycle = updateMesocycle as jest.Mock
+const mockGetCurrentUser = getCurrentUser as jest.Mock
 
 const id = '11711946-7ec0-4640-9f03-2be6ac3cd571'
 const mesocycle = {
@@ -31,6 +43,7 @@ const mesocycle = {
 
 beforeEach(() => {
   jest.clearAllMocks()
+  mockGetCurrentUser.mockResolvedValue({ id: 'user-1', email: 'user@example.com' })
   mockGetMesocycleById.mockResolvedValue({ data: mesocycle, error: null })
   mockUpdateMesocycle.mockResolvedValue({ data: mesocycle, error: null })
 })
@@ -41,6 +54,7 @@ describe('GET /api/mesocycles/:id', () => {
       params: Promise.resolve({ id }),
     })
     expect(response.status).toBe(200)
+    expect(mockGetMesocycleById).toHaveBeenCalledWith(id, 'user-1')
   })
 })
 
@@ -54,6 +68,6 @@ describe('PUT /api/mesocycles/:id', () => {
 
     const response = await PUT(request, { params: Promise.resolve({ id }) })
     expect(response.status).toBe(200)
-    expect(mockUpdateMesocycle).toHaveBeenCalledWith(id, { focus: 'Updated focus' })
+    expect(mockUpdateMesocycle).toHaveBeenCalledWith(id, { focus: 'Updated focus' }, 'user-1')
   })
 })

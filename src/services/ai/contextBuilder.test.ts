@@ -7,6 +7,8 @@ import type {
   SessionLog,
   WeeklyTemplate,
 } from '@/types'
+import { SINGLE_USER_PLACEHOLDER_ID } from '@/lib/placeholder-user-id'
+import { logWarn } from '@/lib/logger'
 import {
   getTodaysCheckin,
   getRecentCheckins,
@@ -65,6 +67,10 @@ jest.mock('@/services/data/plannedSessionRepository', () => ({
   getUpcomingPlannedSessions: jest.fn(),
 }))
 
+jest.mock('@/lib/logger', () => ({
+  logWarn: jest.fn(),
+}))
+
 // Typed references to mocked functions
 const mockGetTodaysCheckin = getTodaysCheckin as jest.Mock
 const mockGetRecentCheckins = getRecentCheckins as jest.Mock
@@ -77,6 +83,7 @@ const mockGetActiveProgramme = getActiveProgramme as jest.Mock
 const mockGetActiveMesocycle = getActiveMesocycle as jest.Mock
 const mockGetWeeklyTemplateByMesocycle = getWeeklyTemplateByMesocycle as jest.Mock
 const mockGetUpcomingPlannedSessions = getUpcomingPlannedSessions as jest.Mock
+const mockLogWarn = logWarn as jest.Mock
 
 // =============================================================================
 // FACTORIES & HELPERS
@@ -101,6 +108,7 @@ function makeReadinessCheckin(
     notes: null,
     injury_area_health: null,
     created_at: new Date().toISOString(),
+    user_id: 'user-1',
     ...overrides,
   }
 }
@@ -124,6 +132,7 @@ function makeSessionLog(overrides?: Partial<SessionLog>): SessionLog {
     log_data: null,
     deviation_from_plan: null,
     created_at: '2025-03-24T18:00:00Z',
+    user_id: 'user-1',
     ...overrides,
   }
 }
@@ -135,6 +144,7 @@ function makeInjuryAreaRow(overrides?: Partial<InjuryAreaRow>): InjuryAreaRow {
     is_active: true,
     added_at: '2026-03-25T10:00:00Z',
     archived_at: null,
+    user_id: 'user-1',
     ...overrides,
   }
 }
@@ -147,7 +157,10 @@ function makeProgramme(overrides?: Partial<Programme>): Programme {
     name: 'Summer Multipitch Season',
     notes: null,
     start_date: '2026-01-05',
+    status: 'active',
     target_date: '2026-04-26',
+    athlete_profile: null,
+    user_id: 'user-1',
     ...overrides,
   }
 }
@@ -166,6 +179,7 @@ function makeMesocycle(overrides?: Partial<Mesocycle>): Mesocycle {
     planned_start: '2026-03-03',
     programme_id: 'programme-1',
     status: 'active',
+    user_id: 'user-1',
     ...overrides,
   }
 }
@@ -181,6 +195,7 @@ function makeWeeklyTemplate(overrides?: Partial<WeeklyTemplate>): WeeklyTemplate
     primary_focus: 'Power',
     session_label: 'Limit Bouldering',
     session_type: 'bouldering',
+    user_id: 'user-1',
     ...overrides,
   }
 }
@@ -196,6 +211,7 @@ function makePlannedSession(overrides?: Partial<PlannedSession>): PlannedSession
     session_type: 'bouldering',
     status: 'planned',
     template_id: 'template-1',
+    user_id: 'user-1',
     ...overrides,
   }
 }
@@ -260,6 +276,13 @@ describe('buildProgrammeContext', () => {
 
     const result = await buildProgrammeContext()
 
+    expect(mockGetActiveProgramme).toHaveBeenCalledWith(SINGLE_USER_PLACEHOLDER_ID)
+    expect(mockGetActiveMesocycle).toHaveBeenCalledWith(SINGLE_USER_PLACEHOLDER_ID)
+    expect(mockGetUpcomingPlannedSessions).toHaveBeenCalledWith(7, SINGLE_USER_PLACEHOLDER_ID)
+    expect(mockGetWeeklyTemplateByMesocycle).toHaveBeenCalledWith(
+      'mesocycle-1',
+      SINGLE_USER_PLACEHOLDER_ID,
+    )
     expect(result.currentProgramme?.name).toBe('Summer Multipitch Season')
     expect(result.activeMesocycle?.name).toBe('Power Block')
     expect(result.currentWeeklyTemplate).toHaveLength(1)
@@ -589,6 +612,17 @@ describe('buildAthleteContext', () => {
     const context = await buildAthleteContext()
 
     expect(context.recentSessions).toEqual([])
+    expect(mockLogWarn).toHaveBeenCalledWith({
+      event: 'ai_context_dependency_failed',
+      outcome: 'failure',
+      userId: '00000000-0000-0000-0000-000000000001',
+      entityType: 'athlete_context',
+      data: {
+        stage: 'athlete',
+        dependency: 'getRecentSessions',
+      },
+      error: 'DB error',
+    })
   })
 
   it('uses Promise.all for parallel fetching — all repository functions called once', async () => {
@@ -600,6 +634,13 @@ describe('buildAthleteContext', () => {
     expect(mockGetRecentSessions).toHaveBeenCalledTimes(1)
     expect(mockGetSessionCountThisWeek).toHaveBeenCalledTimes(1)
     expect(mockGetLastSessionDate).toHaveBeenCalledTimes(1)
+    expect(mockGetRecentSessions).toHaveBeenCalledWith(30, SINGLE_USER_PLACEHOLDER_ID)
+    expect(mockGetSessionCountThisWeek).toHaveBeenCalledWith(SINGLE_USER_PLACEHOLDER_ID)
+    expect(mockGetLastSessionDate).toHaveBeenCalledWith(SINGLE_USER_PLACEHOLDER_ID)
+    expect(mockGetActiveInjuryAreas).toHaveBeenCalledWith(SINGLE_USER_PLACEHOLDER_ID)
+    expect(mockGetTodaysCheckin).toHaveBeenCalledWith(SINGLE_USER_PLACEHOLDER_ID)
+    expect(mockGetRecentCheckins).toHaveBeenCalledWith(14, SINGLE_USER_PLACEHOLDER_ID)
+    expect(mockGetAverageReadiness).toHaveBeenCalledWith(7, SINGLE_USER_PLACEHOLDER_ID)
     expect(mockGetActiveInjuryAreas).toHaveBeenCalledTimes(1)
   })
 })

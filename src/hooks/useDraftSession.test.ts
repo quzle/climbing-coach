@@ -30,13 +30,16 @@ beforeEach(() => {
   jest.clearAllMocks()
 })
 
+const TEST_USER_ID = 'user-test-123'
+const EXPECTED_KEY = `climbing-coach:session-draft:${TEST_USER_ID}`
+
 // =============================================================================
 // TESTS
 // =============================================================================
 
 describe('useDraftSession — initial state', () => {
   it('returns null draft when localStorage is empty', () => {
-    const { result } = renderHook(() => useDraftSession())
+    const { result } = renderHook(() => useDraftSession(TEST_USER_ID))
     expect(result.current.draft).toBeNull()
     expect(result.current.hasDraft).toBe(false)
   })
@@ -59,7 +62,7 @@ describe('useDraftSession — initial state', () => {
     }
     localStorageMock.getItem.mockReturnValueOnce(JSON.stringify(mockDraft))
 
-    const { result } = renderHook(() => useDraftSession())
+    const { result } = renderHook(() => useDraftSession(TEST_USER_ID))
     expect(result.current.hasDraft).toBe(true)
     expect(result.current.draft?.sessionType).toBe('bouldering')
   })
@@ -82,7 +85,7 @@ describe('useDraftSession — initial state', () => {
     }
     localStorageMock.getItem.mockReturnValueOnce(JSON.stringify(expiredDraft))
 
-    const { result } = renderHook(() => useDraftSession())
+    const { result } = renderHook(() => useDraftSession(TEST_USER_ID))
     expect(result.current.hasDraft).toBe(false)
     expect(result.current.draft).toBeNull()
   })
@@ -90,28 +93,28 @@ describe('useDraftSession — initial state', () => {
   it('handles corrupted localStorage data gracefully', () => {
     localStorageMock.getItem.mockReturnValueOnce('not valid json {{{')
 
-    const { result } = renderHook(() => useDraftSession())
+    const { result } = renderHook(() => useDraftSession(TEST_USER_ID))
     expect(result.current.hasDraft).toBe(false)
     // No error thrown — hook renders successfully
   })
 })
 
 describe('useDraftSession — saveDraft', () => {
-  it('saves draft to localStorage', () => {
-    const { result } = renderHook(() => useDraftSession())
+  it('saves draft to localStorage using the user-scoped key', () => {
+    const { result } = renderHook(() => useDraftSession(TEST_USER_ID))
 
     act(() => {
       result.current.saveDraft({ sessionType: 'strength', stage: 2 })
     })
 
     expect(localStorageMock.setItem).toHaveBeenCalledWith(
-      'climbing-coach:session-draft',
+      EXPECTED_KEY,
       expect.stringContaining('strength'),
     )
   })
 
   it('updates hasDraft to true after saving', () => {
-    const { result } = renderHook(() => useDraftSession())
+    const { result } = renderHook(() => useDraftSession(TEST_USER_ID))
     expect(result.current.hasDraft).toBe(false)
 
     act(() => {
@@ -122,7 +125,7 @@ describe('useDraftSession — saveDraft', () => {
   })
 
   it('merges updates with existing draft', () => {
-    const { result } = renderHook(() => useDraftSession())
+    const { result } = renderHook(() => useDraftSession(TEST_USER_ID))
 
     act(() => {
       result.current.saveDraft({ sessionType: 'bouldering', stage: 2 })
@@ -137,8 +140,8 @@ describe('useDraftSession — saveDraft', () => {
 })
 
 describe('useDraftSession — clearDraft', () => {
-  it('removes draft from localStorage', () => {
-    const { result } = renderHook(() => useDraftSession())
+  it('removes draft from localStorage using the user-scoped key', () => {
+    const { result } = renderHook(() => useDraftSession(TEST_USER_ID))
 
     act(() => {
       result.current.saveDraft({ sessionType: 'lead' })
@@ -147,9 +150,7 @@ describe('useDraftSession — clearDraft', () => {
       result.current.clearDraft()
     })
 
-    expect(localStorageMock.removeItem).toHaveBeenCalledWith(
-      'climbing-coach:session-draft',
-    )
+    expect(localStorageMock.removeItem).toHaveBeenCalledWith(EXPECTED_KEY)
     expect(result.current.hasDraft).toBe(false)
     expect(result.current.draft).toBeNull()
   })

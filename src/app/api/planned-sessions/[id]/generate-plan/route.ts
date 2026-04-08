@@ -3,6 +3,7 @@ import { z } from 'zod'
 import { buildAthleteContext } from '@/services/ai/contextBuilder'
 import { generateSessionPlan } from '@/services/ai/geminiClient'
 import { getMesocycleById } from '@/services/data/mesocycleRepository'
+import { getCurrentUser } from '@/lib/supabase/get-current-user'
 import { getPlannedSessionById, updatePlannedSession } from '@/services/data/plannedSessionRepository'
 import { getWeeklyTemplateById } from '@/services/data/weeklyTemplateRepository'
 import type { Json } from '@/lib/database.types'
@@ -80,6 +81,7 @@ export async function POST(
   context: { params: Promise<{ id: string }> },
 ): Promise<NextResponse<ApiResponse<{ ai_plan_text: string }>>> {
   try {
+    const user = await getCurrentUser()
     const parsedParams = paramsSchema.safeParse(await context.params)
     if (!parsedParams.success) {
       return NextResponse.json(
@@ -91,7 +93,7 @@ export async function POST(
     const sessionId = parsedParams.data.id
 
     // Fetch the planned session.
-    const sessionResult = await getPlannedSessionById(sessionId)
+    const sessionResult = await getPlannedSessionById(sessionId, user.id)
     if (sessionResult.error !== null || sessionResult.data === null) {
       return NextResponse.json(
         { data: null, error: 'Planned session not found.' },
@@ -117,8 +119,8 @@ export async function POST(
 
     // Fetch mesocycle, template, and athlete context in parallel.
     const [mesocycleResult, templateResult, athleteContext] = await Promise.all([
-      getMesocycleById(session.mesocycle_id),
-      getWeeklyTemplateById(session.template_id),
+      getMesocycleById(session.mesocycle_id, user.id),
+      getWeeklyTemplateById(session.template_id, user.id),
       buildAthleteContext(),
     ])
 
@@ -156,7 +158,7 @@ export async function POST(
 
     const updateResult = await updatePlannedSession(sessionId, {
       generated_plan: updatedPlan as unknown as Json,
-    })
+    }, user.id)
 
     if (updateResult.error !== null) {
       console.error('[POST /api/planned-sessions/:id/generate-plan] updatePlannedSession:', updateResult.error)

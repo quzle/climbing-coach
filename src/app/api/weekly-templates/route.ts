@@ -1,9 +1,12 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { z } from 'zod'
+import { handleRouteAuthError } from '@/lib/errors'
 import {
   createWeeklyTemplate,
   getWeeklyTemplateByMesocycle,
 } from '@/services/data/weeklyTemplateRepository'
+import { getCurrentUser } from '@/lib/supabase/get-current-user'
+import { logError, logInfo, logWarn } from '@/lib/logger'
 import type { ApiResponse, WeeklyTemplate } from '@/types'
 
 const querySchema = z.object({ mesocycle_id: z.string().uuid() })
@@ -35,30 +38,91 @@ const createWeeklyTemplateSchema = z.object({
 export async function GET(
   request: NextRequest,
 ): Promise<NextResponse<ApiResponse<{ weeklyTemplates: WeeklyTemplate[] }>>> {
+  const startedAt = Date.now()
+
   try {
+    const user = await getCurrentUser()
     const parsed = querySchema.safeParse({
       mesocycle_id: request.nextUrl.searchParams.get('mesocycle_id'),
     })
 
     if (!parsed.success) {
+      logWarn({
+        event: 'weekly_templates_list_failed',
+        outcome: 'failure',
+        route: '/api/weekly-templates',
+        userId: user.id,
+        entityType: 'weekly_template',
+        durationMs: Date.now() - startedAt,
+        data: { reason: 'validation_failed' },
+      })
+
       return NextResponse.json(
         { data: null, error: 'mesocycle_id query param is required and must be a UUID.' },
         { status: 400 },
       )
     }
 
-    const result = await getWeeklyTemplateByMesocycle(parsed.data.mesocycle_id)
+    const result = await getWeeklyTemplateByMesocycle(parsed.data.mesocycle_id, user.id)
     if (result.error !== null) {
-      console.error('[GET /api/weekly-templates]', result.error)
+      logWarn({
+        event: 'weekly_templates_list_failed',
+        outcome: 'failure',
+        route: '/api/weekly-templates',
+        userId: user.id,
+        entityType: 'weekly_template',
+        durationMs: Date.now() - startedAt,
+        data: {
+          mesocycleId: parsed.data.mesocycle_id,
+          reason: result.error,
+        },
+      })
+
       return NextResponse.json(
         { data: null, error: 'Failed to load weekly templates.' },
         { status: 500 },
       )
     }
 
+    logInfo({
+      event: 'weekly_templates_listed',
+      outcome: 'success',
+      route: '/api/weekly-templates',
+      userId: user.id,
+      entityType: 'weekly_template',
+      durationMs: Date.now() - startedAt,
+      data: {
+        mesocycleId: parsed.data.mesocycle_id,
+        count: (result.data ?? []).length,
+      },
+    })
+
     return NextResponse.json({ data: { weeklyTemplates: result.data ?? [] }, error: null })
   } catch (error) {
-    console.error('[GET /api/weekly-templates]', error)
+    const authError = handleRouteAuthError(error)
+
+    if (authError !== null) {
+      logWarn({
+        event: 'weekly_templates_list_failed',
+        outcome: 'failure',
+        route: '/api/weekly-templates',
+        entityType: 'weekly_template',
+        durationMs: Date.now() - startedAt,
+        data: { reason: authError.reason },
+      })
+
+      return authError.response
+    }
+
+    logError({
+      event: 'weekly_templates_list_failed',
+      outcome: 'failure',
+      route: '/api/weekly-templates',
+      entityType: 'weekly_template',
+      durationMs: Date.now() - startedAt,
+      error,
+    })
+
     return NextResponse.json(
       { data: null, error: 'Failed to load weekly templates.' },
       { status: 500 },
@@ -73,11 +137,24 @@ export async function GET(
 export async function POST(
   request: NextRequest,
 ): Promise<NextResponse<ApiResponse<{ weeklyTemplate: WeeklyTemplate }>>> {
+  const startedAt = Date.now()
+
   try {
+    const user = await getCurrentUser()
     const parsed = createWeeklyTemplateSchema.safeParse(await request.json())
 
     if (!parsed.success) {
       const messages = parsed.error.issues.map((issue) => issue.message).join(', ')
+      logWarn({
+        event: 'weekly_template_create_failed',
+        outcome: 'failure',
+        route: '/api/weekly-templates',
+        userId: user.id,
+        entityType: 'weekly_template',
+        durationMs: Date.now() - startedAt,
+        data: { reason: 'validation_failed', messages },
+      })
+
       return NextResponse.json(
         { data: null, error: `Invalid request: ${messages}` },
         { status: 400 },
@@ -89,22 +166,73 @@ export async function POST(
       duration_mins: parsed.data.duration_mins ?? null,
       primary_focus: parsed.data.primary_focus ?? null,
       notes: parsed.data.notes ?? null,
+      user_id: user.id,
     })
 
     if (result.error !== null || result.data === null) {
-      console.error('[POST /api/weekly-templates]', result.error)
+      logWarn({
+        event: 'weekly_template_create_failed',
+        outcome: 'failure',
+        route: '/api/weekly-templates',
+        userId: user.id,
+        entityType: 'weekly_template',
+        durationMs: Date.now() - startedAt,
+        data: {
+          mesocycleId: parsed.data.mesocycle_id,
+          dayOfWeek: parsed.data.day_of_week,
+          reason: result.error,
+        },
+      })
+
       return NextResponse.json(
         { data: null, error: 'Failed to create weekly template.' },
         { status: 500 },
       )
     }
 
+    logInfo({
+      event: 'weekly_template_created',
+      outcome: 'success',
+      route: '/api/weekly-templates',
+      userId: user.id,
+      entityType: 'weekly_template',
+      entityId: result.data.id,
+      durationMs: Date.now() - startedAt,
+      data: {
+        mesocycleId: parsed.data.mesocycle_id,
+        dayOfWeek: parsed.data.day_of_week,
+      },
+    })
+
     return NextResponse.json(
       { data: { weeklyTemplate: result.data }, error: null },
       { status: 201 },
     )
   } catch (error) {
-    console.error('[POST /api/weekly-templates]', error)
+    const authError = handleRouteAuthError(error)
+
+    if (authError !== null) {
+      logWarn({
+        event: 'weekly_template_create_failed',
+        outcome: 'failure',
+        route: '/api/weekly-templates',
+        entityType: 'weekly_template',
+        durationMs: Date.now() - startedAt,
+        data: { reason: authError.reason },
+      })
+
+      return authError.response
+    }
+
+    logError({
+      event: 'weekly_template_create_failed',
+      outcome: 'failure',
+      route: '/api/weekly-templates',
+      entityType: 'weekly_template',
+      durationMs: Date.now() - startedAt,
+      error,
+    })
+
     return NextResponse.json(
       { data: null, error: 'Failed to create weekly template.' },
       { status: 500 },
