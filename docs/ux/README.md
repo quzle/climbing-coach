@@ -20,7 +20,13 @@ The following gaps from the initial audit have been resolved in code:
 
 Gaps that were found to be already implemented: deduplication on session regeneration (`sessionGenerator.ts`), injury area autocomplete (`InjuryAreaSelector.tsx`), inline add-area flow in readiness form.
 
-## Flows
+## User testing
+
+| File | Purpose |
+|---|---|
+| [user-testing-journey.md](./user-testing-journey.md) | End-to-end user journey for testing sessions — observation prompts and feedback capture tables for each stage, from account activation through to daily training habit. |
+
+## Technical flows
 
 | File | Flow | Key question answered |
 |---|---|---|
