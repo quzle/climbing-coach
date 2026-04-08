@@ -31,7 +31,7 @@ This application is a single-developer tool now migrating to an invite-only mult
 
 A modular monolith gives:
 - Logical separation enforced through folder structure and code review
-- A single deployment unit — one Vercel project, one Supabase project
+- A single deployment unit — one Vercel project with two Supabase environments (production + integration)
 - Simple debugging — one log stream, one process (per request)
 - Clear upgrade path — the services layer can be extracted into separate processes later if needed without rewriting the domain logic
 
@@ -44,9 +44,35 @@ Vercel deploys API routes (`src/app/api/`) as serverless functions. This has imp
 - **No persistent memory between requests.** Every invocation starts with a fresh process.
 - **All state lives in Supabase.** Nothing is stored in module-level variables or in-memory caches.
 - **AI context is rebuilt on every request.** The prompt builder fetches the athlete's current programme state, recent sessions, and today's readiness from Supabase before every Gemini call.
-- **Chat history is stored in Supabase.** The `chat_messages` table is the source of truth for conversation history. The last N messages are fetched and injected into the prompt.
+- **Chat history is stored in Supabase.** The `chat_threads` and `chat_messages` tables are the source of truth for conversation history. The last N messages are fetched and injected into the prompt.
 
 Concretely: if a user sends two chat messages in quick succession, each hits a separate serverless function invocation. There is no shared memory between them.
+
+## Multi-User Data Model
+
+The application now uses an invite-only multi-user model backed by Supabase Auth and app-owned profiles.
+
+- `profiles` is a one-to-one table keyed by `auth.users.id`, storing `email`, `display_name`, `role`, and `invite_status`.
+- `role` supports `user` and `superuser`.
+- `invite_status` supports `invited` and `active`.
+- User-owned domain tables are scoped by `user_id` and must always be queried with authenticated user filtering.
+
+User-owned tables:
+
+- `programmes`
+- `mesocycles`
+- `planned_sessions`
+- `session_logs`
+- `readiness_checkins`
+- `chat_messages`
+- `chat_threads`
+- `injury_areas`
+- `weekly_templates`
+
+Domain constraints:
+
+- One active programme per user is enforced at the database level (partial unique index) and validated in service/repository flows.
+- Chat messages are thread-aware via `chat_messages.thread_id` and ownership-scoped via user-scoped thread/message access patterns.
 
 ## Two Supabase Clients
 
@@ -106,10 +132,9 @@ The proxy uses the anon key (`NEXT_PUBLIC_SUPABASE_ANON_KEY`) and **not** the se
 
 Authentication entry points for invited users live under `src/app/auth/`:
 
-- `GET /auth/login`: email/password sign-in page backed by Supabase Auth client sign-in.
 - `GET /auth/login`: email-only magic-link sign-in page backed by `supabase.auth.signInWithOtp({ email })`.
-- `GET /auth/callback`: exchanges Supabase auth codes for a cookie-backed session, finalizes the user's `profiles` row (`invite_status: active`, `role: user`), then redirects to a validated local `next` path (or `/`).
-- `GET /auth/confirm`: verifies Supabase OTP tokens for invite, magic-link, and recovery flows, then redirects to a validated local `next` path (or `/`).
+- `GET /auth/callback`: exchanges Supabase auth codes for a cookie-backed session, finalizes invited users via auth lifecycle service, then redirects to a validated local `next` path (or `/`).
+- `GET /auth/confirm`: verifies Supabase OTP tokens for invite, magic-link, and recovery flows. Invite confirmations finalize the profile; magic links skip finalization; recovery redirects to `/auth/change-password`.
 
 Client components that need identity or profile metadata read it from a shared auth provider mounted in the root layout. The provider is seeded server-side using `getCurrentUser()` plus `getProfile()` and exposes `id`, `email`, `displayName`, `role`, and `inviteStatus` to the navigation and account settings UI.
 

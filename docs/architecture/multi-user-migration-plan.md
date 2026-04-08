@@ -478,7 +478,7 @@ Goal: keep repository documentation consistent with the architecture changes.
 - [x] **DOCS-2** Update `docs/api/README.md` ✅ — implemented 2026-04-02. Added explicit auth access model notes, documented legacy transitional auth behavior for `GET /api/chat/history` and `POST /api/planned-sessions/generate`, and updated planned session generation request/response details.
   - Depends on: API route work complete
 
-- [ ] **DOCS-3** Update `docs/architecture/overview.md`
+- [x] **DOCS-3** Update `docs/architecture/overview.md` ✅ — implemented 2026-04-02. Updated architecture overview to reflect final multi-user model, user-owned table scoping, profile role/invite lifecycle, thread-aware chat persistence, and current auth-entry route behavior.
   - Depends on: implementation complete
 
 - [ ] **DOCS-4** Create ADR 005 for this migration and access model
