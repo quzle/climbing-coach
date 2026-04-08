@@ -4,6 +4,19 @@
 
 An AI-powered climbing training assistant for an experienced boulderer and multipitch sport climber targeting 7a–7b onsight on limestone and granite. Built with Next.js 14, Supabase (Postgres), and Google Gemini AI. Deployed on Vercel. Multi-user migration in progress — see `docs/architecture/multi-user-migration-plan.md`.
 
+## Current Status
+
+- Phase 1 complete: readiness check-ins, session logging, history, and AI coach chat
+- Phase 2 complete: programme builder, week generation, planned sessions, and planned-to-logged session flow
+- AI context integration complete: live programme state is injected into every Gemini chat request
+- Chat UX updates complete:
+   - reset chat confirmation flow implemented
+   - assistant markdown rendering enabled (including headings/bold) with sanitization
+- Test/build health:
+   - full Jest suite passing (48 suites / 380 tests)
+   - TypeScript strict mode clean (`npx tsc --noEmit`)
+   - production build succeeds (`npm run build`)
+
 ## Architecture
 
 Modular monolith: Next.js frontend + API routes hosted on Vercel, Supabase Postgres as the single source of truth, Gemini AI for coaching intelligence. No microservices — deliberate choice documented in `docs/architecture/decisions/`.
@@ -21,7 +34,7 @@ src/
 │   ├── programme/         → Programme builder editor and session planner UI
 │   └── chat/              → AI coach chat interface
 ├── services/              → All business logic (see src/services/README.md)
-│   ├── ai/                → Gemini client, prompt builder, session generator
+│   ├── ai/                → Gemini client, prompt builder, context builder
 │   ├── data/              → Repository functions — all DB queries live here
 │   └── training/          → Climbing-specific logic: load, periodisation
 ├── lib/                   → Shared utilities: Supabase clients, types, test utils
@@ -34,7 +47,7 @@ src/
 
 | Technology | Purpose | Notes |
 |---|---|---|
-| Next.js 14 | Framework, routing, API routes | App Router, deployed on Vercel |
+| Next.js 16 | Framework, routing, API routes | App Router, deployed on Vercel |
 | TypeScript (strict) | Type safety | `strict: true` + additional checks enabled |
 | Tailwind CSS | Styling | v4, utility-first |
 | shadcn/ui (Radix) | Accessible UI primitives | Auto-generated in `src/components/ui` — do not edit |
@@ -80,6 +93,14 @@ src/
 - **Commits:** Conventional commits (`feat/fix/docs/test/chore`)
 - **Architecture rules:** see `.github/copilot-instructions.md`
 - **New architectural decisions:** add an ADR to `docs/architecture/decisions/`
+
+## Recent Changes
+
+- Live programme context now threads end-to-end into Gemini prompts (ADR 003 alignment)
+- day_of_week handling normalized to database convention (0 = Monday ... 6 = Sunday)
+- Session generation and programme page tests updated for normalized day indexing
+- Chat assistant responses now render markdown safely via `react-markdown` + `rehype-sanitize`
+- Chat reset flow now supports explicit confirmation before clearing history/session
 
 ## Environment Variables
 
