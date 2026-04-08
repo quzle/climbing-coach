@@ -60,6 +60,10 @@ function LoginPageContent(): React.JSX.Element {
       const supabase = createClient()
       const { error } = await supabase.auth.signInWithOtp({
         email: data.email,
+        options: {
+          emailRedirectTo: window.location.origin,
+          shouldCreateUser: false,
+        },
       })
 
       if (error) {

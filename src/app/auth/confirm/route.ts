@@ -10,8 +10,9 @@ import { finalizeInvitedUserProfile } from '@/services/auth/authLifecycleService
  * flows, which must be verified with `verifyOtp()` — distinct from the OAuth
  * PKCE flow handled by `/auth/callback`.
  *
- * When `type === 'invite'`: verifies the token, establishes session, finalizes
- * the user profile, then redirects to home or the `next` parameter.
+ * When `type === 'invite'` or `type === 'magiclink'`: verifies the token,
+ * establishes session, finalizes the user profile, then redirects to home or
+ * the `next` parameter.
  *
  * When `type === 'recovery'`: verifies the token and redirects to the
  * change-password page where the user can set a new password.
@@ -168,8 +169,44 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
     return NextResponse.redirect(`${origin}${safeNext}`)
   }
 
-  // Handle magic link type: redirect to home or next without profile finalization.
+  // Handle magic link type: finalize profile and redirect to home or next.
   if (type === 'magiclink') {
+    if (!user.email) {
+      logError({
+        event: 'token_confirmation_failure',
+        outcome: 'failure',
+        route: '/auth/confirm',
+        userId: user.id,
+        data: {
+          reason: 'missing_email_after_otp_verification',
+          confirmation_type: type,
+        },
+      })
+
+      return NextResponse.redirect(`${origin}/auth/login?error=confirm_failed`)
+    }
+
+    const finalizeResult = await finalizeInvitedUserProfile({
+      id: user.id,
+      email: user.email,
+    })
+
+    if (finalizeResult.error !== null) {
+      logError({
+        event: 'token_confirmation_failure',
+        outcome: 'failure',
+        route: '/auth/confirm',
+        userId: user.id,
+        data: {
+          reason: 'profile_finalization_failed',
+          confirmation_type: type,
+        },
+        error: finalizeResult.error,
+      })
+
+      return NextResponse.redirect(`${origin}/auth/login?error=confirm_failed`)
+    }
+
     // Validate the `next` parameter to prevent open redirect attacks.
     const safeNext = next.startsWith('/') ? next : '/'
 

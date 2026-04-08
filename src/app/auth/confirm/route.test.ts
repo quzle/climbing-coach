@@ -250,7 +250,7 @@ describe('GET /auth/confirm', () => {
   })
 
   describe('magiclink type', () => {
-    it('verifies token, skips profile finalization, and redirects to home on success', async () => {
+    it('verifies token, finalizes profile, and redirects to home on success', async () => {
       const request = makeRequest({
         token_hash: 'valid-magiclink-token',
         type: 'magiclink',
@@ -262,7 +262,10 @@ describe('GET /auth/confirm', () => {
         token_hash: 'valid-magiclink-token',
         type: 'magiclink',
       })
-      expect(mockFinalizeInvitedUserProfile).not.toHaveBeenCalled()
+      expect(mockFinalizeInvitedUserProfile).toHaveBeenCalledWith({
+        id: 'user-123',
+        email: 'climber@example.com',
+      })
       expect(response.status).toBe(307)
       expect(response.headers.get('location')).toBe('http://localhost/')
       expect(mockLogInfo).toHaveBeenCalledWith({
@@ -274,6 +277,75 @@ describe('GET /auth/confirm', () => {
           confirmation_type: 'magiclink',
           redirect_path: '/',
         },
+      })
+    })
+
+    it('redirects to login with error when email is missing after magiclink verification', async () => {
+      mockVerifyOtp.mockResolvedValue({
+        data: {
+          user: {
+            id: 'user-123',
+            email: null,
+          },
+        },
+        error: null,
+      })
+
+      const request = makeRequest({
+        token_hash: 'valid-magiclink-token',
+        type: 'magiclink',
+      })
+
+      const response = await GET(request)
+
+      expect(mockFinalizeInvitedUserProfile).not.toHaveBeenCalled()
+      expect(response.status).toBe(307)
+      expect(response.headers.get('location')).toBe(
+        'http://localhost/auth/login?error=confirm_failed',
+      )
+      expect(mockLogError).toHaveBeenCalledWith({
+        event: 'token_confirmation_failure',
+        outcome: 'failure',
+        route: '/auth/confirm',
+        userId: 'user-123',
+        data: {
+          reason: 'missing_email_after_otp_verification',
+          confirmation_type: 'magiclink',
+        },
+      })
+    })
+
+    it('redirects to login with error when profile finalization fails for magiclink', async () => {
+      mockFinalizeInvitedUserProfile.mockResolvedValue({
+        data: null,
+        error: 'Failed to finalize profile lifecycle',
+      })
+
+      const request = makeRequest({
+        token_hash: 'valid-magiclink-token',
+        type: 'magiclink',
+      })
+
+      const response = await GET(request)
+
+      expect(mockFinalizeInvitedUserProfile).toHaveBeenCalledWith({
+        id: 'user-123',
+        email: 'climber@example.com',
+      })
+      expect(response.status).toBe(307)
+      expect(response.headers.get('location')).toBe(
+        'http://localhost/auth/login?error=confirm_failed',
+      )
+      expect(mockLogError).toHaveBeenCalledWith({
+        event: 'token_confirmation_failure',
+        outcome: 'failure',
+        route: '/auth/confirm',
+        userId: 'user-123',
+        data: {
+          reason: 'profile_finalization_failed',
+          confirmation_type: 'magiclink',
+        },
+        error: 'Failed to finalize profile lifecycle',
       })
     })
   })
