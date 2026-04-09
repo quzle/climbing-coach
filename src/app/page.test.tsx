@@ -75,17 +75,40 @@ function mockProgrammesOk(programmes: unknown[] = []) {
   }
 }
 
+function mockProgrammeSnapshotOk(overrides: Partial<{
+  currentProgramme: { id: string } | null
+  activeMesocycle: { id: string } | null
+  currentWeeklyTemplate: unknown[]
+}> = {}) {
+  return {
+    ok: true,
+    json: jest.fn().mockResolvedValue({
+      data: {
+        currentProgramme: { id: 'prog-1' },
+        activeMesocycle: { id: 'meso-1' },
+        mesocycles: [],
+        currentWeeklyTemplate: [{ id: 'wt-1' }],
+        upcomingPlannedSessions: [],
+        ...overrides,
+      },
+      error: null,
+    }),
+  }
+}
+
 function mockFetchResponses(
   readinessResp: unknown,
   sessionsResp: unknown,
   plannedResp: unknown = mockPlannedSessionsOk(),
   programmesResp: unknown = mockProgrammesOk([{ id: 'prog-1' }]),
+  programmeResp: unknown = mockProgrammeSnapshotOk(),
 ) {
   ;(global.fetch as jest.Mock).mockImplementation((url: string) => {
     if ((url as string).includes('/api/readiness')) return Promise.resolve(readinessResp)
     if ((url as string).includes('/api/sessions')) return Promise.resolve(sessionsResp)
     if ((url as string).includes('/api/planned-sessions')) return Promise.resolve(plannedResp)
     if ((url as string).includes('/api/programmes')) return Promise.resolve(programmesResp)
+    if ((url as string).includes('/api/programme')) return Promise.resolve(programmeResp)
     return Promise.reject(new Error(`Unexpected fetch: ${url as string}`))
   })
 }
@@ -243,6 +266,11 @@ describe('Home dashboard', () => {
       mockSessionsOk(),
       mockPlannedSessionsOk([]),
       mockProgrammesOk([]),
+      mockProgrammeSnapshotOk({
+        currentProgramme: null,
+        activeMesocycle: null,
+        currentWeeklyTemplate: [],
+      }),
     )
     render(<Home />)
 
@@ -259,10 +287,42 @@ describe('Home dashboard', () => {
       mockSessionsOk(),
       mockPlannedSessionsOk([]),
       mockProgrammesOk([{ id: 'prog-1' }]),
+      mockProgrammeSnapshotOk(),
     )
     render(<Home />)
 
     await waitFor(() => expect(screen.getByText('No check-in today')).toBeInTheDocument())
+    expect(screen.queryByText('Start Your Programme')).not.toBeInTheDocument()
+  })
+
+  it('shows setup-week CTA when active mesocycle has no weekly template', async () => {
+    mockFetchResponses(
+      mockReadinessOk(),
+      mockSessionsOk(),
+      mockPlannedSessionsOk([]),
+      mockProgrammesOk([{ id: 'prog-1' }]),
+      mockProgrammeSnapshotOk({ currentWeeklyTemplate: [] }),
+    )
+    render(<Home />)
+
+    await waitFor(() => expect(screen.getByText('Set up your training week')).toBeInTheDocument())
+    expect(screen.getByRole('link', { name: /set up weekly plan/i })).toHaveAttribute(
+      'href',
+      '/programme/prog-1/setup-week',
+    )
+  })
+
+  it('prioritizes setup-week CTA over wizard CTA', async () => {
+    mockFetchResponses(
+      mockReadinessOk(),
+      mockSessionsOk(),
+      mockPlannedSessionsOk([]),
+      mockProgrammesOk([]),
+      mockProgrammeSnapshotOk({ currentWeeklyTemplate: [] }),
+    )
+    render(<Home />)
+
+    await waitFor(() => expect(screen.getByText('Set up your training week')).toBeInTheDocument())
     expect(screen.queryByText('Start Your Programme')).not.toBeInTheDocument()
   })
 

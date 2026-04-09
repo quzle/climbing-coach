@@ -6,7 +6,14 @@ import { format, parseISO } from 'date-fns'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Skeleton } from '@/components/ui/skeleton'
-import type { ApiResponse, PlannedSession, ReadinessCheckin, SessionLog, SessionType } from '@/types'
+import type {
+  ApiResponse,
+  PlannedSession,
+  ProgrammeBuilderSnapshot,
+  ReadinessCheckin,
+  SessionLog,
+  SessionType,
+} from '@/types'
 
 // =============================================================================
 // TYPES
@@ -54,18 +61,22 @@ export default function Home(): React.JSX.Element {
   const [readiness, setReadiness] = useState<ReadinessData | null>(null)
   const [recentSession, setRecentSession] = useState<SessionLog | null>(null)
   const [todaysPlan, setTodaysPlan] = useState<PlannedSession | null>(null)
+  const [programmeSnapshot, setProgrammeSnapshot] = useState<ProgrammeBuilderSnapshot | null>(null)
   const [hasAnyProgrammes, setHasAnyProgrammes] = useState<boolean | null>(null)
   const [isLoading, setIsLoading] = useState(true)
   const [isResetting, setIsResetting] = useState(false)
 
   async function loadAll(): Promise<void> {
-    const [readinessRes, sessionsRes, plannedRes, programmesRes] = await Promise.allSettled([
+    const [readinessRes, sessionsRes, plannedRes, programmesRes, programmeRes] = await Promise.allSettled([
       fetch('/api/readiness').then((r) => r.json() as Promise<ApiResponse<ReadinessData>>),
       fetch('/api/sessions?days=7').then((r) => r.json() as Promise<ApiResponse<SessionsData>>),
       fetch('/api/planned-sessions?upcoming_days=1').then(
         (r) => r.json() as Promise<ApiResponse<{ plannedSessions: PlannedSession[] }>>,
       ),
       fetch('/api/programmes').then((r) => r.json() as Promise<ApiResponse<ProgrammesData>>),
+      fetch('/api/programme').then(
+        (r) => r.json() as Promise<ApiResponse<ProgrammeBuilderSnapshot>>,
+      ),
     ])
 
     if (readinessRes.status === 'fulfilled' && readinessRes.value.data) {
@@ -82,6 +93,9 @@ export default function Home(): React.JSX.Element {
     if (programmesRes.status === 'fulfilled' && programmesRes.value.data) {
       const programmes = programmesRes.value.data.programmes
       setHasAnyProgrammes(programmes.length > 0)
+    }
+    if (programmeRes.status === 'fulfilled' && programmeRes.value.data) {
+      setProgrammeSnapshot(programmeRes.value.data)
     }
 
     setIsLoading(false)
@@ -110,8 +124,35 @@ export default function Home(): React.JSX.Element {
           <p className="text-sm text-slate-500">AI-powered training assistant</p>
         </div>
 
+        {/* Main CTA: setup weekly plan when an active block has no template yet */}
+        {!isLoading &&
+          programmeSnapshot?.currentProgramme !== null &&
+          programmeSnapshot?.activeMesocycle !== null &&
+          programmeSnapshot?.currentWeeklyTemplate.length === 0 && (
+            <Card className="border-blue-200 bg-blue-50">
+              <CardContent className="space-y-3 pt-4 pb-4 text-sm text-blue-800">
+                <p className="font-semibold text-blue-900">Set up your training week</p>
+                <p>
+                  Your training block is ready. Define your weekly schedule so the AI coach can
+                  generate personalised session plans.
+                </p>
+                <Button asChild className="min-h-[44px] w-full">
+                  <Link href={`/programme/${programmeSnapshot.currentProgramme.id}/setup-week`}>
+                    Set up weekly plan →
+                  </Link>
+                </Button>
+              </CardContent>
+            </Card>
+          )}
+
         {/* Programme wizard CTA for users with no programmes */}
-        {!isLoading && hasAnyProgrammes === false && (
+        {!isLoading &&
+          hasAnyProgrammes === false &&
+          !(
+            programmeSnapshot?.currentProgramme !== null &&
+            programmeSnapshot?.activeMesocycle !== null &&
+            programmeSnapshot?.currentWeeklyTemplate.length === 0
+          ) && (
           <Card>
             <CardHeader className="pb-2">
               <CardTitle className="text-base">Start Your Programme</CardTitle>
@@ -126,7 +167,7 @@ export default function Home(): React.JSX.Element {
               </Button>
             </CardContent>
           </Card>
-        )}
+          )}
 
         {/* Readiness card */}
         <Card>
