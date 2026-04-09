@@ -1,5 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { z } from 'zod'
+import { handleRouteAuthError } from '@/lib/errors'
+import { getCurrentUser } from '@/lib/supabase/get-current-user'
 import { createClient } from '@/lib/supabase/server'
 import type { ApiResponse } from '@/types'
 
@@ -48,6 +50,7 @@ export async function POST(
 ): Promise<NextResponse<ApiResponse<{ count: number }>>> {
   try {
     const { id } = await params
+    const user = await getCurrentUser()
 
     const body: unknown = await request.json()
     const parsed = confirmWeeklyBodySchema.safeParse(body)
@@ -66,6 +69,7 @@ export async function POST(
       .from('weekly_templates')
       .delete()
       .eq('mesocycle_id', id)
+      .eq('user_id', user.id)
 
     if (deleteError) {
       console.error('[POST /api/mesocycles/[id]/confirm-weekly] delete error:', deleteError)
@@ -78,6 +82,7 @@ export async function POST(
     // Bulk insert all slots
     const rows = parsed.data.slots.map((slot) => ({
       mesocycle_id: id,
+      user_id: user.id,
       day_of_week: slot.day_of_week,
       session_label: slot.session_label,
       session_type: slot.session_type,
@@ -105,6 +110,11 @@ export async function POST(
       { status: 201 },
     )
   } catch (error) {
+    const authError = handleRouteAuthError(error)
+    if (authError !== null) {
+      return authError.response
+    }
+
     console.error('[POST /api/mesocycles/[id]/confirm-weekly]', error)
     return NextResponse.json(
       { data: null, error: 'Failed to confirm weekly plan. Please try again.' },
