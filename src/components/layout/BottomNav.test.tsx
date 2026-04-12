@@ -13,14 +13,9 @@ jest.mock('next/navigation', () => ({
   usePathname: () => mockUsePathname(),
 }))
 
-jest.mock('./UserIndicator', () => ({
-  UserIndicator: () => <div>Signed in user</div>,
-}))
-
 jest.mock('../../../features.json', () => ({
   chat: true,
 }))
-
 // next/link renders a plain <a> in the test environment
 jest.mock('next/link', () => {
   const MockLink = ({ href, children, className }: { href: string; children: React.ReactNode; className?: string }) => (
@@ -143,13 +138,6 @@ describe('BottomNav', () => {
     const allLinks = screen.getAllByRole('link')
     const activeLinks = allLinks.filter((link) => link.classList.contains('text-blue-600'))
     expect(activeLinks).toHaveLength(1)
-  })
-
-  it('renders a logout trigger for authenticated users', () => {
-    mockUsePathname.mockReturnValue('/')
-    renderBottomNav(makeUser())
-
-    expect(screen.getByText('Signed in user')).toBeInTheDocument()
   })
 
   it('does not render on auth routes', () => {

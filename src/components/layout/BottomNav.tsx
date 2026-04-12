@@ -3,7 +3,6 @@
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import { Home, Dumbbell, MessageCircle, History, CalendarRange, User } from 'lucide-react'
-import { UserIndicator } from '@/components/layout/UserIndicator'
 import { isFeatureEnabled, type FeatureFlag } from '@/lib/features'
 
 type Tab = {
@@ -36,7 +35,6 @@ export function BottomNav(): React.JSX.Element {
 
   return (
     <nav className="fixed bottom-0 left-0 right-0 z-50 border-t bg-white safe-area-inset-bottom">
-      <UserIndicator />
       <div className="flex h-16 items-stretch">
         {TABS.filter((tab) => tab.feature === undefined || isFeatureEnabled(tab.feature)).map(({ href, label, icon: Icon }) => {
           // Exact match for home; prefix match for all other tabs.

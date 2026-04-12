@@ -3,6 +3,7 @@ import { Geist, Geist_Mono } from 'next/font/google'
 import './globals.css'
 import { AuthProvider, type ClientAuthUser } from '@/components/providers/auth-provider'
 import { BottomNav } from '@/components/layout/BottomNav'
+import { UserIndicator } from '@/components/layout/UserIndicator'
 import { Toaster } from '@/components/ui/sonner'
 import { getCurrentUser } from '@/lib/supabase/get-current-user'
 import { getProfile } from '@/services/data/profilesRepository'
@@ -66,6 +67,7 @@ async function renderLayout(children: React.ReactNode): Promise<React.JSX.Elemen
     >
       <body className="min-h-full flex flex-col pb-16">
         <AuthProvider initialUser={initialUser}>
+          <UserIndicator />
           {children}
           <BottomNav />
           <Toaster position="top-center" />
