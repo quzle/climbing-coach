@@ -17,6 +17,10 @@ jest.mock('./UserIndicator', () => ({
   UserIndicator: () => <div>Signed in user</div>,
 }))
 
+jest.mock('../../../features.json', () => ({
+  chat: true,
+}))
+
 // next/link renders a plain <a> in the test environment
 jest.mock('next/link', () => {
   const MockLink = ({ href, children, className }: { href: string; children: React.ReactNode; className?: string }) => (
@@ -154,5 +158,29 @@ describe('BottomNav', () => {
 
     expect(screen.queryByRole('link', { name: /home/i })).not.toBeInTheDocument()
     expect(screen.queryByRole('button', { name: /log out/i })).not.toBeInTheDocument()
+  })
+
+  describe('feature flags', () => {
+    it('hides the Chat tab when chat feature is disabled', () => {
+      const featureFlags = jest.requireMock('../../../features.json') as Record<string, boolean>
+      featureFlags.chat = false
+
+      mockUsePathname.mockReturnValue('/')
+      renderBottomNav()
+
+      expect(screen.queryByText('Chat')).not.toBeInTheDocument()
+      expect(screen.getByText('Home')).toBeInTheDocument()
+      expect(screen.getByText('Log')).toBeInTheDocument()
+      expect(screen.getByText('History')).toBeInTheDocument()
+
+      featureFlags.chat = true
+    })
+
+    it('shows the Chat tab when chat feature is enabled', () => {
+      mockUsePathname.mockReturnValue('/')
+      renderBottomNav()
+
+      expect(screen.getByText('Chat')).toBeInTheDocument()
+    })
   })
 })

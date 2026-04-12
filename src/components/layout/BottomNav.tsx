@@ -4,15 +4,23 @@ import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import { Home, Dumbbell, MessageCircle, History, CalendarRange, User } from 'lucide-react'
 import { UserIndicator } from '@/components/layout/UserIndicator'
+import { isFeatureEnabled, type FeatureFlag } from '@/lib/features'
 
-const TABS = [
+type Tab = {
+  readonly href: string
+  readonly label: string
+  readonly icon: typeof Home
+  readonly feature?: FeatureFlag
+}
+
+const TABS: readonly Tab[] = [
   { href: '/', label: 'Home', icon: Home },
   { href: '/session/log', label: 'Log', icon: Dumbbell },
-  { href: '/chat', label: 'Chat', icon: MessageCircle },
+  { href: '/chat', label: 'Chat', icon: MessageCircle, feature: 'chat' },
   { href: '/history', label: 'History', icon: History },
   { href: '/programme', label: 'Plan', icon: CalendarRange },
   { href: '/profile', label: 'Profile', icon: User },
-] as const
+]
 
 /**
  * @description Fixed bottom navigation bar with 6 tabs. Uses the current
@@ -30,7 +38,7 @@ export function BottomNav(): React.JSX.Element {
     <nav className="fixed bottom-0 left-0 right-0 z-50 border-t bg-white safe-area-inset-bottom">
       <UserIndicator />
       <div className="flex h-16 items-stretch">
-        {TABS.map(({ href, label, icon: Icon }) => {
+        {TABS.filter((tab) => tab.feature === undefined || isFeatureEnabled(tab.feature)).map(({ href, label, icon: Icon }) => {
           // Exact match for home; prefix match for all other tabs.
           const isActive = href === '/' ? pathname === '/' : pathname.startsWith(href)
 
