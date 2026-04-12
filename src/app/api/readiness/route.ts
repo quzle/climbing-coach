@@ -145,7 +145,7 @@ export async function POST(
       )
     }
 
-    const context = await buildAthleteContext()
+    const context = await buildAthleteContext(user.id)
 
     logInfo({
       event: 'readiness_created',

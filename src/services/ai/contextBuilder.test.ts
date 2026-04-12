@@ -7,7 +7,6 @@ import type {
   SessionLog,
   WeeklyTemplate,
 } from '@/types'
-import { SINGLE_USER_PLACEHOLDER_ID } from '@/lib/placeholder-user-id'
 import { logWarn } from '@/lib/logger'
 import {
   getTodaysCheckin,
@@ -274,14 +273,14 @@ describe('buildProgrammeContext', () => {
       error: null,
     })
 
-    const result = await buildProgrammeContext()
+    const result = await buildProgrammeContext('user-1')
 
-    expect(mockGetActiveProgramme).toHaveBeenCalledWith(SINGLE_USER_PLACEHOLDER_ID)
-    expect(mockGetActiveMesocycle).toHaveBeenCalledWith(SINGLE_USER_PLACEHOLDER_ID)
-    expect(mockGetUpcomingPlannedSessions).toHaveBeenCalledWith(7, SINGLE_USER_PLACEHOLDER_ID)
+    expect(mockGetActiveProgramme).toHaveBeenCalledWith('user-1')
+    expect(mockGetActiveMesocycle).toHaveBeenCalledWith('user-1')
+    expect(mockGetUpcomingPlannedSessions).toHaveBeenCalledWith(7, 'user-1')
     expect(mockGetWeeklyTemplateByMesocycle).toHaveBeenCalledWith(
       'mesocycle-1',
-      SINGLE_USER_PLACEHOLDER_ID,
+      'user-1',
     )
     expect(result.currentProgramme?.name).toBe('Summer Multipitch Season')
     expect(result.activeMesocycle?.name).toBe('Power Block')
@@ -290,7 +289,7 @@ describe('buildProgrammeContext', () => {
   })
 
   it('returns safe fallbacks when no planning data exists', async () => {
-    const result = await buildProgrammeContext()
+    const result = await buildProgrammeContext('user-1')
 
     expect(result.currentProgramme).toBeNull()
     expect(result.activeMesocycle).toBeNull()
@@ -310,7 +309,7 @@ describe('computeWarnings — illness', () => {
       error: null,
     })
 
-    const context = await buildAthleteContext()
+    const context = await buildAthleteContext('user-1')
 
     expect(context.warnings.some((w) => w.includes('ILLNESS FLAG ACTIVE'))).toBe(
       true,
@@ -319,7 +318,7 @@ describe('computeWarnings — illness', () => {
 
   it('does not add illness warning when flag is false', async () => {
     // Default mock has illness_flag: false
-    const context = await buildAthleteContext()
+    const context = await buildAthleteContext('user-1')
 
     expect(context.warnings.some((w) => w.includes('ILLNESS'))).toBe(false)
   })
@@ -338,7 +337,7 @@ describe('buildAthleteContext — programme context', () => {
       error: null,
     })
 
-    const context = await buildAthleteContext()
+    const context = await buildAthleteContext('user-1')
 
     expect(context.currentProgramme?.name).toBe('Summer Multipitch Season')
     expect(context.activeMesocycle?.phase_type).toBe('power')
@@ -354,7 +353,7 @@ describe('computeWarnings — finger health', () => {
       error: null,
     })
 
-    const context = await buildAthleteContext()
+    const context = await buildAthleteContext('user-1')
 
     expect(
       context.warnings.some((w) => w.includes('Finger health critical')),
@@ -367,7 +366,7 @@ describe('computeWarnings — finger health', () => {
       error: null,
     })
 
-    const context = await buildAthleteContext()
+    const context = await buildAthleteContext('user-1')
 
     expect(
       context.warnings.some((w) => w.includes('Finger health critical')),
@@ -380,7 +379,7 @@ describe('computeWarnings — finger health', () => {
       error: null,
     })
 
-    const context = await buildAthleteContext()
+    const context = await buildAthleteContext('user-1')
 
     expect(
       context.warnings.some((w) => w.includes('Finger health low (3/5)')),
@@ -393,7 +392,7 @@ describe('computeWarnings — finger health', () => {
       error: null,
     })
 
-    const context = await buildAthleteContext()
+    const context = await buildAthleteContext('user-1')
 
     expect(context.warnings.some((w) => w.includes('Finger health'))).toBe(
       false,
@@ -412,7 +411,7 @@ describe('computeWarnings — injury areas', () => {
       error: null,
     })
 
-    const context = await buildAthleteContext()
+    const context = await buildAthleteContext('user-1')
 
     expect(
       context.warnings.some(
@@ -431,7 +430,7 @@ describe('computeWarnings — injury areas', () => {
       error: null,
     })
 
-    const context = await buildAthleteContext()
+    const context = await buildAthleteContext('user-1')
 
     expect(
       context.warnings.some(
@@ -451,7 +450,7 @@ describe('computeWarnings — injury areas', () => {
       error: null,
     })
 
-    const context = await buildAthleteContext()
+    const context = await buildAthleteContext('user-1')
 
     expect(context.warnings.some((w) => w.includes('critical'))).toBe(false)
     expect(context.warnings.some((w) => w.includes('low (3/5)'))).toBe(false)
@@ -468,7 +467,7 @@ describe('computeWarnings — injury areas', () => {
       error: null,
     })
 
-    const context = await buildAthleteContext()
+    const context = await buildAthleteContext('user-1')
 
     expect(context.warnings.some((w) => w.includes('shoulder_left critical'))).toBe(true)
     expect(context.warnings.some((w) => w.includes('elbow_medial_right low'))).toBe(true)
@@ -485,7 +484,7 @@ describe('computeWarnings — injury areas', () => {
       error: null,
     })
 
-    const context = await buildAthleteContext()
+    const context = await buildAthleteContext('user-1')
 
     expect(context.criticalInjuryAreas).toContain('wrist_left')
     expect(context.criticalInjuryAreas).not.toContain('shoulder_right')
@@ -502,7 +501,7 @@ describe('computeWarnings — injury areas', () => {
       error: null,
     })
 
-    const context = await buildAthleteContext()
+    const context = await buildAthleteContext('user-1')
 
     expect(context.lowInjuryAreas).toContain('knee_left')
     expect(context.lowInjuryAreas).not.toContain('lower_back')
@@ -514,7 +513,7 @@ describe('computeWarnings — injury areas', () => {
       error: null,
     })
 
-    const context = await buildAthleteContext()
+    const context = await buildAthleteContext('user-1')
 
     expect(context.injuryAreas).toEqual([])
     expect(context.criticalInjuryAreas).toEqual([])
@@ -529,7 +528,7 @@ describe('computeWarnings — return to training', () => {
       error: null,
     })
 
-    const context = await buildAthleteContext()
+    const context = await buildAthleteContext('user-1')
 
     expect(
       context.warnings.some((w) => w.includes('days since last session')),
@@ -543,7 +542,7 @@ describe('computeWarnings — return to training', () => {
       error: null,
     })
 
-    const context = await buildAthleteContext()
+    const context = await buildAthleteContext('user-1')
 
     expect(
       context.warnings.some((w) => w.includes('significant detraining')),
@@ -556,7 +555,7 @@ describe('computeWarnings — return to training', () => {
       error: null,
     })
 
-    const context = await buildAthleteContext()
+    const context = await buildAthleteContext('user-1')
 
     expect(
       context.warnings.some((w) => w.includes('days since last session')),
@@ -568,7 +567,7 @@ describe('computeWarnings — no check-in', () => {
   it('adds no check-in warning when todaysReadiness is null', async () => {
     mockGetTodaysCheckin.mockResolvedValue({ data: null, error: null })
 
-    const context = await buildAthleteContext()
+    const context = await buildAthleteContext('user-1')
 
     expect(
       context.warnings.some((w) =>
@@ -582,7 +581,7 @@ describe('buildAthleteContext', () => {
   it('returns correct sessionCountThisWeek', async () => {
     mockGetSessionCountThisWeek.mockResolvedValue({ data: 4, error: null })
 
-    const context = await buildAthleteContext()
+    const context = await buildAthleteContext('user-1')
 
     expect(context.sessionCountThisWeek).toBe(4)
   })
@@ -593,7 +592,7 @@ describe('buildAthleteContext', () => {
       error: null,
     })
 
-    const context = await buildAthleteContext()
+    const context = await buildAthleteContext('user-1')
 
     expect(context.daysSinceLastSession).toBe(3)
   })
@@ -601,7 +600,7 @@ describe('buildAthleteContext', () => {
   it('returns 999 for daysSinceLastSession when no sessions', async () => {
     mockGetLastSessionDate.mockResolvedValue({ data: null, error: null })
 
-    const context = await buildAthleteContext()
+    const context = await buildAthleteContext('user-1')
 
     expect(context.daysSinceLastSession).toBe(999)
   })
@@ -609,13 +608,13 @@ describe('buildAthleteContext', () => {
   it('handles repository errors gracefully without throwing', async () => {
     mockGetRecentSessions.mockResolvedValue({ data: null, error: 'DB error' })
 
-    const context = await buildAthleteContext()
+    const context = await buildAthleteContext('user-1')
 
     expect(context.recentSessions).toEqual([])
     expect(mockLogWarn).toHaveBeenCalledWith({
       event: 'ai_context_dependency_failed',
       outcome: 'failure',
-      userId: '00000000-0000-0000-0000-000000000001',
+      userId: 'user-1',
       entityType: 'athlete_context',
       data: {
         stage: 'athlete',
@@ -626,7 +625,7 @@ describe('buildAthleteContext', () => {
   })
 
   it('uses Promise.all for parallel fetching — all repository functions called once', async () => {
-    await buildAthleteContext()
+    await buildAthleteContext('user-1')
 
     expect(mockGetTodaysCheckin).toHaveBeenCalledTimes(1)
     expect(mockGetRecentCheckins).toHaveBeenCalledTimes(1)
@@ -634,13 +633,13 @@ describe('buildAthleteContext', () => {
     expect(mockGetRecentSessions).toHaveBeenCalledTimes(1)
     expect(mockGetSessionCountThisWeek).toHaveBeenCalledTimes(1)
     expect(mockGetLastSessionDate).toHaveBeenCalledTimes(1)
-    expect(mockGetRecentSessions).toHaveBeenCalledWith(30, SINGLE_USER_PLACEHOLDER_ID)
-    expect(mockGetSessionCountThisWeek).toHaveBeenCalledWith(SINGLE_USER_PLACEHOLDER_ID)
-    expect(mockGetLastSessionDate).toHaveBeenCalledWith(SINGLE_USER_PLACEHOLDER_ID)
-    expect(mockGetActiveInjuryAreas).toHaveBeenCalledWith(SINGLE_USER_PLACEHOLDER_ID)
-    expect(mockGetTodaysCheckin).toHaveBeenCalledWith(SINGLE_USER_PLACEHOLDER_ID)
-    expect(mockGetRecentCheckins).toHaveBeenCalledWith(14, SINGLE_USER_PLACEHOLDER_ID)
-    expect(mockGetAverageReadiness).toHaveBeenCalledWith(7, SINGLE_USER_PLACEHOLDER_ID)
+    expect(mockGetRecentSessions).toHaveBeenCalledWith(30, 'user-1')
+    expect(mockGetSessionCountThisWeek).toHaveBeenCalledWith('user-1')
+    expect(mockGetLastSessionDate).toHaveBeenCalledWith('user-1')
+    expect(mockGetActiveInjuryAreas).toHaveBeenCalledWith('user-1')
+    expect(mockGetTodaysCheckin).toHaveBeenCalledWith('user-1')
+    expect(mockGetRecentCheckins).toHaveBeenCalledWith(14, 'user-1')
+    expect(mockGetAverageReadiness).toHaveBeenCalledWith(7, 'user-1')
     expect(mockGetActiveInjuryAreas).toHaveBeenCalledTimes(1)
   })
 })
@@ -652,7 +651,7 @@ describe('formatContextForPrompt', () => {
       error: null,
     })
 
-    const context = await buildAthleteContext()
+    const context = await buildAthleteContext('user-1')
     const output = formatContextForPrompt(context)
 
     expect(output).toContain('ACTIVE WARNINGS')
@@ -668,7 +667,7 @@ describe('formatContextForPrompt', () => {
       error: null,
     })
 
-    const context = await buildAthleteContext()
+    const context = await buildAthleteContext('user-1')
     const output = formatContextForPrompt(context)
 
     expect(output).toContain('No active warnings')
@@ -677,7 +676,7 @@ describe('formatContextForPrompt', () => {
   it('shows "No sessions logged yet" when sessions array is empty', async () => {
     mockGetRecentSessions.mockResolvedValue({ data: [], error: null })
 
-    const context = await buildAthleteContext()
+    const context = await buildAthleteContext('user-1')
     const output = formatContextForPrompt(context)
 
     expect(output).toContain('No sessions logged yet')
@@ -692,7 +691,7 @@ describe('formatContextForPrompt', () => {
       error: null,
     })
 
-    const context = await buildAthleteContext()
+    const context = await buildAthleteContext('user-1')
     const output = formatContextForPrompt(context)
 
     expect(output).toContain('+5 more sessions not shown')
@@ -708,7 +707,7 @@ describe('formatContextForPrompt', () => {
       error: null,
     })
 
-    const context = await buildAthleteContext()
+    const context = await buildAthleteContext('user-1')
     const output = formatContextForPrompt(context)
 
     expect(output).toContain('shoulder_left')
@@ -716,7 +715,7 @@ describe('formatContextForPrompt', () => {
   })
 
   it('does not include a "Shoulder health" line (deprecated field)', async () => {
-    const context = await buildAthleteContext()
+    const context = await buildAthleteContext('user-1')
     const output = formatContextForPrompt(context)
 
     expect(output).not.toContain('Shoulder health:')
@@ -728,7 +727,7 @@ describe('formatContextForPrompt', () => {
       error: null,
     })
 
-    const context = await buildAthleteContext()
+    const context = await buildAthleteContext('user-1')
     const output = formatContextForPrompt(context)
 
     expect(output).toContain('Injuries')
@@ -741,7 +740,7 @@ describe('formatContextForPrompt', () => {
       error: null,
     })
 
-    const context = await buildAthleteContext()
+    const context = await buildAthleteContext('user-1')
 
     expect(context.activeInjuryFlags).toContain('shoulder_left')
     expect(context.activeInjuryFlags).toContain('finger_a2_right')

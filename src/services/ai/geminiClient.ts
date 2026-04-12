@@ -147,7 +147,7 @@ export async function sendChatMessage(
 
   try {
     // Step 1: Build athlete context
-    const context = await buildAthleteContext()
+    const context = await buildAthleteContext(resolvedUserId)
 
     // Step 2: Build system prompt
     const systemPrompt = buildSystemPrompt(context)
@@ -240,17 +240,19 @@ export async function sendChatMessage(
  * @param sessionType The type of session to generate (e.g. 'bouldering', 'fingerboard')
  * @param additionalContext Optional extra context to focus the generation
  *   (e.g. 'Focus on slab technique this week')
+ * @param userId The authenticated user's ID
  * @returns The AI-generated session plan as a formatted string
  * @throws Error with a safe user-facing message if the Gemini API call fails
  */
 export async function generateSessionPlan(
   sessionType: string,
   additionalContext?: string,
+  userId?: string,
 ): Promise<string> {
   const startedAt = Date.now()
 
   try {
-    const context = await buildAthleteContext()
+    const context = await buildAthleteContext(userId ?? '')
     const systemPrompt = buildSessionPlanSystemPrompt(context)
 
     const genAI = getGeminiClient()
@@ -278,7 +280,7 @@ export async function generateSessionPlan(
     logInfo({
       event: 'ai_session_plan_generated',
       outcome: 'success',
-      userId: SINGLE_USER_PLACEHOLDER_ID,
+      userId: userId ?? '',
       entityType: 'ai_session_plan',
       durationMs: Date.now() - startedAt,
       data: {
@@ -294,7 +296,7 @@ export async function generateSessionPlan(
     logError({
       event: 'ai_session_plan_generated',
       outcome: 'failure',
-      userId: SINGLE_USER_PLACEHOLDER_ID,
+      userId: userId ?? '',
       entityType: 'ai_session_plan',
       durationMs: Date.now() - startedAt,
       data: {

@@ -121,7 +121,7 @@ export async function POST(
     const [mesocycleResult, templateResult, athleteContext] = await Promise.all([
       getMesocycleById(session.mesocycle_id, user.id),
       getWeeklyTemplateById(session.template_id, user.id),
-      buildAthleteContext(),
+      buildAthleteContext(user.id),
     ])
 
     if (mesocycleResult.error !== null || mesocycleResult.data === null) {
@@ -147,7 +147,7 @@ export async function POST(
       athleteContext.weeklyReadinessAvg,
     )
 
-    const aiPlanText = await generateSessionPlan(template.session_type, additionalContext)
+    const aiPlanText = await generateSessionPlan(template.session_type, additionalContext, user.id)
 
     // Merge ai_plan_text into the existing metadata and persist.
     const updatedPlan: GeneratedPlanMetadata = {

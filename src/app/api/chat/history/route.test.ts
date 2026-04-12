@@ -9,6 +9,16 @@ jest.mock('@/services/data/chatMessagesRepository', () => ({
   getRecentChatMessages: jest.fn(),
 }))
 
+jest.mock('@/lib/supabase/get-current-user', () => ({
+  getCurrentUser: jest.fn().mockResolvedValue({ id: 'user-1' }),
+}))
+
+jest.mock('@/lib/logger', () => ({
+  logInfo: jest.fn(),
+  logWarn: jest.fn(),
+  logError: jest.fn(),
+}))
+
 const mockGetRecentChatMessages = getRecentChatMessages as jest.Mock
 
 function makeRequest(limit?: string): NextRequest {
@@ -41,7 +51,7 @@ describe('GET /api/chat/history', () => {
     const body = await response.json()
 
     expect(response.status).toBe(200)
-    expect(mockGetRecentChatMessages).toHaveBeenCalledWith(20, expect.any(String))
+    expect(mockGetRecentChatMessages).toHaveBeenCalledWith(20, 'user-1')
     expect(body.data.messages).toEqual(messages)
     expect(body.error).toBeNull()
   })
