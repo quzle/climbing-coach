@@ -4,7 +4,6 @@ import {
   getPlannedSessionsInRange,
 } from '@/services/data/plannedSessionRepository'
 import { getWeeklyTemplateByMesocycle } from '@/services/data/weeklyTemplateRepository'
-import { SINGLE_USER_PLACEHOLDER_ID } from '@/lib/placeholder-user-id'
 import type { ApiResponse, Mesocycle, PlannedSession, WeeklyTemplate } from '@/types'
 
 /** Returns YYYY-MM-DD for a Date in UTC-safe format. */
@@ -64,10 +63,12 @@ function nextOccurrenceOfDay(dbDayOfWeek: number, fromDate: Date): string {
  * Existing planned sessions for matching date+template are left untouched
  * to prevent duplicates on re-runs.
  *
+ * @param userId The authenticated user's ID
  * @param fromDateStr Optional ISO date whose week to generate sessions for (defaults to today's week)
  * @returns Array of newly created planned sessions for the full mesocycle
  */
 export async function generatePlannedSessionsForActiveMesocycle(
+  userId: string,
   fromDateStr?: string,
 ): Promise<ApiResponse<PlannedSession[]>> {
   try {
@@ -78,7 +79,7 @@ export async function generatePlannedSessionsForActiveMesocycle(
     const fromDate = weekStartMonday(requestedDate)
 
     // Fetch the mesocycle first so we can use planned_end as the range boundary.
-    const mesocycleResult = await getActiveMesocycle(SINGLE_USER_PLACEHOLDER_ID)
+    const mesocycleResult = await getActiveMesocycle(userId)
     if (mesocycleResult.error !== null) {
       console.error(
         '[sessionGenerator.generatePlannedSessionsForActiveMesocycle] getActiveMesocycle:',
@@ -95,11 +96,11 @@ export async function generatePlannedSessionsForActiveMesocycle(
     // Fetch templates and existing sessions in parallel now that we have the
     // mesocycle end date for the range query.
     const [templatesResult, existingSessionsResult] = await Promise.all([
-      getWeeklyTemplateByMesocycle(activeMesocycle.id, SINGLE_USER_PLACEHOLDER_ID),
+      getWeeklyTemplateByMesocycle(activeMesocycle.id, userId),
       getPlannedSessionsInRange(
         toIsoDate(fromDate),
         activeMesocycle.planned_end,
-        SINGLE_USER_PLACEHOLDER_ID,
+        userId,
       ),
     ])
 
@@ -152,7 +153,7 @@ export async function generatePlannedSessionsForActiveMesocycle(
               primary_focus: template.primary_focus,
               duration_mins: template.duration_mins,
             },
-            user_id: SINGLE_USER_PLACEHOLDER_ID,
+            user_id: userId,
           })
 
           if (createResult.error !== null || createResult.data === null) {

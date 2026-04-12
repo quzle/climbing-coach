@@ -9,6 +9,16 @@ jest.mock('@/services/training/sessionGenerator', () => ({
   generatePlannedSessionsForActiveMesocycle: jest.fn(),
 }))
 
+jest.mock('@/lib/supabase/get-current-user', () => ({
+  getCurrentUser: jest.fn().mockResolvedValue({ id: 'user-abc' }),
+}))
+
+jest.mock('@/lib/logger', () => ({
+  logInfo: jest.fn(),
+  logWarn: jest.fn(),
+  logError: jest.fn(),
+}))
+
 const mockGeneratePlannedSessionsForActiveMesocycle =
   generatePlannedSessionsForActiveMesocycle as jest.Mock
 
@@ -47,6 +57,7 @@ describe('POST /api/planned-sessions/generate', () => {
     expect(body.error).toBeNull()
     expect(body.data.plannedSessions).toHaveLength(1)
     expect(mockGeneratePlannedSessionsForActiveMesocycle).toHaveBeenCalledWith(
+      'user-abc',
       '2026-03-30',
     )
   })
@@ -61,7 +72,7 @@ describe('POST /api/planned-sessions/generate', () => {
     const response = await POST(request)
 
     expect(response.status).toBe(200)
-    expect(mockGeneratePlannedSessionsForActiveMesocycle).toHaveBeenCalledWith(undefined)
+    expect(mockGeneratePlannedSessionsForActiveMesocycle).toHaveBeenCalledWith('user-abc', undefined)
   })
 
   it('returns 400 when week_start is malformed', async () => {

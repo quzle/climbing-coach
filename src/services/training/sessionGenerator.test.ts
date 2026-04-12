@@ -6,7 +6,6 @@ import {
   getPlannedSessionsInRange,
 } from '@/services/data/plannedSessionRepository'
 import { getWeeklyTemplateByMesocycle } from '@/services/data/weeklyTemplateRepository'
-import { SINGLE_USER_PLACEHOLDER_ID } from '@/lib/placeholder-user-id'
 import type {
   AthleteContext,
   Mesocycle,
@@ -170,15 +169,15 @@ beforeEach(() => {
 
 describe('generatePlannedSessionsForActiveMesocycle', () => {
   it('creates planned sessions for template days in the requested week', async () => {
-    const result = await generatePlannedSessionsForActiveMesocycle('2026-03-31')
+    const result = await generatePlannedSessionsForActiveMesocycle('user-1', '2026-03-31')
 
     expect(result.error).toBeNull()
     expect(result.data).toHaveLength(2)
-    expect(mockGetActiveMesocycle).toHaveBeenCalledWith(SINGLE_USER_PLACEHOLDER_ID)
+    expect(mockGetActiveMesocycle).toHaveBeenCalledWith('user-1')
     expect(mockGetPlannedSessionsInRange).toHaveBeenCalledWith(
       '2026-03-30',
       '2026-04-05',
-      SINGLE_USER_PLACEHOLDER_ID,
+      'user-1',
     )
     expect(mockGenerateSessionPlan).not.toHaveBeenCalled()
     expect(mockCreatePlannedSession).toHaveBeenCalledWith(
@@ -200,7 +199,7 @@ describe('generatePlannedSessionsForActiveMesocycle', () => {
   it('returns empty data when no active mesocycle exists', async () => {
     mockGetActiveMesocycle.mockResolvedValue({ data: null, error: null })
 
-    const result = await generatePlannedSessionsForActiveMesocycle('2026-03-31')
+    const result = await generatePlannedSessionsForActiveMesocycle('user-1', '2026-03-31')
 
     expect(result.error).toBeNull()
     expect(result.data).toEqual([])
@@ -219,7 +218,7 @@ describe('generatePlannedSessionsForActiveMesocycle', () => {
       error: null,
     })
 
-    const result = await generatePlannedSessionsForActiveMesocycle('2026-03-31')
+    const result = await generatePlannedSessionsForActiveMesocycle('user-1', '2026-03-31')
 
     expect(result.error).toBeNull()
     expect(result.data).toHaveLength(1)
@@ -238,7 +237,7 @@ describe('generatePlannedSessionsForActiveMesocycle', () => {
       error: 'Insert failed',
     })
 
-    const result = await generatePlannedSessionsForActiveMesocycle('2026-03-31')
+    const result = await generatePlannedSessionsForActiveMesocycle('user-1', '2026-03-31')
 
     expect(result.data).toBeNull()
     expect(result.error).toBe('Insert failed')
